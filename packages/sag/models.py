@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
@@ -87,7 +87,7 @@ class GraphChange(BaseModel):
     """A single change between two graph snapshots."""
 
     kind: ChangeKind
-    node_id: str | None = None
-    edge_key: tuple[str, str, str] | None = None  # (source, target, type)
-    before: Any | None = None
-    after: Any | None = None
+    node_id: Optional[str] = None
+    edge_key: Optional[Tuple[str, str, str]] = None  # (source, target, type)
+    before: Optional[Any] = None
+    after: Optional[Any] = None
