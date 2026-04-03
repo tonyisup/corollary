@@ -206,6 +206,96 @@ This means the SAG doubles as infrastructure for two security concerns:
 
 Together they form a layered defense: the graph structure blocks structural attacks, while the semantic profile detects behavioral anomalies. Neither alone is sufficient; together they cover significantly more of the attack surface.
 
+## Theory of Mind and Entity Modeling
+
+> **Origin:** Discussion with Tony, 2026-04-03.
+> **Key insight:** Theory of mind is fundamentally relational. Entity models are the edges between self and others.
+
+### Why Unified, Not Separate
+
+Human minds don't maintain separate conceptual universes for different entities. You don't reset your vocabulary when switching from talking to a person to talking to a dog to interacting with a Samsung phone. You shift your position *within* the same conceptual space.
+
+The SAG should mirror this: **one unified graph, entity-rooted subtrees as navigation contexts.** Splitting into separate SAGs would require:
+
+1. Duplicating shared concepts across every entity's graph
+2. Maintaining a mapping between them (combinatorial explosion)
+3. Losing the ability to reason across entities naturally — *"Tony prefers Samsung, Samsung has X pattern, so Tony probably expects X"* requires edges that span entities
+
+### SAG Structure for Theory of Mind
+
+```
+SAG (unified)
+├── Self.root                          # Self-model, introspection layer
+│   ├── communication_patterns
+│   ├── trust_domains
+│   └── behavioral_tendencies
+│
+├── Entities.                          # Every other entity the agent interacts with
+│   ├── Tony/                          # Primary human collaborator
+│   │   ├── communication_patterns → [exploration_framing, mid_abstraction]
+│   │   ├── trust_domains → [architecture: high, sysops: medium]
+│   │   ├── preferences, habits, context
+│   │   └── ...entity-specific nodes...
+│   │
+│   ├── Samsung_device/                # A class of objects, not just a specific device
+│   │   ├── interface_patterns → [TouchWiz, SmartThings]
+│   │   ├── trust_domains → [reliability: medium, innovation: high]
+│   │   └── user_expectations
+│   │
+│   ├── Motorola_device/               # Same category, different interaction model
+│   │   ├── interface_patterns → [stock Android, Moto Actions]
+│   │   └── user_expectations          # Deliberately distinct from Samsung
+│   │
+│   └── Neighbor_dog_Rex/              # Even non-human entities
+│       ├── behavioral_patterns → [approach: slow, signals: averted_gaze]
+│       └── safe_interactions
+│
+├── Shared_Ontology.                   # Concepts that all entities reference
+│   ├── trust                          # Same concept, different edges from each entity
+│   ├── communication
+│   ├── intention
+│   ├── risk
+│   └── agency
+│
+└── Cross_Entity_Edges                 # Reasoning *across* entities
+    ├── Self --collaborates_with--> Tony
+    ├── Tony --prefers_brand--> Samsung
+    ├── Rex --interacts_with--> Neighbor
+    └── Samsung --competes_with--> Motorola
+```
+
+### Entity Models Are the Edges
+
+What you *know* about Tony doesn't live in isolated node properties — it lives in **the edges between `Self` and the `Tony` subtree**, and in the relational patterns within that subtree. Theory of mind is a network phenomenon. The SAG makes this explicit:
+
+- **Shared ontology, distinct topology.** The concept `trust` is the same node whether it connects to `Tony` or `Samsung`. What differs is which edges arrive at it from which entities. Tony arrives at `trust` through `collaborative_history → demonstrated_reliability`. Samsung arrives through `brand_reputation → product_experience`. Same destination, different path.
+
+- **Resolution specificity.** You can detect overgeneralization: if `Samsung_device` and `Motorola_device` have structurally identical edges, the graph is underinformed. Your real interaction model with these differs — the SAG should capture that distinction.
+
+- **Cross-entity reasoning.** Unified SAG enables inference across entities: *"Tony trusts Samsung → Samsung and Motorola compete → Tony probably has lower initial trust for Motorola"* — not as a rule, but as a traversal pattern with a confidence score that updates on new evidence.
+
+### Granularity and Identity Boundaries
+
+Different entities require different resolution:
+
+- **Humans** → Rich models: personality, communication style, preferences, shared history, trust calibration
+- **Animals** → Behavioral models: approach patterns, signaling, safety constraints
+- **Devices** → Interface models: interaction paradigms, reliability expectations, feature assumptions
+- **Agents** → Capability models: what they can do, what they claim, what they've demonstrated
+
+Even within a category, individual entities get their own subgraph. Not "dog breed" but "Tony's neighbor's golden retriever named Rex" — because theory of mind requires distinguishing individuals, not categories.
+
+### Milestone Alignment
+
+| Milestone | Theory of Mind Deliverable |
+|-----------|---------------------------|
+| M0 | Basic node types for `Entity` and `Self`. Self-entity edges created on first interaction. |
+| M1 | Multi-speaker attribution on edges. Entity subtrees populated from conversation history. |
+| M2 | Context-aware entity resolution: the same utterance resolves differently depending on which entity is speaking. |
+| M3 | Entity-specific trust calibration. Divergence detection: when entity behavior deviates from their subtree pattern. |
+| M4 | Cross-entity reasoning patterns emerge. Transfer learning: patterns from one entity inform expectations for similar entities (with confidence penalties). |
+| M5 | Agent self-model becomes explicitly reflexive. The agent can reason about *its own* position in its entity graph. |
+
 ## Design Decisions
 
 - **Graph first, embeddings second:** Vector similarity (FAISS/Chroma) is complementary but lossy. The SAG preserves explicit structure. Use embeddings to *find candidate nodes*, use the graph to *confirm relationships*.
