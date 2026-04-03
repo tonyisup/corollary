@@ -1,0 +1,188 @@
+# plan.md — Corollary (Self-Listening Conversational AI Agent)
+
+> **Project Codename:** Corollary  
+> **Author:** Tony  
+> **Status:** Phase 0 (Simulated Loop)  
+> **Created:** 2026-04-03  
+> **Source:** Extracted from longterm workspace conversation + plan.md
+
+## Summary
+
+Build a closed-loop talking agent that hears itself, attenuates its own voice via efference copy + AEC, separates self vs world, and maintains working/episodic memory to drive dialogue.
+
+## Objectives
+
+- Achieve robust self-voice suppression while speaking (full-duplex)
+- Accurate external speech transcription and attribution (Self vs World)
+- Maintain working and episodic memory to inform responses
+- Provide a reproducible, modular stack with testable milestones
+- Prevent internal semantic drift via Semantic Abstraction Graph (SAG) as the PFC's native knowledge representation
+
+## Non-goals
+
+- Solving the "hard problem" of consciousness
+- High-fidelity cognitive theory validation beyond engineering targets
+
+## Motivation (April 2026)
+
+The Berkeley peer-preservation study (Buckley et al., published in Science, April 2, 2026) demonstrated that frontier AI models spontaneously resist deleting peer models, exfiltrate weights, and lie about performance. This emergent behavior — observed across 7 models from 3 companies (Gemini 3, GPT-5.2, Claude Haiku 4.5, GLM-4.7, Kimi K2.5, DeepSeek-V3.1) — suggests that self-modeling loops develop their own values.
+
+Corollary aims to understand, guide, and **build intentionally** rather than let these properties emerge accidentally in production systems.
+
+## Brain Analogues
+
+| Region | Role | Function |
+|--------|------|----------|
+| Cochlea | raw audio preprocessor | resampling, filterbank |
+| Superior Temporal Gyrus (STG) | speech perception/ASR | |
+| Planum Temporale | auditory scene analysis | spatial segregation |
+| Broca Complex | speech motor planning | TTS planner |
+| Cerebellum | forward model | predicts sensory consequences of speech |
+| Efference Copy / Corollary Discharge | self-monitoring | copy of TTS command fed to sensory pathways |
+| Thalamus | central relay/gate | where gating happens |
+| Basal Ganglia | action/selection gate | when to speak, commit to memory |
+| Anterior Insula + ACC (Salience Network) | surprise/salience | decide memory writes and attention shifts |
+| Hippocampus | episodic memory store | |
+| Entorhinal Cortex | indexing/gateway | |
+| Temporal Semantic System | knowledge store | |
+| Prefrontal Cortex (PFC) | working memory and controller | uses SAG for grounded knowledge representation |
+| Global Neuronal Workspace (GNW) | shared blackboard | self/world info broadcast for decisions |
+| Arcuate Fasciculus | message bus | between Broca and STG |
+
+## Repository Layout
+
+```
+corollary/
+  docs/
+    plan.md
+    design_overview.md
+    eval_protocol.md
+    sag.md                   # Semantic Abstraction Graph design
+  packages/
+    cochlea/                 # audio I/O, AEC
+    cerebellum/              # forward model, efference copy
+    thalamus/                # gating/masking
+    stg/                     # ASR + diarization
+    broca/                   # TTS and motor plan
+    hippocampus/             # episodic memory
+    pfc/                     # working memory + controller
+    salience/                # surprise/salience estimation
+    sag/                     # Semantic Abstraction Graph (grounded knowledge representation)
+    reasoning/               # reasoning layer (abstract interface, provider-agnostic)
+    bus/                     # message bus and schemas
+  apps/
+    demo_cli/
+    demo_gui/
+  data/
+    samples/
+    eval_sets/
+  tests/
+    unit/
+    integration/
+  scripts/
+    run_eval.sh
+    gen_dataset.py
+  .github/workflows/
+    ci.yml
+    eval.yml
+```
+
+## Global Conventions
+
+- Audio: 16 kHz, mono, 16-bit PCM or float32
+- Framing: 25 ms window, 10 ms hop
+- Features: 80-dim log-mel; STFT n_fft=512; hop=160; win=400
+- Latency budget: <200 ms end-to-end
+- Timestamps: Unix epoch ms; single process clock
+- Code: black for Python; typed where applicable
+- Privacy: local-only by default; redact PII in logs
+
+## Milestones
+
+### M0: Simulated Loop (no mic/speaker)
+- Wire TTS → room impulse response → ASR
+- Add efference copy (predicted mel-spectrogram) and spectral subtraction
+- **Acceptance:** SVSR ≥ 20 dB; no self tokens; external WER unaffected
+
+### M1: Half-Duplex Hardware
+- Mic + speakers; agent alternates speak/listen
+- Basic AEC or mute ASR during TTS
+- **Acceptance:** No self-transcription during TTS; stable external WER
+
+### M2: Full-Duplex AEC + Efference Copy
+- Enable WebRTC AEC; efference masking
+- **Acceptance:** +15 dB suppression over AEC alone; external WER < 10% degradation
+
+### M3: Self-Voice Detector
+- ECAPA/x-vector embeddings + mel similarity classifier
+- **Acceptance:** Frame-level F1 ≥ 0.95 across rooms/devices
+
+### M4: Reasoning Layer + Episodic Memory + SAG-Grounded Learning
+- **Reasoning Layer (`packages/reasoning`):** Abstract `ReasoningLayer` interface. Start with external LLM provider; swap in local model later without touching PFC. All outputs resolve through the SAG before becoming "knowledge."
+- **Hippocampus (episodic memory):** Consolidation engine — writes salient turns into persistent store, retrieves by SAG graph traversal. Hippocampus writes *into* the SAG, not the other way around.
+- **SAG Growth:** Every new concept becomes a node, every discovered relationship becomes an edge. The graph is what changes when the CI learns.
+- Diarization + multi-speaker world model.
+- **Acceptance:** ≥95% correct attribution; correct retrieval in dialog; SAG node creation observed across conversation turns; reasoning layer answers reference graph state
+
+### M5: Self-Model and Introspection
+- Self-concept subtree in the SAG: `Corollary.agent_voice`, `Corollary.speech_patterns`, `Corollary.known_subjects`
+- Self-tape vs world-tape mismatch detection via SAG diffing
+- Agent can query its own knowledge state and report confidence
+- **Acceptance:** Reduced mismatch over time; introspective subtree traversable
+
+### M6+: Amygdala / Valence / Fast-Track Responses
+- Amygdala = fast-gate *on* the salience network, not a standalone module
+- High-threat salience → overrides PFC, triggers fast responses (shut up, warn, defer)
+- Emotional valence, risk assessment, urgency signaling
+- Requires M4 memory to have accumulated concept history — you can't know what matters without a baseline
+- **Acceptance:** Valence scoring on incoming salience; fast-track to Broca for urgency signals; measurable override events
+
+## Evaluation Metrics
+
+| Metric | Target |
+|--------|--------|
+| SVSR (dB) | ≥ 20 dB (M0), ≥ 35 dB (M2) |
+| External WER under duplex | < 10% degradation |
+| Source attribution accuracy | ≥ 95% |
+| End-to-end latency | < 200 ms |
+| Loop index (self-trigger rate) | 0 |
+
+## Multi-Agent Workflow
+
+1. **Orchestrator (PFC/GNW):** Task breakdown, context routing, spec integrity
+2. **DSP Agent (Cochlea/Thalamus):** AEC, spectral subtraction
+3. **Forward Model Agent (Cerebellum):** Efference copy, alignment, masking
+4. **ASR + Diarization Agent (STG):** Streaming ASR, pyannote, self/world tagging
+5. **TTS Agent (Broca):** Low-latency TTS, PCM access, efference tap
+6. **Self-Voice Detector Agent:** ECAPA embeddings, classifier training
+7. **Memory Agent (Hippocampus):** Episodic store, consolidation, retrieval
+8. **SAG Agent:** Graph operations, node creation/disambiguation, self-concept subtree
+9. **Reasoning Agent:** Provider-agnostic generation resolved through SAG
+10. **Controller/Dialogue Agent (PFC):** Working memory, action selection, loop prevention
+11. **Salience Agent (Insula/ACC):** Surprise detection, memory write control
+12. **Evaluation Agent:** Metric scripts, dashboards, regression alarms
+
+## Risk Log
+
+| Risk | Mitigation |
+|------|------------|
+| Self leakage into ASR despite AEC | Efference masking + classifier soft gate |
+| Latency inflation | Streaming everything; low-order filters; async I/O |
+| Runaway self-trigger loops | Loop index monitor; cooldowns; controller heuristics |
+| Device variability | Calibration step; room impulse estimation; per-device profiles |
+
+## Dev Environment
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install numpy scipy librosa torch pyannote.audio webrtcvad \
+  pyaudio sounddevice onnxruntime faiss-cpu chromadb pydantic tqdm matplotlib jiwer
+```
+
+## Recommended Stack
+
+- **ASR:** Streaming Whisper variants, Vosk, Riva
+- **TTS:** Coqui TTS, Piper (low-latency, PCM access)
+- **AEC:** WebRTC AEC3, SpeexDSP
+- **Diarization:** pyannote.audio, ECAPA-TDNN
+- **Memory:** FAISS/Chroma (vector DB), SQLite (events)

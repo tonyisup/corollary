@@ -1,0 +1,15 @@
+numpy
+scipy
+librosa
+torch
+pyannote.audio
+webrtcvad
+pyaudio
+sounddevice
+onnxruntime
+faiss-cpu
+chromadb
+pydantic
+tqdm
+matplotlib
+jiwer
