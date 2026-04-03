@@ -33,7 +33,7 @@ The SAG replaces freeform context strings in the PFC. When the dialogue controll
 
 - **Disambiguation at M0:** When ASR produces ambiguous tokens, the PFC resolves them against the graph's context state before forwarding to dialogue logic.
 - **Efference copy alignment (cerebellum ↔ SAG):** The cerebellum's forward model doesn't just predict spectrograms — it predicts *meaning*. "I said X" in the cerebellum maps to a node in the SAG, and the cerebellum can verify: did the STG hear back the node I intended?
-- **Memory write salience:** The salience network uses SAG traversal patterns to detect novelty. A concept visited frequently through new paths = high salience. Write to episodic memory.
+- **Memory write salience:** The salience network uses SAG traversal patterns to detect novelty. A concept visited frequently through new paths = high salience. Write to episodic memory for later consolidation.
 
 ### M3–M4: Self/World Attribution
 

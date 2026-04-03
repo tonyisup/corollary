@@ -118,11 +118,12 @@ corollary/
 - **Acceptance:** Frame-level F1 ≥ 0.95 across rooms/devices
 
 ### M4: Reasoning Layer + Episodic Memory + SAG-Grounded Learning
-- **Reasoning Layer (`packages/reasoning`):** Abstract `ReasoningLayer` interface. Start with external LLM provider; swap in local model later without touching PFC. All outputs resolve through the SAG before becoming "knowledge."
-- **Hippocampus (episodic memory):** Consolidation engine — writes salient turns into persistent store, retrieves by SAG graph traversal. Hippocampus writes *into* the SAG, not the other way around.
-- **SAG Growth:** Every new concept becomes a node, every discovered relationship becomes an edge. The graph is what changes when the CI learns.
+- **Hippocampus (rapid episodic encoding):** Writes salient conversation turns into persistent store. Single events are retrievable but do *not* directly update the SAG.
+- **Neocortex / Reasoning Layer (`packages/reasoning`):** Abstract `ReasoningLayer` interface. Starts with external LLM provider; swap in local model later without touching PFC. All outputs resolve through the SAG before becoming "knowledge."
+- **Offline Consolidation:** Background loop processes accumulated episodic traces, extracts recurring patterns, and writes stable nodes/edges into the SAG. Pattern extraction, not event transcription. Single events → hippocampus only; repeated patterns → SAG structure.
+- **SAG Growth:** The SAG *is* the neocortical knowledge representation — consolidated output of pattern extraction, not a passive recipient of hippocampal writes. The graph is what changes when the CI learns.
 - Diarization + multi-speaker world model.
-- **Acceptance:** ≥95% correct attribution; correct retrieval in dialog; SAG node creation observed across conversation turns; reasoning layer answers reference graph state
+- **Acceptance:** ≥95% correct attribution; correct retrieval in dialog; SAG updates correlate with repeated patterns across episodic memory, not single events; reasoning layer answers reference graph state
 
 ### M5: Self-Model and Introspection
 - Self-concept subtree in the SAG: `Corollary.agent_voice`, `Corollary.speech_patterns`, `Corollary.known_subjects`
