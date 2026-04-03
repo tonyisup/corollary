@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import librosa
-from typing import Tuple
+from typing import List, Tuple
 
 # ── Global audio constants ────────────────────────────────────────────────
 SR = 16000          # sample rate, Hz
@@ -40,12 +40,59 @@ class EfferenceBuffer:
 
     def __init__(self, max_ms: int = 3000) -> None:
         self.max_len = int(SR * max_ms / 1000)
+        self._buf: np.ndarray = np.zeros(self.max_len, dtype=np.float32)
+        self._write_pos: int = 0
+        self._filled: int = 0  # how many samples have been written total
 
     def append(self, pcm: np.ndarray) -> None:
         """Append PCM samples (overwrites oldest when full)."""
-        raise NotImplementedError("TODO: implement ring-buffer")
+        n = len(pcm)
+        if n == 0:
+            return
+
+        # Handle wrap-around in chunks
+        start_idx = self._write_pos
+        space_before_wrap = self.max_len - start_idx
+        if n <= space_before_wrap:
+            self._buf[start_idx:start_idx + n] = pcm
+        else:
+            # Write what fits before wrap
+            self._buf[start_idx:] = pcm[:space_before_wrap]
+            # Write remainder from the beginning
+            remaining = n - space_before_wrap
+            self._buf[:remaining] = pcm[space_before_wrap:]
+
+        self._write_pos = (self._write_pos + n) % self.max_len
+        self._filled = min(self._filled + n, self.max_len)
 
     @property
     def audio(self) -> np.ndarray:
-        """Return entire buffer as float32 array."""
-        raise NotImplementedError("TODO: implement ring-buffer")
+        """Return entire buffer as float32 array.
+
+        Returns all `self._filled` samples in correct temporal order,
+        oldest first.
+        """
+        if not self._filled:
+            return np.zeros(0, dtype=np.float32)
+
+        if self._filled < self.max_len:
+            # Buffer never wrapped — data is contiguous from 0
+            return self._buf[:self._filled].copy()
+
+        # Buffer has wrapped — data starts at write_pos
+        result = np.empty(self.max_len, dtype=np.float32)
+        end = self._write_pos
+        result[:self.max_len - end] = self._buf[end:]
+        result[self.max_len - end:] = self._buf[:end]
+        return result
+
+    @property
+    def is_full(self) -> bool:
+        """Whether the buffer has been filled at least once."""
+        return self._filled >= self.max_len
+
+    def clear(self) -> None:
+        """Reset the buffer to empty."""
+        self._buf.fill(0)
+        self._write_pos = 0
+        self._filled = 0
