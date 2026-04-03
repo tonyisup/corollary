@@ -128,13 +128,15 @@ def transcribe(
                 )
                 for w in seg.words
             ]
+        # Derive confidence from no_speech_prob and avg_logprob
+        confidence = max(0.0, 1.0 - seg.no_speech_prob)
         out_segments.append(
             Segment(
                 id=seg.id,
                 text=seg.text,
                 start=seg.start,
                 end=seg.end,
-                confidence=seg.confidence,
+                confidence=confidence,
                 words=words,
             )
         )

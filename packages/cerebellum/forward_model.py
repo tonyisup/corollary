@@ -10,7 +10,7 @@ Phase 2+: learn a predictive model that accounts for room acoustics.
 from __future__ import annotations
 
 import numpy as np
-from ..cochlea.capture import pcm_to_mels
+from cochlea.capture import pcm_to_mels
 
 
 def predict_mel(eff_pcm: np.ndarray) -> np.ndarray:

@@ -101,6 +101,11 @@ def apply_room_ir(
     # Convolve
     output = fftconvolve(audio, ir, mode="full").astype(np.float32)
 
+    # Normalize to prevent clipping / extreme silence
+    peak = np.max(np.abs(output))
+    if peak > 0:
+        output = output / peak * 0.9
+
     # Add noise floor
     peak = np.max(np.abs(audio))
     if peak > 0:
