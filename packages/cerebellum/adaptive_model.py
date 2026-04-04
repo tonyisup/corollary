@@ -28,7 +28,11 @@ from __future__ import annotations
 import numpy as np
 from scipy.signal import fftconvolve
 from cochlea.capture import pcm_to_mels, SR
-from typing import List, Tuple
+from cerebellum.trust_model import TrustTracker, TrustState, DEFAULT_IR_DIR
+from typing import List, Tuple, Optional
+import json
+import os
+import time
 
 
 class BabblingCerebellum:
@@ -39,6 +43,11 @@ class BabblingCerebellum:
 
     The learned IR is then used to convolve efference copies for
     forward-model predictions that account for real room acoustics.
+
+    Trust model: tracks how much the cerebellum should trust its learned IR.
+    Trust grows when predictions match reality, decays when they don't.
+    When trust falls below a threshold, the cerebellum signals that it
+    needs to rebabble.
     """
 
     def __init__(
@@ -65,6 +74,75 @@ class BabblingCerebellum:
         self.total_updates: int = 0
         self.prediction_errors: List[float] = []
         self.convergence_history: List[float] = []
+
+        # Trust model — tracks confidence in the learned IR
+        self.trust = TrustTracker()
+        self._ir_save_path: Optional[str] = None
+
+    def save_model(self, path: Optional[str] = None, metadata: Optional[dict] = None) -> str:
+        """Persist the learned IR and trust state to disk.
+
+        Parameters
+        ----------
+        path : str, optional
+            File path. Uses default timestamp-named file if not specified.
+        metadata : dict, optional
+            Extra metadata to store alongside the model.
+
+        Returns
+        -------
+        str
+            Path to the saved file.
+        """
+        if path is None:
+            ts = int(time.time())
+            path = os.path.join(DEFAULT_IR_DIR, f"room_ir_{ts}.json")
+        os.makedirs(os.path.dirname(path) or DEFAULT_IR_DIR, exist_ok=True)
+
+        data = {
+            "ir": self.room_ir.tolist(),
+            "trust_state": self.trust.state.to_dict(),
+            "metadata": metadata or {},
+        }
+        with open(path, "w") as f:
+            json.dump(data, f)
+        self._ir_save_path = path
+        return path
+
+    @classmethod
+    def load_model(cls, path: str, **kwargs) -> "BabblingCerebellum":
+        """Restore a cerebellum from a saved IR file.
+
+        Parameters
+        ----------
+        path : str
+            Path to a previously saved room IR JSON file.
+        **kwargs
+            Extra constructor overrides (e.g. nlms_mu).
+
+        Returns
+        -------
+        BabblingCerebellum
+            Instance with the learned IR and restored trust state.
+        """
+        with open(path, "r") as f:
+            data = json.load(f)
+
+        ir = np.array(data["ir"], dtype=np.float32)
+        trust_state = TrustState.from_dict(data.get("trust_state", {}))
+
+        # Infer IR length from saved array
+        ir_length_ms = int(len(ir) * 1000 / SR)
+        model = cls(ir_length_ms=ir_length_ms, **kwargs)
+        model.room_ir = ir
+        model.trust.state = trust_state
+        model.total_updates = trust_state.confirmations
+        model._ir_save_path = path
+        return model
+
+    def trust_status(self) -> dict:
+        """Return current trust diagnostics."""
+        return self.trust.get_status()
 
     def update(
         self,
@@ -97,8 +175,21 @@ class BabblingCerebellum:
         error = self._nlms_update(known_aligned, captured_aligned)
 
         self.total_updates += 1
-        self.prediction_errors.append(float(np.sqrt(np.mean(error ** 2))))
-        self.convergence_history.append(self.prediction_errors[-1])
+        error_rms = float(np.sqrt(np.mean(error ** 2)))
+        error_db = 20 * np.log10(max(error_rms, 1e-10))
+        self.prediction_errors.append(error_rms)
+        self.convergence_history.append(error_rms)
+
+        # Update trust: use prediction error as signal
+        # Error < -30 dB → good prediction → trust grows
+        # Error > -10 dB → poor prediction → trust decays
+        if error_db < -30:
+            self.trust.confirm(error_db)
+        elif error_db > -10:
+            self.trust.fail()
+        else:
+            # In between: partial confirmation
+            self.trust.confirm(error_db)
 
         return self.prediction_errors[-1]
 
