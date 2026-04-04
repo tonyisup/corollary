@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+import re
 import numpy as np
 
 from broca.tts import synthesize
@@ -46,15 +47,40 @@ class LoopResult:
 
     @property
     def wer(self) -> float:
-        """Character-level error rate (rough WER proxy without alignment lib)."""
+        """Word Error Rate using sequence matching.
+        
+        Normalizes punctuation before computing token-level Levenshteins.
+        """
         if self.asr_result is None:
             return 1.0
-        original_words = set(self.original_text.lower().split())
-        transcript_words = set(self.asr_result.text.lower().split())
-        if not original_words:
+
+        def _tokens(text: str) -> List[str]:
+            return [
+                t for t in re.split(r"[\W_]+", text.lower()) if t
+            ]
+
+        a = _tokens(self.original_text)
+        b = _tokens(self.asr_result.text)
+
+        if not a and not b:
             return 0.0
-        errors = original_words.symmetric_difference(transcript_words)
-        return len(errors) / max(len(original_words), len(transcript_words))
+
+        # Levenshteins distance on words
+        n, m = len(a), len(b)
+        # DP table
+        dp = list(range(m + 1))
+        for i in range(1, n + 1):
+            prev = dp[0]
+            dp[0] = i
+            for j in range(1, m + 1):
+                tmp = dp[j]
+                if a[i - 1] == b[j - 1]:
+                    dp[j] = prev
+                else:
+                    dp[j] = 1 + min(prev, dp[j], dp[j - 1])
+                prev = tmp
+
+        return dp[m] / max(len(a), len(b))
 
 
 async def run_simulated_loop(
