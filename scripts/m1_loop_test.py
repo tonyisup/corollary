@@ -70,7 +70,7 @@ from thalamus.gate import ThalamicGate
 
 # ── Default Test Utterance ────────────────────────────────────────────────
 
-DEFAULT_TEXT = "Hello, this is corridor testing the self listening loop."
+DEFAULT_TEXT = "Hello, this is Corollary testing the self-listening loop."
 
 
 # ── TTS Playback ─────────────────────────────────────────────────────────
@@ -209,18 +209,58 @@ async def run_full_loop(
     # ── Step 3: Capture with simultaneous playback ───────────────────
     # Add padding before/after to capture the full playback
     capture_duration = tts_dur + 2.0  # 1s lead + audio + 1s tail
-    print(f"\n🎤 Step 2: Capturing microphone for {capture_duration:.1f}s...")
-    print(f"  📝 Playing TTS through speakers NOW (mic should hear it)")
+    print(f"\n🎤 Step 2: Playing TTS and capturing mic for {capture_duration:.1f}s...")
+    print(f"  📝 TTS should play through speakers NOW")
     print(f"  🔊 Speaker playback duration: {tts_dur:.2f}s")
     print(f"  ⏳ Speak only after playback to test gating...")
 
-    # Start capture
+    # Countdown
+    for i in range(3, 0, -1):
+        print(f"  {i}...")
+        time.sleep(1)
+
+    # Determine mic's native sample rate
+    if input_device is not None:
+        dev_info = sd.query_devices(input_device)
+        native_sr = dev_info["default_samplerate"] or SR
+    else:
+        native_sr = SR
+
+    if native_sr != SR:
+        print(f"  📝 Mic native SR: {native_sr} Hz (capturing at native, resampling after)")
+
+    # Start capture (non-blocking)
     t_capture_start = time.perf_counter()
-    audio, _ = capture_mic(
-        duration=capture_duration,
+    cap_stream = sd.InputStream(
         device=input_device,
-        sample_rate=SR,
+        channels=1,
+        samplerate=int(native_sr),
+        dtype="float32",
+        blocksize=1024,
     )
+    cap_stream.start()
+
+    # Play TTS through speakers (non-blocking, so mic can hear it)
+    sd.play(pcm, samplerate=SR, device=output_device, blocking=False)
+    print(f"  🔊 TTS playback started...")
+
+    # Record mic for capture_duration
+    total_samples = int(capture_duration * native_sr)
+    audio = np.zeros(total_samples, dtype=np.float32)
+    pos = 0
+    while pos < total_samples:
+        data, _ = cap_stream.read(min(1024, total_samples - pos))
+        n = min(len(data), total_samples - pos)
+        audio[pos:pos + n] = data[:, 0]
+        pos += n
+
+    cap_stream.stop()
+    cap_stream.close()
+
+    # Resample to 16kHz if needed
+    if native_sr != SR:
+        audio = resample_audio(audio, int(native_sr), SR)
+
     capture_elapsed = time.perf_counter() - t_capture_start
 
     # Measure captured audio level
@@ -234,9 +274,9 @@ async def run_full_loop(
         print("  ⚠️  Signal is very quiet — ensure speaker volume is up and mic is close")
 
     if capture_only:
-        print(f"\n{'':='=^60}")
+        print("\n" + "=" * 60)
         print("  ✅ Capture-only mode. Skipping ASR and gating.")
-        print(f"{'':='=^60}")
+        print("=" * 60)
         return
 
     # ── Step 4: ASR on captured audio ───────────────────────────────
@@ -257,24 +297,25 @@ async def run_full_loop(
 
     # ── Step 5: Thalamic Gating ─────────────────────────────────────
     print(f"\n🚪 Step 4: Thalamic gating (efference copy subtraction)...")
+
+    # Check if we have meaningful audio before running mel
+    if rms_db < -60:
+        print(f"  ⚠️  Captured audio is near silence ({rms_db:.1f} dB)")
+        print(f"  The TTS was likely NOT heard by the mic.")
+        print(f"  💡 Make sure speaker volume is UP and mic is nearby.")
+        print(f"  Skipping gating (no signal to process).")
+        return
+
     observed_mel = pcm_to_mels(audio)
 
-    # Pad efference mel to match observed
-    pad_mel = np.zeros(
-        (len(audio) - len(pcm)),
-        predicted_mel.shape[1],
-        dtype=np.float32,
-    )
-    full_efference_mel = np.concatenate([predicted_mel, pad_mel], axis=0)
-
-    # Trim to match observed mel length
-    t_obs = observed_mel.shape[0]
-    t_effer = full_efference_mel.shape[0]
-    if t_effer > t_obs:
-        full_efference_mel = full_efference_mel[:t_obs]
-    elif t_effer < t_obs:
-        pad = np.zeros((t_obs - t_effer, full_efference_mel.shape[1]), dtype=np.float32)
-        full_efference_mel = np.concatenate([full_efference_mel, pad], axis=0)
+    # Pad efference mel to match observed time length
+    pcm_frames = predicted_mel.shape[0]
+    obs_frames = observed_mel.shape[0]
+    if pcm_frames < obs_frames:
+        pad = np.zeros((obs_frames - pcm_frames, predicted_mel.shape[1]), dtype=np.float32)
+        full_efference_mel = np.concatenate([predicted_mel, pad], axis=0)
+    else:
+        full_efference_mel = predicted_mel[:obs_frames]
 
     gate = ThalamicGate()
     result = gate.gate(observed_mel, full_efference_mel)
@@ -307,7 +348,7 @@ async def run_full_loop(
     print(f"    Capture:           {capture_elapsed:.2f}s")
     print(f"    ASR Transcription: {asr_elapsed:.2f}")
     print(f"    Total Roundtrip:   {total_elapsed:.2f}s")
-    print(f"\n  {'':='=^60}")
+    print("\n  " + "=" * 60)
 
     # Verdict
     if similarity > 0.5 and svsr >= 20:
@@ -319,7 +360,7 @@ async def run_full_loop(
     else:
         print("  🔧 Needs work:")
         print("     Check hardware setup, audio routing, and timing")
-    print(f"  {'':='=^60}")
+    print("  " + "=" * 60)
 
 
 def main() -> None:

@@ -1,0 +1,58 @@
+(.venv) juicebox@antonios-mini corollary % python scripts/m1_loop_test.py
+
+============================================================
+  COROLLARY — M1 Full TTS-to-Mic Loop Test
+============================================================
+
+  Utterance: "Hello, this is Corollary testing the self-listening loop."
+
+🗣️  Step 1: Synthesizing speech (TTS)...
+  ✅ Generated 67584 samples (4.22s audio) in 0.92s
+  📋 Efference copy stored, predicted mel: (423, 80)
+
+🎤 Step 2: Playing TTS and capturing mic for 6.2s...
+  📝 TTS should play through speakers NOW
+  🔊 Speaker playback duration: 4.22s
+  ⏳ Speak only after playback to test gating...
+  3...
+  2...
+  1...
+  🔊 TTS playback started...
+
+  ✅ Capture complete (99584 samples)
+  📊 RMS: -36.5 dB | Peak: -17.9 dB
+
+👂 Step 3: Transcribing with faster-whisper (base model)...
+  ✅ Transcription (1.05s):
+  📝 "Hello, this is Corollary testing the self-listening loop."
+     [0.00s → 4.00s] "Hello, this is Corollary testing the self-listening loop." (conf: 0.954)
+
+🚪 Step 4: Thalamic gating (efference copy subtraction)...
+  📊 SVSR: 0.5 dB (target: ≥20 dB)
+  🏷️  Gate verdict: 🌍 WORLD VOICE
+  ⚠️  Significant residual — check:
+      - Timing alignment between TTS and capture
+      - Speaker volume vs mic sensitivity
+      - Room acoustics (too much reverb)
+
+============================================================
+  RESULTS
+============================================================
+
+  Original:      "Hello, this is Corollary testing the self-listening loop."
+  ASR Output:    "Hello, this is Corollary testing the self-listening loop."
+  Word Similarity: 100.0%
+  SVSR:            0.5 dB ⚠️
+  Gate Verdict:    World Voice
+
+  Timing:
+    TTS Synthesis:     0.92s
+    Capture:           6.51s
+    ASR Transcription: 1.05
+    Total Roundtrip:   13.32s
+
+  ============================================================
+  📊 Promising but needs tuning:
+     Some capture worked, check timing alignment and audio levels
+  ============================================================
+(.venv) juicebox@antonios-mini corollary % 
