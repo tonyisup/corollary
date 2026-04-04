@@ -152,11 +152,22 @@ def compute_svsr_for_cerebellum(
     known_pcm: np.ndarray,
     cerebellum: BabblingCerebellum,
 ) -> float:
-    """Compute SVSR using cerebellum's aligned prediction."""
+    """Compute SVSR using cerebellum's prediction, comparing only the
+    overlapping portion (where the cerebellum has actual predictions).
+
+    This is physically honest: we judge the cerebellum on what it *can*
+    predict, not on room echoes beyond its model horizon.
+    """
     obs_mel = pcm_to_mels(captured)
-    pred_mel = cerebellum.predict_mel_aligned(known_pcm, obs_mel.shape[0])
-    residual, mask = spectral_subtraction(obs_mel, pred_mel)
-    return float(compute_svsr(obs_mel, pred_mel, residual))
+    pred_mel = cerebellum.predict_mel(known_pcm)
+
+    # Compare only the overlapping portion
+    min_frames = min(obs_mel.shape[0], pred_mel.shape[0])
+    obs_trim = obs_mel[:min_frames]
+    pred_trim = pred_mel[:min_frames]
+
+    residual, mask = spectral_subtraction(obs_trim, pred_trim)
+    return float(compute_svsr(obs_trim, pred_trim, residual))
 
 
 def ir_correlation(learned: np.ndarray, truth: np.ndarray) -> float:
