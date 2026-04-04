@@ -168,16 +168,11 @@ async def run_babbling(
 
         # 4. Measure SVSR with the updated forward model
         observed_mel = pcm_to_mels(captured)
-        predicted_mel = cerebellum.predict_mel(pcm)
-
-        # Align time dimensions
         t_obs = observed_mel.shape[0]
-        t_pred = predicted_mel.shape[0]
-        if t_obs > t_pred:
-            pad = np.zeros((t_obs - t_pred, predicted_mel.shape[1]), dtype=np.float32)
-            predicted_mel = np.concatenate([predicted_mel, pad], axis=0)
-        elif t_obs < t_pred:
-            predicted_mel = predicted_mel[:t_obs]
+
+        # Use cerebellum to predict what the mic should hear
+        # The cerebellum's predict_mel accounts for the learned room IR
+        predicted_mel = cerebellum.predict_mel_aligned(pcm, t_obs)
 
         residual, mask = spectral_subtraction(observed_mel, predicted_mel)
         svsr = compute_svsr(observed_mel, predicted_mel, residual)

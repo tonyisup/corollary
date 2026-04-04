@@ -88,17 +88,13 @@ class BabblingCerebellum:
         float
             RMS prediction error for this update.
         """
-        # Normalize inputs
+        # Normalize inputs to unit energy (NLMS requires this)
         known = self._normalize(known_pcm)
         captured = self._normalize(captured_pcm)
 
         # Align timing via cross-correlation
-        # This is the biologically honest way to handle the delay between
-        # when a sound is produced and when it's heard
-        delay, captured = self._align_signals(known, captured)
-
-        # NLMS update
-        error = self._nlms_update(known, captured)
+        delay, captured_aligned = self._align_signals(known, captured)
+        error = self._nlms_update(known, captured_aligned)
 
         self.total_updates += 1
         self.prediction_errors.append(float(np.sqrt(np.mean(error ** 2))))
@@ -127,12 +123,60 @@ class BabblingCerebellum:
             np.float32
         )
 
-        # Normalize to match expected level
+        # Normalize
         peak = np.max(np.abs(roomed_pcm))
         if peak > 0:
             roomed_pcm = roomed_pcm / peak * 0.9
 
         return pcm_to_mels(roomed_pcm)
+
+    def predict_mel_aligned(
+        self, efference_pcm: np.ndarray, target_length_frames: int
+    ) -> np.ndarray:
+        """Predict mel spectrogram aligned to match captured audio's frame count.
+
+        Computes the predicted mel, then centers it within the target frame
+        count by padding with silence on both sides proportional to the
+        speaker-to-mic delay learned in the room IR.
+
+        Parameters
+        ----------
+        efference_pcm : np.ndarray
+            Float32 PCM audio (efference copy from Broca).
+        target_length_frames : int
+            Number of mel frames in the observed (captured) signal.
+
+        Returns
+        -------
+        np.ndarray
+            Aligned predicted mel spectrogram, shape (target_length_frames, 80).
+        """
+        # Get the raw predicted mel (will be longer than input due to IR convolution)
+        pred_mel = self.predict_mel(efference_pcm)
+        n_pred = pred_mel.shape[0]
+
+        if n_pred == target_length_frames:
+            return pred_mel
+
+        # Find delay in learned IR (first significant peak)
+        ir_threshold = 0.1 * np.max(np.abs(self.room_ir))
+        peaks = np.where(np.abs(self.room_ir) > ir_threshold)[0]
+        delay_samples = int(peaks[0]) if len(peaks) > 0 else 0
+        delay_frames = delay_samples // 160  # approximate frame size
+
+        # Center the prediction in the target frame count
+        pad_total = max(0, target_length_frames - n_pred)
+        pad_before = min(delay_frames, pad_total)
+        pad_after = pad_total - pad_before
+
+        if target_length_frames > n_pred:
+            padded = np.zeros((target_length_frames, pred_mel.shape[1]), dtype=np.float32)
+            padded[pad_before:pad_before+n_pred] = pred_mel
+            return padded
+        else:
+            # Truncate and shift
+            start = max(0, delay_frames - (n_pred - target_length_frames) // 2)
+            return pred_mel[start:start+target_length_frames]
 
     def predict_pcm(self, efference_pcm: np.ndarray) -> np.ndarray:
         """Predict the raw PCM the cochlea will receive.
@@ -230,62 +274,61 @@ class BabblingCerebellum:
         return delay, captured
 
     def _nlms_update(self, known: np.ndarray, captured: np.ndarray) -> np.ndarray:
-        """NLMS adaptive filter update.
+        """NLMS adaptive filter update — sample-by-sample.
 
-        Estimates the system impulse response by minimizing the mean
-        squared error between the predicted output (known * estimated_ir)
-        and the actual captured output.
+        Standard NLMS processes samples sequentially, updating the
+        filter coefficients at each time step. This is the algorithm
+        actually used in real-time adaptive filtering (AEC, echo cancellation).
+
+        The filter models: captured(t) = sum_n [IR(n) * known(t-n)]
+        At each sample t, we predict, compute error, and update all IR taps.
 
         Parameters
         ----------
         known : np.ndarray
-            Normalized input signal (what was played).
+            Input signal (what was played to speakers), normalized.
         captured : np.ndarray
-            Normalized output signal (what was captured).
+            Captured signal (what the mic heard), normalized.
 
         Returns
         -------
         np.ndarray
-            Prediction error vector.
+            Final prediction error segment.
         """
-        # Pad known signal for convolution
-        output_len = len(known) + self.ir_length - 1
-        known_padded = np.zeros(output_len, dtype=np.float32)
-        known_padded[:len(known)] = known
+        N = self.ir_length
+        mu = self.nlms_mu
+        eps = self.nlms_epsilon
 
-        # Current prediction: known * estimated_ir
-        prediction = fftconvolve(known, self.room_ir, mode="full").astype(np.float32)
+        # Align lengths
+        max_len = min(len(known), len(captured))
+        known = known[:max_len]
+        captured = captured[:max_len]
 
-        # Trim to match captured length
-        pred_len = min(len(prediction), len(captured))
-        prediction = prediction[:pred_len]
-        captured = captured[:pred_len]
+        # Pad known with zeros at both ends (for look-back and look-ahead)
+        # We need N-1 samples of pre-padding and N-1 samples of post-padding
+        padding = np.zeros(N - 1, dtype=np.float32)
+        extended = np.concatenate([padding, known, padding])
 
-        # Prediction error
-        error = captured - prediction
+        errors = np.zeros(max_len, dtype=np.float32)
 
-        # NLMS update: adjust IR in the direction of the gradient
-        # w(n+1) = w(n) + mu * e(n) * x(n) / (||x(n)||^2 + epsilon)
-        # For each filter tap, the gradient is the input signal at that lag
-        for tap in range(self.ir_length):
-            # Input at this tap (delayed version of known signal)
-            x_tap = known_padded[:len(known) - self.ir_length + 1 + tap]
-            e_tap = error
-            min_len = min(len(e_tap), len(x_tap))
-            x_tap = x_tap[:min_len]
-            e_tap = e_tap[:min_len]
+        # Process sample by sample
+        for t in range(max_len):
+            # Input vector: [known(t), known(t-1), ..., known(t-N+1)]
+            # In extended, known[0] starts at index N-1
+            # So known(t) → extended[N-1+t], known(t-n) → extended[N-1+t-n]
+            # Slice from index t to t+N in extended, then reverse
+            x = extended[t : t + N][::-1]
 
-            # Input power for normalization
-            input_power = np.dot(x_tap, x_tap)
-            if input_power < self.nlms_epsilon:
-                continue
+            # Prediction: h^T * x
+            y_hat = float(np.dot(x, self.room_ir))
 
-            # Compute gradient: <e, x_tap> / ||x_tap||^2 = mean(e * x_tap) / mean(x_tap^2)
-            gradient = float(
-                self.nlms_mu * np.dot(e_tap, x_tap) / (input_power + self.nlms_epsilon)
-            )
+            # Error
+            e = captured[t] - y_hat
+            errors[t] = e
 
-            # Update this tap
-            self.room_ir[tap] += gradient
+            # NLMS update: h = h + mu * e * x / (x^T x + eps)
+            x_power = float(np.dot(x, x))
+            if x_power > eps:
+                self.room_ir += mu * e * x / (x_power + eps)
 
-        return error
+        return errors
