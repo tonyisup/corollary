@@ -237,7 +237,10 @@ class TrustTracker:
 
 # ── IR Persistence ──────────────────────────────────────────────────────
 
-DEFAULT_IR_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+DEFAULT_IR_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "data",
+)
 
 
 def save_ir(
