@@ -46,10 +46,8 @@ class TestLoopResult:
             sag_nodes=["hello", "earth"],
             roundtrip_seconds=1.0,
         )
-        # "world" → "earth" = 1 error out of 2 words = 50% (symmetric diff)
-        assert result.wer == 1.0  # symmetric_difference includes both
-        # Actually: {"world"} ^ {"earth"} = {world, earth} → 2 errors / max(2,2) = 1.0
-        # This is expected behavior for symmetric_difference-based WER
+        # "world" → "earth" = 1 substitution out of 2 words = 50%
+        assert result.wer == 0.5  # Levenshteins on word sequences
 
 
 class TestLoopResultMetrics:
