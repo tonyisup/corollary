@@ -1,61 +1,256 @@
-"""Tests for the Cerebellum forward model."""
+"""Tests for the Cerebellum adaptive model — babbling, persistence, trust."""
+
+import json
+import os
+import tempfile
 
 import numpy as np
 import pytest
 
-from cerebellum.forward_model import predict_mel
+from scipy.signal import fftconvolve
+
+from cochlea.capture import SR
+from cerebellum.adaptive_model import BabblingCerebellum
+from cerebellum.trust_model import (
+    TrustTracker,
+    TrustState,
+    save_ir,
+    load_ir,
+    list_saved_models,
+    DEFAULT_IR_DIR
+)
 
 
-class TestPredictMel:
-    def test_silence_produces_mel(self):
-        """Silence PCM should produce a valid mel spectrogram with very low energy."""
-        silence = np.zeros(16000, dtype=np.float32)
-        mel = predict_mel(silence)
-        assert mel.ndim == 2
-        assert mel.shape[1] == 80  # n_mels
-        assert mel.dtype == np.float32
-        # Silence mel should be very low (zeros or near -inf dB)
-        assert np.mean(np.abs(mel)) < 1.0
+# ── Helpers ──────────────────────────────────────────────────────────────
 
-    def test_random_audio_produces_mel(self):
-        """Random PCM should produce a valid (non-trivial) mel spectrogram."""
-        audio = np.random.randn(32000).astype(np.float32) * 0.1
-        mel = predict_mel(audio)
+
+@pytest.fixture()
+def short_room_ir():
+    """A small room IR for tests (100 ms, with early reflections)."""
+    ir = np.zeros(int(0.1 * SR), dtype=np.float32)
+    ir[0] = 1.0
+    ir[16] = 0.35
+    ir[48] = 0.15
+    return ir
+
+
+@pytest.fixture()
+def known_signal():
+    """A speech-like known signal for babbling."""
+    t = np.linspace(0, 1.0, int(1.0 * SR), dtype=np.float32)
+    sig = np.sin(2 * np.pi * 440 * t).astype(np.float32) * 0.5
+    return sig / (np.max(np.abs(sig)) * 1.1)
+
+
+# ── BabblingCerebellum Tests ─────────────────────────────────────────────
+
+
+class TestBabblingCerebellumInit:
+    def test_default_init(self):
+        cerebellum = BabblingCerebellum()
+        assert cerebellum.sample_rate == SR
+        assert cerebellum.ir_length == int(0.3 * SR)
+        assert len(cerebellum.room_ir) == cerebellum.ir_length
+        assert cerebellum.room_ir[0] == 1.0
+        assert cerebellum.total_updates == 0
+
+    def test_custom_init(self):
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        assert cerebellum.ir_length == int(0.1 * SR)
+        assert cerebellum.nlms_mu == 0.1
+
+
+class TestBabblingCerebellumUpdate:
+    def test_update_low_error(self, known_signal, short_room_ir):
+        """NLMS should converge to low error on a clean signal."""
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        for _ in range(20):
+            err = cerebellum.update(known_signal, captured)
+        assert cerebellum.total_updates == 20
+        assert err < 0.01
+
+    def test_update_increases_total_updates(self, known_signal, short_room_ir):
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum()
+        assert cerebellum.total_updates == 0
+        cerebellum.update(known_signal, captured)
+        assert cerebellum.total_updates == 1
+
+    def test_update_updates_trust(self, known_signal, short_room_ir):
+        """Each update should affect trust status."""
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        initial = cerebellum.trust_status()
+        for _ in range(10):
+            cerebellum.update(known_signal, captured)
+        final = cerebellum.trust_status()
+        assert final["trust"] > initial["trust"]
+
+
+class TestBabblingCerebellumPredict:
+    def test_predict_mel_shape(self, known_signal, short_room_ir):
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        for _ in range(10):
+            cerebellum.update(known_signal, captured)
+        mel = cerebellum.predict_mel(known_signal)
         assert mel.ndim == 2
         assert mel.shape[1] == 80
         assert mel.shape[0] > 0
 
-    def test_output_shape_scales_with_input_duration(self):
-        """Longer audio should produce more time frames."""
-        short = np.sin(np.linspace(0, 440 * 2 * np.pi, 8000)).astype(np.float32) * 0.1
-        long = np.sin(np.linspace(0, 440 * 2 * np.pi, 32000)).astype(np.float32) * 0.1
-        mel_short = predict_mel(short)
-        mel_long = predict_mel(long)
-        assert mel_short.shape[1] == mel_long.shape[1]  # Same n_mels
-        assert mel_long.shape[0] > mel_short.shape[0]  # More frames
+    def test_predict_pcm(self, known_signal, short_room_ir):
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        for _ in range(10):
+            cerebellum.update(known_signal, captured)
+        pcm = cerebellum.predict_pcm(known_signal)
+        assert pcm.ndim == 1
+        assert len(pcm) > len(known_signal)
 
-    def test_deterministic_output(self):
-        """Same input should always produce the same mel spectrogram."""
-        audio = np.sin(np.linspace(0, 440 * 2 * np.pi, 16000)).astype(np.float32) * 0.1
-        mel1 = predict_mel(audio)
-        mel2 = predict_mel(audio)
-        np.testing.assert_array_equal(mel1, mel2)
 
-    def test_sine_wave_has_energy(self):
-        """A 440 Hz sine wave should produce a mel spectrogram with meaningful energy."""
-        sr = 16000
-        t = np.linspace(0, 1.0, sr, dtype=np.float32)
-        tone = (np.sin(2 * np.pi * 440 * t) * 0.1).astype(np.float32)
-        mel = predict_mel(tone)
-        # Should have significantly more energy than silence
-        silence_mel = predict_mel(np.zeros(sr, dtype=np.float32))
-        # Tone mel should have non-trivial values (silence mel is all zeros)
-        assert np.mean(np.abs(mel)) > np.mean(np.abs(silence_mel)) + 1.0
+class TestBabblingCerebellumPersistence:
+    def test_save_and_load(self, known_signal, short_room_ir):
+        """Save and load should preserve the IR and trust state."""
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        for _ in range(10):
+            cerebellum.update(known_signal, captured)
+        original_ir = cerebellum.room_ir.copy()
+        original_trust = cerebellum.trust_status()["trust"]
+        # Save
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        cerebellum.save_model(path=path)
+        # Load
+        loaded = BabblingCerebellum.load_model(path)
+        np.testing.assert_array_almost_equal(loaded.room_ir, original_ir, decimal=5)
+        assert loaded.trust_status()["trust"] == original_trust
+        os.unlink(path)
 
-    def test_minimal_input_produces_mel(self):
-        """Even a tiny input should produce at least one time frame."""
-        tiny = np.zeros(512, dtype=np.float32)
-        mel = predict_mel(tiny)
-        assert mel.ndim == 2
-        assert mel.shape[0] >= 1
-        assert mel.shape[1] == 80
+
+# ── TrustTracker Tests ──────────────────────────────────────────────────
+
+
+class TestTrustTrackerConfirm:
+    def test_good_error_increases_trust(self):
+        tracker = TrustTracker()
+        assert tracker.state.trust == 0.5
+        action = tracker.confirm(-50.0)
+        assert action in ("confirmed", "stable")
+        assert tracker.state.trust > 0.5
+
+    def test_bad_error_records_failure(self):
+        tracker = TrustTracker()
+        action = tracker.fail()
+        assert action == "ok"
+        assert tracker.state.failures == 1
+        assert tracker.state.failure_streak == 1
+        assert tracker.state.trust < 0.5
+
+    def test_recovery_from_low_trust(self):
+        tracker = TrustTracker()
+        # Decay trust to near zero
+        tracker.decay(10000)
+        assert tracker.state.trust < 0.2
+        action = tracker.confirm(-50.0)
+        assert action == "recovering"
+
+    def test_stable_at_high_trust(self):
+        tracker = TrustTracker()
+        # Push trust high
+        for _ in range(100):
+            tracker.confirm(-50.0)
+        assert tracker.state.trust >= 0.9
+        action = tracker.confirm(-50.0)
+        assert action == "stable"
+
+
+class TestTrustTrackerDecay:
+    def test_decay_reduces_trust(self):
+        tracker = TrustTracker()
+        tracker.confirm(-50.0)
+        assert tracker.state.trust > 0.5
+        tracker.decay(seconds_elapsed=10.0)
+        assert tracker.state.trust < 0.6
+
+    def test_decay_does_not_go_negative(self):
+        tracker = TrustTracker()
+        tracker.decay(seconds_elapsed=100000)
+        assert tracker.state.trust >= 0.0
+
+
+class TestTrustStreak:
+    def test_failure_streak_increases(self):
+        tracker = TrustTracker()
+        for _ in range(5):
+            tracker.fail()
+        assert tracker.state.failure_streak == 5
+
+    def test_streak_triggers_stale(self):
+        tracker = TrustTracker(streak_limit=3)
+        for _ in range(3):
+            action = tracker.fail()
+        assert action == "stale"
+
+    def test_streak_reset_on_confirm(self):
+        tracker = TrustTracker()
+        for _ in range(3):
+            tracker.fail()
+        assert tracker.state.failure_streak == 3
+        tracker.confirm(-50.0)
+        assert tracker.state.failure_streak == 0
+
+
+class TestTrustShouldRebabble:
+    def test_default_not_stale(self):
+        tracker = TrustTracker(rebabble_threshold=0.30)
+        assert not tracker.should_rebabble()
+
+    def test_stale_after_decay(self):
+        tracker = TrustTracker(rebabble_threshold=0.30)
+        tracker.decay(seconds_elapsed=1000)
+        assert tracker.should_rebabble()
+
+
+class TestTrustStateSerialization:
+    def test_roundtrip(self):
+        state = TrustState(trust=0.85, confirmations=42, failure_streak=2)
+        d = state.to_dict()
+        restored = TrustState.from_dict(d)
+        assert restored.trust == 0.85
+        assert restored.confirmations == 42
+        assert restored.failure_streak == 2
+
+
+class TestIRPersistence:
+    def test_save_and_load_ir(self, short_room_ir):
+        tracker = TrustTracker()
+        tracker.confirm(-50.0)
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        save_ir(short_room_ir, tracker, path=path)
+        loaded_ir, loaded_tracker = load_ir(path)
+        np.testing.assert_array_almost_equal(loaded_ir, short_room_ir, decimal=5)
+        assert loaded_tracker.state.trust > 0.5
+        os.unlink(path)
+
+
+class TestListSavedModels:
+    def test_empty_dir(self, tmp_path):
+        models = list_saved_models(str(tmp_path))
+        assert models == []
+
+    def test_lists_models(self, short_room_ir):
+        tracker = TrustTracker()
+        tracker.confirm(-50.0)
+        # Create a temp dir with a saved model
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "room_ir_test.json")
+        save_ir(short_room_ir, tracker, path=path)
+        models = list_saved_models(tmp)
+        assert len(models) == 1
+        assert models[0]["file"] == "room_ir_test.json"
+        assert models[0]["ir_length"] == len(short_room_ir)
+        os.unlink(path)
+        os.rmdir(tmp)
