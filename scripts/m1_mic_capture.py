@@ -34,6 +34,11 @@ import time
 
 import numpy as np
 
+# Add packages/ to sys.path so imports work when running scripts directly
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
+
 try:
     import sounddevice as sd
 except ImportError:
@@ -264,13 +269,27 @@ def main() -> None:
     hw_sr = dev_info["default_samplerate"] or SR
     print(f"Device sample rate: {hw_sr} Hz")
 
-    # Use Corollary's SR if device supports it, otherwise resample
-    sample_rate = SR if hw_sr == SR else int(hw_sr)
+    # Always capture at device native rate (avoids ALSA/CoreAudio resample bugs)
+    # We'll resample for analysis if needed
     if hw_sr != SR:
-        print(f"⚠️  Device native SR is {hw_sr}, Corollary expects {SR}. Will resample.")
+        print(f"⚠️  Device native SR is {hw_sr}, Corollary expects {SR}. Will resample for analysis.")
 
-    # Capture
-    audio, actual_sr = capture_audio(device, duration=args.duration, sample_rate=sample_rate)
+    # Capture at native device rate
+    audio, actual_sr = capture_audio(device, duration=args.duration, sample_rate=int(hw_sr))
+
+    # Resample to 16kHz for Corollary analysis
+    if actual_sr != SR:
+        print(f"  Resampling {actual_sr} → {SR} Hz for analysis...")
+        try:
+            librosa = __import__("librosa")
+            audio = librosa.resample(audio, orig_sr=actual_sr, target_sr=SR)
+            actual_sr = SR
+        except ImportError:
+            # Fallback: simple decimation
+            factor = int(actual_sr / SR)
+            audio = audio[::factor]
+            actual_sr = SR
+            print(f"  ⚠️  librosa not available, using simple decimation")
 
     # Analyze
     stats = analyze_audio(audio, actual_sr)

@@ -57,8 +57,10 @@ except ImportError:
     print("Install with: pip install sounddevice")
     sys.exit(1)
 
-# Add corollary packages to path
-sys.path.insert(0, "packages")
+# Add corollary packages to path regardless of cwd
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
 from broca.tts import synthesize
 from cochlea.capture import SR, pcm_to_mels, EfferenceBuffer
@@ -87,6 +89,18 @@ def play_audio_sync(
 
 # ── Capture ───────────────────────────────────────────────────────────────
 
+def resample_audio(audio: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
+    """Resample audio to target sample rate."""
+    if orig_sr == target_sr:
+        return audio
+    try:
+        import librosa
+        return librosa.resample(audio, orig_sr=orig_sr, target_sr=target_sr)
+    except ImportError:
+        factor = int(orig_sr / target_sr)
+        return audio[::factor]
+
+
 def capture_mic(
     duration: float,
     device: int | None = None,
@@ -98,7 +112,17 @@ def capture_mic(
     Returns:
         (audio_array, capture_start_time)
     """
-    num_samples = int(duration * sample_rate)
+    # Use the device's native sample rate, then resample to Corollary's SR
+    if device is not None:
+        dev_info = sd.query_devices(device)
+        native_sr = dev_info["default_samplerate"] or sample_rate
+    else:
+        native_sr = sample_rate
+
+    if native_sr != sample_rate:
+        print(f"  ⚠️  Device native SR is {native_sr}, capturing at native rate...")
+
+    num_samples = int(duration * native_sr)
     audio = np.zeros(num_samples, dtype=np.float32)
 
     t_start = time.perf_counter()
@@ -106,7 +130,7 @@ def capture_mic(
     stream = sd.InputStream(
         device=device,
         channels=channels,
-        samplerate=sample_rate,
+        samplerate=int(native_sr),
         dtype="float32",
         blocksize=1024,
     )
@@ -123,6 +147,11 @@ def capture_mic(
     stream.close()
 
     t_end = time.perf_counter()
+
+    # Resample to Corollary's SR if needed
+    if native_sr != sample_rate:
+        audio = resample_audio(audio, int(native_sr), sample_rate)
+
     return audio, t_start
 
 
