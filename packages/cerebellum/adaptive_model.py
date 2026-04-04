@@ -93,8 +93,8 @@ class BabblingCerebellum:
         captured = self._normalize(captured_pcm)
 
         # Align timing via cross-correlation
-        delay, captured_aligned = self._align_signals(known, captured)
-        error = self._nlms_update(known, captured_aligned)
+        delay, captured_aligned, known_aligned = self._align_signals(known, captured)
+        error = self._nlms_update(known_aligned, captured_aligned)
 
         self.total_updates += 1
         self.prediction_errors.append(float(np.sqrt(np.mean(error ** 2))))
@@ -242,7 +242,7 @@ class BabblingCerebellum:
         self,
         known: np.ndarray,
         captured: np.ndarray,
-    ) -> Tuple[int, np.ndarray]:
+    ) -> Tuple[int, np.ndarray, np.ndarray]:
         """Find and correct timing offset between known and captured signals.
 
         Uses cross-correlation to find the delay at which the known signal
@@ -251,8 +251,8 @@ class BabblingCerebellum:
 
         Returns
         -------
-        Tuple[int, np.ndarray]
-            (delay_samples, aligned_captured)
+        Tuple[int, np.ndarray, np.ndarray]
+            (delay_samples, aligned_captured, aligned_known)
         """
         # Cross-correlate to find delay
         correlation = np.correlate(
@@ -263,7 +263,7 @@ class BabblingCerebellum:
         peak_idx = np.argmax(np.abs(correlation))
         delay = peak_idx - len(known) + 1
 
-        # Trim captured signal to align with known signal
+        # Trim both signals to align
         max_len = min(len(captured) - abs(delay), len(known))
         if delay >= 0:
             captured = captured[delay:delay + max_len]
@@ -271,7 +271,7 @@ class BabblingCerebellum:
             captured = captured[:max_len]
         known = known[:max_len]
 
-        return delay, captured
+        return delay, captured, known
 
     def _nlms_update(self, known: np.ndarray, captured: np.ndarray) -> np.ndarray:
         """NLMS adaptive filter update — sample-by-sample.
