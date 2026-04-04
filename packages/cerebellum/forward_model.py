@@ -4,7 +4,8 @@ Predicts what the cochlea will hear *before* the TTS audio leaves
 the speaker, so the thalamus can proactively attenuate self-signal.
 
 Phase 0 (M0): simple mel-of-self via direct librosa conversion.
-Phase 2+: learn a predictive model that accounts for room acoustics.
+Phase 1+: learns room acoustics through babbling (BabblingCerebellum).
+Phase 2+: learns a predictive model that accounts for speaker colorization.
 """
 
 from __future__ import annotations

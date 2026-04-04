@@ -261,6 +261,46 @@ Rolling ring-buffer for efference-copy PCM.
 - `.audio` — returns all `_filled` samples in correct temporal order
 - `.is_full` — whether buffer has wrapped at least once
 
+### 5.7 Cerebellum — Adaptive Model (`packages/cerebellum/adaptive_model.py`)
+
+#### `BabblingCerebellum`
+Forward model that learns the room impulse response through babbling (NLMS adaptive filter).
+
+```python
+# Creation
+cerebellum = BabblingCerebellum(
+    ir_length_ms=300,        # length of room IR to learn
+    sample_rate=16000,       # audio sample rate
+    nlms_mu=0.05,            # NLMS step size (0 < mu < 2)
+    nlms_epsilon=1e-6,       # numerical stability
+)
+
+# Learning: one babbling pair
+error = cerebellum.update(known_pcm, captured_pcm)
+
+# Prediction with learned room model
+predicted_mel = cerebellum.predict_mel(efference_pcm)
+predicted_pcm = cerebellum.predict_pcm(efference_pcm)
+
+# Diagnostics
+conv = cerebellum.get_convergence()  # {updates, current_error, trend, ...}
+is_ready = cerebellum.is_ready(min_updates=3)
+room_ir = cerebellum.get_learned_ir()  # copy of learned IR
+```
+
+Key parameters:
+| Param | Default | Meaning |
+|---|---|---|
+| `ir_length_ms` | 300 | Max room IR length to learn (ms). 300ms = 4800 samples at 16kHz. |
+| `nlms_mu` | 0.05 | Normalized LMS step size. Larger = faster learning but less stable. |
+| `nlms_epsilon` | 1e-6 | NLMS numerical stability constant. |
+
+Convergence states:
+| State | Meaning |
+|---|---|
+| `"improving"` | Latest error < previous error |
+| `"stable"` | Error not decreasing |
+
 ---
 
 ## 6. Pipeline Flow & Data Contracts
