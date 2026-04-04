@@ -7,7 +7,7 @@ compatible with an async queue / future gRPC transport.
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Union
 
 
 # ─── Audio pipeline ────────────────────────────────────────────────────────
@@ -108,6 +108,6 @@ MemoryEvent.model_rebuild()
 
 # ─── Union type for dispatch ──────────────────────────────────────────────
 
-BusEvent = (
-    AudioFrame | EffCopyFrame | ASRToken | Utterance | MemoryEvent | LoopIndex
-)
+BusEvent = Union[
+    AudioFrame, EffCopyFrame, ASRToken, Utterance, MemoryEvent, LoopIndex
+]
