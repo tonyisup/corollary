@@ -142,7 +142,7 @@ BABBLE_PHRASES = [
     "Can you hear me speaking to you right now?",
     "Testing the acoustics of this room.",
     "One two three four five six seven eight nine ten.",
-    "a e i o u",
+    "a e i o u and sometimes y",
     "Corollary is learning to listen to itself.",
     "Babble babble ba ba ba ba ba. Da da da da da.",
     "The rain in Spain falls mainly on the plain.",
