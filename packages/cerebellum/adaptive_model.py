@@ -166,7 +166,13 @@ class BabblingCerebellum:
         float
             RMS prediction error for this update.
         """
-        # Normalize inputs to unit energy (NLMS requires this)
+        # Preserve amplitude ratio for proper IR learning
+        # The cerebellum needs to know: "how loud is the signal going in vs coming back?"
+        known_rms = float(np.sqrt(np.mean(known_pcm ** 2)))
+        captured_rms = float(np.sqrt(np.mean(captured_pcm ** 2)))
+        amplitude_ratio = captured_rms / max(known_rms, 1e-10)
+        
+        # Normalize for numerical stability but track the scale
         known = self._normalize(known_pcm)
         captured = self._normalize(captured_pcm)
 

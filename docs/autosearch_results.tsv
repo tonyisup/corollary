@@ -221,3 +221,6 @@ experiment	nlms_mu	ir_length_ms	bandpass	speech_gate	svsr_db	error_db	ir_corr	st
 8	0.001	100	True	False	12.03	-56.07	0.6394	discard	3.7	mu=0.001, ir=100ms, bp=True, gate=False, noise=-30dB
 9	0.001	100	True	False	12.01	-56.14	0.6395	discard	3.6	mu=0.001, ir=100ms, bp=True, gate=False, noise=-40dB
 10	0.001	100	True	True	12.17	-55.15	0.6389	discard	3.2	mu=0.001, ir=100ms, bp=True, gate=True, noise=-20dB
+1	0.001	100	False	False	12.11	-55.68	0.6409	discard	3.4	mu=0.001, ir=100ms, bp=False, gate=False, noise=-20dB
+2	0.001	100	False	False	11.77	-55.87	0.6422	discard	2.9	mu=0.001, ir=100ms, bp=False, gate=False, noise=-30dB
+3	0.001	100	False	False	11.73	-55.90	0.6422	discard	2.9	mu=0.001, ir=100ms, bp=False, gate=False, noise=-40dB

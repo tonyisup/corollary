@@ -6,9 +6,9 @@ from broca.tts import synthesize
 import sounddevice as sd
 
 async def test():
-    pcm = await synthesize('This is coming from the monitor speakers.')
+    pcm = await synthesize('This is coming from the test speakers.')
     print('Playing through monitor speakers...')
-    sd.play(pcm, samplerate=16000, device=0, blocking=True)
+    sd.play(pcm, samplerate=16000, device=3, blocking=True)
     print('Done!')
 
 asyncio.run(test())
