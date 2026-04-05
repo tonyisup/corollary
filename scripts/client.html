@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corollary M1 Remote Capture</title>
+<style>
+  /* Reset & base */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .logo { font-size: 2rem; margin-bottom: 4px; }
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #888;
+    margin-bottom: 24px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .card {
+    background: #14141f;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 380px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #666;
+    margin-bottom: 12px;
+  }
+
+  .status {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status.idle { background: #1a1a2a; color: #888; }
+  .status.working { background: #1a2a1a; color: #8bc34a; }
+  .status.error { background: #2a1a1a; color: #e57373; }
+  .status .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 1.5s infinite;
+  }
+  .status.error .dot { animation: none; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  button {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #333;
+    border-radius: 10px;
+    background: #1a1a2a;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    margin-bottom: 10px;
+  }
+  button:hover:not(:disabled) { background: #222240; border-color: #444; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary {
+    background: #1e3a5f;
+    border-color: #2980b9;
+  }
+  button.primary:hover:not(:disabled) { background: #264d7a; }
+  button.record {
+    background: #4a1a1a;
+    border-color: #c0392b;
+  }
+  button.record:hover:not(:disabled) { background: #5a2020; }
+
+  .results {
+    background: #1a1a28;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    white-space: pre-wrap;
+  }
+  .results .label { color: #666; }
+  .results .value { color: #e0e0e0; }
+  .results .good { color: #8bc34a; }
+  .results .warn { color: #e57373; }
+
+  .meter {
+    height: 4px;
+    background: #222;
+    border-radius: 2px;
+    margin: 12px 0;
+    overflow: hidden;
+  }
+  .meter .fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2980b9, #8bc34a);
+    width: 0%;
+    transition: width 0.1s;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+    color: #555;
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+
+<div class="logo">🧃</div>
+<h1>Corollary M1 Remote Capture</h1>
+
+<div id="status" class="status idle">
+  <span class="dot"></span>
+  <span id="status-text">Walk to wherever you want to test</span>
+</div>
+
+<div class="card">
+  <h2>Test</h2>
+  <button class="primary" id="btn-tts" onclick="requestTTS()">🔊 1. Play TTS on Mac</button>
+  <div class="meter" id="tts-meter" style="display:none;">
+    <div class="fill" id="tts-fill"></div>
+  </div>
+  <div class="hint">Mac plays TTS through its speakers. Walk around the room — test different distances and angles.</div>
+</div>
+
+<div class="card">
+  <h2>Record</h2>
+  <button class="record" id="btn-record" onclick="toggleRecord()" disabled>🎙️ 2. Record Room Audio</button>
+  <div class="meter">
+    <div class="fill" id="rec-fill"></div>
+  </div>
+  <div id="rec-status" class="hint" style="min-height:40px;">Waiting for TTS to play first...</div>
+</div>
+
+<div class="card" id="results-card" style="display:none;">
+  <h2>Results</h2>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+
+  function setStatus(text, type = 'idle') {
+    const el = document.getElementById('status');
+    el.className = 'status ' + type;
+    document.getElementById('status-text').textContent = text;
+  }
+
+  async function requestTTS() {
+    const btn = document.getElementById('btn-tts');
+    const meter = document.getElementById('tts-meter');
+    const fill = document.getElementById('tts-fill');
+
+    btn.disabled = true;
+    meter.style.display = 'block';
+    setStatus('Synthesizing and playing on Mac...', 'working');
+
+    try {
+      const res = await fetch('/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'Hello, this is Corollary testing with a remote microphone.' }),
+      });
+      const data = await res.json();
+
+      // Animate the meter to show TTS duration
+      const duration = data.duration;
+      let start = Date.now();
+      const anim = setInterval(() => {
+        const pct = Math.min(100, ((Date.now() - start) / (duration * 1000)) * 100);
+        fill.style.width = pct + '%';
+        if (pct >= 100) clearInterval(anim);
+      }, 50);
+
+      setTimeout(() => {
+        fill.style.width = '100%';
+        setTimeout(() => {
+          meter.style.display = 'none';
+          fill.style.width = '0%';
+          document.getElementById('btn-record').disabled = false;
+          document.getElementById('rec-status').textContent =
+            `Heard "${data.text}" (${data.duration}s). Tap record to capture what the room returned.`;
+          setStatus('TTS played — record what you heard', 'idle');
+        }, 500);
+      }, duration * 1000);
+
+    } catch (err) {
+      setStatus('TTS request failed: ' + err.message, 'error');
+      btn.disabled = false;
+    }
+  }
+
+  async function toggleRecord() {
+    if (!isRecording) {
+      await startRecording();
+    } else {
+      stopRecording();
+    }
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
+
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        uploadAudio();
+      };
+
+      mediaRecorder.start();
+      isRecording = true;
+
+      const btn = document.getElementById('btn-record');
+      btn.textContent = '⏹️ Stop Recording';
+      document.getElementById('rec-status').textContent = 'Recording... tap stop when done.';
+      setStatus('Recording room audio...', 'working');
+
+      // Animate the recording meter
+      const recFill = document.getElementById('rec-fill');
+      let hue = 0;
+      window._recAnim = setInterval(() => {
+        hue = (hue + 2) % 360;
+        recFill.style.background = `hsl(${hue}, 60%, 45%)`;
+        recFill.style.width = ((Date.now() % 5000) / 5000 * 100) + '%';
+      }, 50);
+
+    } catch (err) {
+      setStatus('Microphone access denied. Check permissions.', 'error');
+      console.error(err);
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    isRecording = false;
+
+    const btn = document.getElementById('btn-record');
+    btn.textContent = '🎙️ 2. Record Room Audio';
+    btn.disabled = true;
+    clearInterval(window._recAnim);
+    document.getElementById('rec-fill').style.width = '100%';
+    document.getElementById('rec-status').textContent = 'Uploading and analyzing...';
+    setStatus('Analyzing recording...', 'working');
+  }
+
+  async function uploadAudio() {
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+
+    try {
+      // First convert to PCM using the browser's AudioContext
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioCtx = new AudioContext();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+      // Render to raw PCM at 16kHz
+      const offlineCtx = new OfflineAudioContext(
+        1,
+        audioBuffer.duration * 16000,
+        16000
+      );
+      const source = offlineCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(offlineCtx.destination);
+      source.start();
+
+      const renderedBuffer = await offlineCtx.startRendering();
+      const pcmData = renderedBuffer.getChannelData(0);
+
+      // Convert float32 PCM to int16 PCM and base64 encode
+      const int16Array = new Int16Array(pcmData.length);
+      for (let i = 0; i < pcmData.length; i++) {
+        int16Array[i] = Math.max(-32768, Math.min(32767, pcmData[i] * 32767));
+      }
+
+      const pcmBytes = new Uint8Array(int16Array.buffer);
+      const b64 = btoa(String.fromCharCode(...pcmBytes));
+
+      const res = await fetch('/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio_b64: b64 }),
+      });
+
+      const result = await res.json();
+      displayResults(result);
+
+      // Reset for next round
+      document.getElementById('btn-record').disabled = false;
+      document.getElementById('rec-status').textContent = 'Ready for another round. Walk somewhere else?';
+      setStatus('Analysis complete — walk to another spot and try again', 'idle');
+
+    } catch (err) {
+      setStatus('Upload failed: ' + err.message, 'error');
+      document.getElementById('rec-status').textContent =
+        'Upload failed. Tap record to try again.';
+      document.getElementById('btn-record').disabled = false;
+    }
+  }
+
+  function displayResults(result) {
+    const card = document.getElementById('results-card');
+    const el = document.getElementById('results');
+    card.style.display = 'block';
+
+    const cls = (v) => v >= 20 ? 'good' : 'warn';
+    const sim = (result.similarity * 100).toFixed(0);
+    const verdict = result.gate_verdict === 'self_suppressed'
+      ? 'Self-Voice Suppressed ✅'
+      : 'World Voice 🌍';
+
+    el.innerHTML =
+      `  <span class="label">RMS Level:</span> <span class="value">${result.rms_db} dB</span>\n` +
+      `  <span class="label">Original:</span> <span class="value">"${result.original}"</span>\n` +
+      `  <span class="label">ASR Output:</span> <span class="value">"${result.asr_output}"</span>\n` +
+      `  <span class="label">Similarity:</span> <span class="value">${sim}%</span>\n` +
+      `  <span class="label">SVSR:</span> <span class="${cls(result.svsr_db)}">${result.svsr_db} dB</span>\n` +
+      `  <span class="label">Gate:</span> <span class="value">${verdict}</span>`;
+
+    el.scrollIntoView({ behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
