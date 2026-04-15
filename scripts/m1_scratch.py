@@ -5,10 +5,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 from broca.tts import synthesize
 import sounddevice as sd
 
-async def test():
-    pcm = await synthesize('This is coming from the test speakers.')
-    print('Playing through monitor speakers...')
-    sd.play(pcm, samplerate=16000, device=3, blocking=True)
-    print('Done!')
-
-asyncio.run(test())
+import sounddevice as sd
+for i, d in enumerate(sd.query_devices()):
+    if d['max_input_channels'] > 0 or d['max_output_channels'] > 0:
+        print(f'[{i}] {d["name"]} (in:{d["max_input_channels"]} out:{d["max_output_channels"]})')

@@ -1,58 +1,84 @@
-(.venv) juicebox@antonios-mini corollary % python scripts/m1_babble_test.py --input-device 1 --output-device 1 --iterations 10 --no-shush --nlms-mu 0.25
+(.venv) juicebox@antonios-mini corollary % python scripts/m1_babble_test.py --input-device 2 --output-device 0
 
 ============================================================
-  NOISE CALIBRATION
+  COROLLARY — M1 Babbling Mode
 ============================================================
-  🎤 Capturing 2.0s of ambient noise...
-     (Please stay quiet during this time)
-Traceback (most recent call last):
-  File "/Users/juicebox/Projects/corollary/scripts/m1_babble_test.py", line 439, in <module>
-    main()
-    ~~~~^^
-  File "/Users/juicebox/Projects/corollary/scripts/m1_babble_test.py", line 427, in main
-    asyncio.run(run_babbling(
-    ~~~~~~~~~~~^^^^^^^^^^^^^^
-        iterations=args.iterations,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<5 lines>...
-        shush=not args.no_shush,
-        ^^^^^^^^^^^^^^^^^^^^^^^^
-    ))
-    ^^
-  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/runners.py", line 204, in run
-    return runner.run(main)
-           ~~~~~~~~~~^^^^^^
-  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/runners.py", line 127, in run
-    return self._loop.run_until_complete(task)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/base_events.py", line 719, in run_until_complete
-    return future.result()
-           ~~~~~~~~~~~~~^^
-  File "/Users/juicebox/Projects/corollary/scripts/m1_babble_test.py", line 188, in run_babbling
-    noise_profile = capture_noise_profile(
-        input_device, native_sr, NOISE_CALIBRATION_DURATION
-    )
-  File "/Users/juicebox/Projects/corollary/scripts/m1_babble_test.py", line 75, in capture_noise_profile
-    cap = sd.InputStream(
-        device=input_device,
-    ...<3 lines>...
-        blocksize=1024,
-    )
-  File "/Users/juicebox/Projects/corollary/.venv/lib/python3.14/site-packages/sounddevice.py", line 1457, in __init__
-    _StreamBase.__init__(self, kind='input', wrap_callback='array',
-    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                         **_remove_self(locals()))
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/juicebox/Projects/corollary/.venv/lib/python3.14/site-packages/sounddevice.py", line 914, in __init__
-    _check(_lib.Pa_OpenStream(self._ptr, iparameters, oparameters,
-    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                              samplerate, blocksize, stream_flags,
-                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                              callback_ptr, userdata),
-                              ^^^^^^^^^^^^^^^^^^^^^^^^
-           f'Error opening {self.__class__.__name__}')
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/juicebox/Projects/corollary/.venv/lib/python3.14/site-packages/sounddevice.py", line 2838, in _check
-    raise PortAudioError(errormsg, err)
-sounddevice.PortAudioError: Error opening InputStream: Invalid number of channels [PaErrorCode -9998]
+  Iterations:  10
+  IR Length:   300 ms
+  Starting SVSR: N/A (blank slate)
+  Learning:    NLMS adaptive filter
+============================================================
+
+--- Babble 1/10: "Hello. Is anyone there?..."
+  Recording for 5.0s while playing...
+  Captured RMS: -38.3 dB
+  Cerebellum updated (iter 1, error: -48.7 dB)
+  SVSR: 1.9 dB (target: >= 20 dB)
+
+--- Babble 2/10: "The quick brown fox jumps over the lazy dog...."
+  Recording for 5.2s while playing...
+  Captured RMS: -37.1 dB
+  Cerebellum updated (iter 2, error: -46.9 dB)
+  SVSR: 0.5 dB (target: >= 20 dB)
+
+--- Babble 3/10: "Can you hear me speaking to you right now?..."
+  Recording for 4.3s while playing...
+  Captured RMS: -37.5 dB
+  Cerebellum updated (iter 3, error: -47.0 dB)
+  SVSR: 1.5 dB (target: >= 20 dB)
+
+--- Babble 4/10: "Testing the acoustics of this room...."
+  Recording for 4.4s while playing...
+  Captured RMS: -38.5 dB
+  Cerebellum updated (iter 4, error: -44.9 dB)
+  SVSR: 0.3 dB (target: >= 20 dB)
+
+--- Babble 5/10: "One two three four five six seven eight nine ten...."
+  Recording for 5.8s while playing...
+  Captured RMS: -36.6 dB
+  Cerebellum updated (iter 5, error: -45.3 dB)
+  SVSR: 1.5 dB (target: >= 20 dB)
+
+--- Babble 6/10: "a e i o u..."
+  Recording for 4.0s while playing...
+  Captured RMS: -38.8 dB
+  Cerebellum updated (iter 6, error: -42.2 dB)
+  SVSR: 0.3 dB (target: >= 20 dB)
+
+--- Babble 7/10: "Corollary is learning to listen to itself...."
+  Recording for 4.9s while playing...
+  Captured RMS: -36.5 dB
+  Cerebellum updated (iter 7, error: -40.4 dB)
+  SVSR: 1.2 dB (target: >= 20 dB)
+
+--- Babble 8/10: "Babble babble ba ba ba ba ba. Da da da da da...."
+  Recording for 7.4s while playing...
+  Captured RMS: -37.2 dB
+  Cerebellum updated (iter 8, error: -39.7 dB)
+  SVSR: 1.4 dB (target: >= 20 dB)
+
+--- Babble 9/10: "The rain in Spain falls mainly on the plain...."
+  Recording for 4.9s while playing...
+  Captured RMS: -36.7 dB
+  Cerebellum updated (iter 9, error: -38.0 dB)
+  SVSR: 2.0 dB (target: >= 20 dB)
+
+--- Babble 10/10: "Peter Piper picked a peck of pickled peppers...."
+  Recording for 4.9s while playing...
+  Captured RMS: -36.8 dB
+  Cerebellum updated (iter 10, error: -35.4 dB)
+  SVSR: 0.3 dB (target: >= 20 dB)
+
+============================================================
+  BABBLING COMPLETE
+============================================================
+  Iterations:       10
+  Starting SVSR:    1.9 dB
+  Final SVSR:       0.3 dB
+  Final Error:      -35.4 dB
+  Converged:        False
+  SVSR is not improving. Check speaker volume, room acoustics, IR length.
+============================================================
+
+  Convergence plot saved to docs/babbling_convergence.png
 (.venv) juicebox@antonios-mini corollary % 
