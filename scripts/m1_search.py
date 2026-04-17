@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Autoresearch-style config search for Corollary M1.
+
+Initial implementation focuses on M1B synthetic config search.
+Appends one JSON object per run to results/m1_results.jsonl.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import time
+from itertools import product, islice
+from typing import Any, Iterable
+
+RESULTS_PATH = os.path.join("results", "m1_results.jsonl")
+
+
+def ensure_results_file(path: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if not os.path.exists(path):
+        with open(path, "w"):
+            pass
+
+
+def load_results(path: str) -> list[dict[str, Any]]:
+    if not os.path.exists(path):
+        return []
+    rows = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rows.append(json.loads(line))
+    return rows
+
+
+def append_result(path: str, row: dict[str, Any]) -> None:
+    with open(path, "a") as f:
+        f.write(json.dumps(row, sort_keys=True) + "\n")
+
+
+def config_hash(config: dict[str, Any]) -> str:
+    payload = json.dumps(config, sort_keys=True)
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
+
+
+def generate_m1b_configs() -> Iterable[dict[str, Any]]:
+    base = {
+        "stage": "M1B",
+        "scenario": "fixed_room_convergence",
+        "iterations": 10,
+        "shift_min_frames": -10,
+        "shift_max_frames": 40,
+        "room_rt60": 0.3,
+    }
+    grid = product(
+        [0.05, 0.1, 0.25, 0.4],    # nlms_mu
+        [100, 200, 300, 500],      # ir_length_ms
+        [-40.0, -35.0, -30.0],     # noise_db
+        [0.4, 0.7, 0.9],           # playback_amplitude
+        ["tone", "click", "chirp"],
+    )
+    for nlms_mu, ir_length_ms, noise_db, playback_amplitude, stimulus in grid:
+        yield {
+            **base,
+            "nlms_mu": nlms_mu,
+            "ir_length_ms": ir_length_ms,
+            "noise_db": noise_db,
+            "playback_amplitude": playback_amplitude,
+            "stimulus": stimulus,
+            "stimulus_duration_ms": 300,
+        }
+
+
+def best_score(rows: list[dict[str, Any]], stage: str) -> float:
+    scores = [float(r.get("score", 0.0)) for r in rows if r.get("stage") == stage and r.get("decision") == "keep"]
+    return max(scores) if scores else 0.0
+
+
+def run_eval(script_path: str, config: dict[str, Any], timeout_s: float = 120.0) -> dict[str, Any]:
+    args = [sys.executable, script_path]
+    cli_map = {
+        "stage": "--stage",
+        "scenario": "--scenario",
+        "iterations": "--iterations",
+        "ir_length_ms": "--ir-length-ms",
+        "nlms_mu": "--nlms-mu",
+        "noise_db": "--noise-db",
+        "playback_amplitude": "--playback-amplitude",
+        "shift_min_frames": "--shift-min-frames",
+        "shift_max_frames": "--shift-max-frames",
+        "stimulus": "--stimulus",
+        "stimulus_duration_ms": "--stimulus-duration-ms",
+        "room_rt60": "--room-rt60",
+    }
+    for key, flag in cli_map.items():
+        if key in config:
+            args.extend([flag, str(config[key])])
+
+    proc = subprocess.run(args, capture_output=True, text=True, timeout=timeout_s)
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or f"eval failed with code {proc.returncode}")
+    return json.loads(proc.stdout.strip())
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run Corollary M1 config search")
+    parser.add_argument("--stage", default="M1B")
+    parser.add_argument("--limit", type=int, default=12)
+    parser.add_argument("--start-at", type=int, default=0)
+    parser.add_argument("--results", default=RESULTS_PATH)
+    parser.add_argument("--timeout-s", type=float, default=120.0)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    stage = args.stage.upper()
+    if stage != "M1B":
+        raise SystemExit("Current search scaffold only implements M1B. Add M1A/M1C harnesses next.")
+
+    ensure_results_file(args.results)
+    existing = load_results(args.results)
+    seen_hashes = {row.get("config_hash") for row in existing}
+    current_best = best_score(existing, stage)
+
+    script_path = os.path.join(os.path.dirname(__file__), "m1_eval_runner.py")
+    configs = islice(generate_m1b_configs(), args.start_at, args.start_at + args.limit)
+
+    for idx, config in enumerate(configs, start=args.start_at):
+        cfg_hash = config_hash(config)
+        if cfg_hash in seen_hashes:
+            continue
+
+        started = time.time()
+        row: dict[str, Any] = {
+            "run_id": f"{stage.lower()}-{idx:04d}",
+            "config_hash": cfg_hash,
+            "search_index": idx,
+            "decision": "crash",
+            "stage": stage,
+            "config": config,
+        }
+        try:
+            result = run_eval(script_path, config, timeout_s=args.timeout_s)
+            score = float(result.get("score", 0.0))
+            guardrails_passed = bool(result.get("guardrails_passed", False))
+            decision = "keep" if guardrails_passed and score >= current_best else "discard"
+            if decision == "keep":
+                current_best = score
+
+            row.update(result)
+            row["decision"] = decision
+        except Exception as e:
+            row["error"] = str(e)
+
+        row["logged_at"] = time.time()
+        row["wall_time_s"] = round(row["logged_at"] - started, 4)
+        append_result(args.results, row)
+        seen_hashes.add(cfg_hash)
+
+        primary = row.get("primary_metric", "score")
+        metric_value = row.get("metrics", {}).get(primary, row.get("score", 0.0))
+        print(f"[{row['decision']}] {row['run_id']} score={row.get('score', 0.0):.4f} {primary}={metric_value}")
+
+
+if __name__ == "__main__":
+    main()
