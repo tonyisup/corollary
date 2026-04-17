@@ -110,11 +110,11 @@ Do **not** begin with long, meaningful sentences as the primary benchmark.
    - Keep as an explicit transient-onset challenge case
    - Do not treat clicks as the primary M1A benchmark until transient onset detection improves
 
-4. **Babble syllable attribution test**
+5. **Babble syllable attribution test**
    - Emit `ba`, `da`, `ma`, etc.
    - Measure whether attribution remains stable on richer spectra
 
-4. **Silence negative-control test**
+6. **Silence negative-control test**
    - No self emission
    - Ensure ambient events are not mislabeled as self
 

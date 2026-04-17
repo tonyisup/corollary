@@ -53,7 +53,7 @@ def config_hash(config: dict[str, Any]) -> str:
 def generate_m1a_configs(stimulus_filter: str | None = None) -> Iterable[dict[str, Any]]:
     base = {
         "stage": "M1A",
-        "scenario": "tone_attribution_baseline",
+        "scenario": "prelinguistic_self_attribution",
         "iterations": 12,
         "shift_min_frames": 0,
         "shift_max_frames": 8,
