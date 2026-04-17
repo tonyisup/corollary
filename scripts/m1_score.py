@@ -22,18 +22,23 @@ def score_m1a(metrics: dict[str, Any], guardrails: dict[str, Any] | None = None)
     guardrails = guardrails or {}
     self_f1 = _safe_float(metrics, "self_f1")
     false_self_rate = _safe_float(metrics, "false_self_rate")
+    replay_false_self_rate = _safe_float(metrics, "replay_false_self_rate")
     onset_error_ms = _safe_float(metrics, "onset_error_ms")
 
     max_false_self = float(guardrails.get("max_false_self_rate", 0.05))
+    max_replay_false_self_rate = float(guardrails.get("max_replay_false_self_rate", 0.10))
     max_onset_error_ms = float(guardrails.get("max_onset_error_ms", 50.0))
 
     score = self_f1
-    score *= _clamp01(1.0 - (false_self_rate / max(max_false_self, 1e-9)) * 0.5)
+    score *= _clamp01(1.0 - (false_self_rate / max(max_false_self, 1e-9)) * 0.4)
+    score *= _clamp01(1.0 - (replay_false_self_rate / max(max_replay_false_self_rate, 1e-9)) * 0.25)
     score *= _clamp01(1.0 - (onset_error_ms / max(max_onset_error_ms, 1e-9)) * 0.25)
 
     failures: list[str] = []
     if false_self_rate > max_false_self:
         failures.append("false_self_rate")
+    if replay_false_self_rate > max_replay_false_self_rate:
+        failures.append("replay_false_self_rate")
     if onset_error_ms > max_onset_error_ms:
         failures.append("onset_error_ms")
 

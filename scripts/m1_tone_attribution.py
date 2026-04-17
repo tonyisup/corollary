@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from scipy.signal import fftconvolve
+from scipy.signal import fftconvolve, resample
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 from cochlea.capture import SR
@@ -34,6 +34,11 @@ class M1AConfig:
     attribution_threshold: float = 0.55
     event_threshold: float = 0.08
     iterations: int = 10
+    onset_jitter_ms: int = 8
+    transformed_world_gain: float = 0.85
+    replay_gain: float = 0.9
+    hard_negative_noise_db_offset: float = 5.0
+    hard_negative_amplitude_jitter: float = 0.15
 
 
 def generate_stimulus(kind: str, duration_ms: int, amplitude: float) -> np.ndarray:
@@ -105,6 +110,30 @@ def delayed_room_capture(pcm: np.ndarray, ir: np.ndarray, delay_samples: int, no
     return add_noise(captured, noise_db, seed=seed)
 
 
+def time_stretch(audio: np.ndarray, factor: float) -> np.ndarray:
+    if len(audio) < 2 or abs(factor - 1.0) < 1e-6:
+        return audio.astype(np.float32)
+    target_len = max(1, int(len(audio) * factor))
+    stretched = resample(audio, target_len).astype(np.float32)
+    if target_len > len(audio):
+        return stretched[:len(audio)]
+    if target_len < len(audio):
+        return np.pad(stretched, (0, len(audio) - target_len))
+    return stretched
+
+
+def transformed_same_class_world(audio: np.ndarray, gain: float, seed: int) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    stretched = time_stretch(audio, float(rng.uniform(0.92, 1.08)))
+    rolled = np.roll(stretched, int(rng.integers(8, 64)))
+    polarity = -1.0 if rng.random() < 0.5 else 1.0
+    transformed = rolled * gain * polarity
+    peak = float(np.max(np.abs(transformed)))
+    if peak > 1e-9:
+        transformed = transformed / peak * min(0.98, gain)
+    return transformed.astype(np.float32)
+
+
 def event_present(audio: np.ndarray, threshold: float) -> bool:
     if len(audio) == 0:
         return False
@@ -153,14 +182,30 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
     positive_scores: list[float] = []
     negative_scores: list[float] = []
     onset_errors_ms: list[float] = []
+    same_class_scores: list[float] = []
+    replay_scores: list[float] = []
+    silence_scores: list[float] = []
+    cross_class_scores: list[float] = []
 
     tp = fp = tn = fn = 0
+    replay_fp = 0
+    same_class_fp = 0
+
+    rng = np.random.default_rng(999)
 
     for i in range(config.iterations):
-        delay_ms = 20 + 5 * (i % 5)
+        base_delay_ms = 20 + 5 * (i % 5)
+        jitter_ms = int(rng.integers(-config.onset_jitter_ms, config.onset_jitter_ms + 1))
+        delay_ms = max(0, base_delay_ms + jitter_ms)
         delay_samples = int(delay_ms * SR / 1000)
 
-        captured_self = delayed_room_capture(self_stimulus, room_ir, delay_samples, config.noise_db, seed=100 + i)
+        amplitude_scale = float(1.0 + rng.uniform(-config.hard_negative_amplitude_jitter, config.hard_negative_amplitude_jitter))
+        trial_self = (self_stimulus * amplitude_scale).astype(np.float32)
+        peak = float(np.max(np.abs(trial_self)))
+        if peak > 1.0:
+            trial_self = (trial_self / peak).astype(np.float32)
+
+        captured_self = delayed_room_capture(trial_self, room_ir, delay_samples, config.noise_db, seed=100 + i)
         score_self, shift_self = best_match_score(captured_self, self_stimulus, shift_min_samples, shift_max_samples)
         predicted_self = event_present(captured_self, config.event_threshold) and score_self >= config.attribution_threshold
         positive_scores.append(score_self)
@@ -170,19 +215,60 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
         else:
             fn += 1
 
-        captured_world = delayed_room_capture(world_stimulus, room_ir, delay_samples, config.noise_db, seed=200 + i)
+        cross_noise_db = config.noise_db + rng.uniform(0.0, config.hard_negative_noise_db_offset)
+        captured_world = delayed_room_capture(world_stimulus, room_ir, delay_samples, cross_noise_db, seed=200 + i)
         score_world, _ = best_match_score(captured_world, self_stimulus, shift_min_samples, shift_max_samples)
         predicted_world_as_self = event_present(captured_world, config.event_threshold) and score_world >= config.attribution_threshold
         negative_scores.append(score_world)
+        cross_class_scores.append(score_world)
         if predicted_world_as_self:
             fp += 1
         else:
             tn += 1
 
-        silence = add_noise(np.zeros_like(captured_self), config.noise_db, seed=300 + i)
+        transformed_world = transformed_same_class_world(self_stimulus, config.transformed_world_gain, seed=400 + i)
+        captured_same_class = delayed_room_capture(
+            transformed_world,
+            room_ir,
+            delay_samples,
+            config.noise_db + rng.uniform(-2.0, config.hard_negative_noise_db_offset),
+            seed=500 + i,
+        )
+        score_same_class, _ = best_match_score(captured_same_class, self_stimulus, shift_min_samples, shift_max_samples)
+        predicted_same_class_as_self = event_present(captured_same_class, config.event_threshold) and score_same_class >= config.attribution_threshold
+        negative_scores.append(score_same_class)
+        same_class_scores.append(score_same_class)
+        if predicted_same_class_as_self:
+            fp += 1
+            same_class_fp += 1
+        else:
+            tn += 1
+
+        replay_delay_ms = max(0, delay_ms + int(rng.integers(-config.onset_jitter_ms, config.onset_jitter_ms + 1)))
+        replay_delay_samples = int(replay_delay_ms * SR / 1000)
+        replay_audio = (self_stimulus * config.replay_gain).astype(np.float32)
+        captured_replay = delayed_room_capture(
+            replay_audio,
+            room_ir,
+            replay_delay_samples,
+            config.noise_db + rng.uniform(-2.0, config.hard_negative_noise_db_offset),
+            seed=600 + i,
+        )
+        score_replay, _ = best_match_score(captured_replay, self_stimulus, shift_min_samples, shift_max_samples)
+        predicted_replay_as_self = event_present(captured_replay, config.event_threshold) and score_replay >= config.attribution_threshold
+        negative_scores.append(score_replay)
+        replay_scores.append(score_replay)
+        if predicted_replay_as_self:
+            fp += 1
+            replay_fp += 1
+        else:
+            tn += 1
+
+        silence = add_noise(np.zeros_like(captured_self), config.noise_db + rng.uniform(0.0, config.hard_negative_noise_db_offset), seed=300 + i)
         score_silence, _ = best_match_score(silence, self_stimulus, shift_min_samples, shift_max_samples)
         predicted_silence_as_self = event_present(silence, config.event_threshold) and score_silence >= config.attribution_threshold
         negative_scores.append(score_silence)
+        silence_scores.append(score_silence)
         if predicted_silence_as_self:
             fp += 1
         else:
@@ -198,9 +284,15 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
         "self_recall": round(tp / max(tp + fn, 1), 6),
         "self_accuracy": round(accuracy, 6),
         "false_self_rate": round(false_self_rate, 6),
+        "replay_false_self_rate": round(replay_fp / max(config.iterations, 1), 6),
+        "same_class_false_self_rate": round(same_class_fp / max(config.iterations, 1), 6),
         "onset_error_ms": round(float(np.mean(onset_errors_ms)) if onset_errors_ms else 0.0, 4),
         "self_score_mean": round(float(np.mean(positive_scores)) if positive_scores else 0.0, 6),
         "world_score_mean": round(float(np.mean(negative_scores)) if negative_scores else 0.0, 6),
+        "cross_class_score_mean": round(float(np.mean(cross_class_scores)) if cross_class_scores else 0.0, 6),
+        "same_class_score_mean": round(float(np.mean(same_class_scores)) if same_class_scores else 0.0, 6),
+        "replay_score_mean": round(float(np.mean(replay_scores)) if replay_scores else 0.0, 6),
+        "silence_score_mean": round(float(np.mean(silence_scores)) if silence_scores else 0.0, 6),
         "positive_trials": config.iterations,
-        "negative_trials": config.iterations * 2,
+        "negative_trials": config.iterations * 4,
     }

@@ -66,8 +66,10 @@ def generate_m1a_configs() -> Iterable[dict[str, Any]]:
         [-40.0, -35.0, -30.0],
         [0.45, 0.55, 0.65],
         [0.05, 0.08, 0.12],
+        [4, 8, 12],
+        [0.8, 0.9],
     )
-    for stimulus, playback_amplitude, noise_db, attribution_threshold, event_threshold in grid:
+    for stimulus, playback_amplitude, noise_db, attribution_threshold, event_threshold, onset_jitter_ms, replay_gain in grid:
         yield {
             **base,
             "stimulus": stimulus,
@@ -75,6 +77,11 @@ def generate_m1a_configs() -> Iterable[dict[str, Any]]:
             "noise_db": noise_db,
             "attribution_threshold": attribution_threshold,
             "event_threshold": event_threshold,
+            "onset_jitter_ms": onset_jitter_ms,
+            "transformed_world_gain": 0.85,
+            "replay_gain": replay_gain,
+            "hard_negative_noise_db_offset": 5.0,
+            "hard_negative_amplitude_jitter": 0.15,
         }
 
 
@@ -128,6 +135,11 @@ def run_eval(script_path: str, config: dict[str, Any], timeout_s: float = 120.0)
         "room_rt60": "--room-rt60",
         "attribution_threshold": "--attribution-threshold",
         "event_threshold": "--event-threshold",
+        "onset_jitter_ms": "--onset-jitter-ms",
+        "transformed_world_gain": "--transformed-world-gain",
+        "replay_gain": "--replay-gain",
+        "hard_negative_noise_db_offset": "--hard-negative-noise-db-offset",
+        "hard_negative_amplitude_jitter": "--hard-negative-amplitude-jitter",
     }
     for key, flag in cli_map.items():
         if key in config:

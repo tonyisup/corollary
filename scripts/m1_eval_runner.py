@@ -49,11 +49,17 @@ class EvalConfig:
     room_rt60: float = 0.3
     attribution_threshold: float = 0.55
     event_threshold: float = 0.08
+    onset_jitter_ms: int = 8
+    transformed_world_gain: float = 0.85
+    replay_gain: float = 0.9
+    hard_negative_noise_db_offset: float = 5.0
+    hard_negative_amplitude_jitter: float = 0.15
 
 
 DEFAULT_GUARDRAILS: dict[str, dict[str, Any]] = {
     "M1A": {
         "max_false_self_rate": 0.05,
+        "max_replay_false_self_rate": 0.10,
         "max_onset_error_ms": 50.0,
     },
     "M1B": {
@@ -206,6 +212,11 @@ def run_eval(config: EvalConfig) -> dict[str, Any]:
             attribution_threshold=config.attribution_threshold,
             event_threshold=config.event_threshold,
             iterations=config.iterations,
+            onset_jitter_ms=config.onset_jitter_ms,
+            transformed_world_gain=config.transformed_world_gain,
+            replay_gain=config.replay_gain,
+            hard_negative_noise_db_offset=config.hard_negative_noise_db_offset,
+            hard_negative_amplitude_jitter=config.hard_negative_amplitude_jitter,
         ))
     elif stage == "M1C":
         raise NotImplementedError("M1C harness not implemented yet. Start with M1B synthetic search scaffold.")
@@ -238,6 +249,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--room-rt60", type=float, default=0.3)
     parser.add_argument("--attribution-threshold", type=float, default=0.55)
     parser.add_argument("--event-threshold", type=float, default=0.08)
+    parser.add_argument("--onset-jitter-ms", type=int, default=8)
+    parser.add_argument("--transformed-world-gain", type=float, default=0.85)
+    parser.add_argument("--replay-gain", type=float, default=0.9)
+    parser.add_argument("--hard-negative-noise-db-offset", type=float, default=5.0)
+    parser.add_argument("--hard-negative-amplitude-jitter", type=float, default=0.15)
     parser.add_argument("--output", default="-")
     return parser.parse_args()
 
@@ -259,6 +275,11 @@ def main() -> None:
         room_rt60=args.room_rt60,
         attribution_threshold=args.attribution_threshold,
         event_threshold=args.event_threshold,
+        onset_jitter_ms=args.onset_jitter_ms,
+        transformed_world_gain=args.transformed_world_gain,
+        replay_gain=args.replay_gain,
+        hard_negative_noise_db_offset=args.hard_negative_noise_db_offset,
+        hard_negative_amplitude_jitter=args.hard_negative_amplitude_jitter,
     )
 
     started_at = time.time()
