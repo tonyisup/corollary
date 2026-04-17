@@ -85,6 +85,24 @@ def db(x: float) -> float:
     return 20.0 * np.log10(max(x, 1e-10))
 
 
+def classify_run_quality(capture_rms_db: float, match_score: float, onset_error_ms: float) -> tuple[str, list[str]]:
+    flags: list[str] = []
+    if capture_rms_db < -50:
+        flags.append("quiet_capture")
+    if match_score < 0.2:
+        flags.append("weak_match")
+    if onset_error_ms > 150.0:
+        flags.append("unstable_onset")
+
+    if not flags:
+        quality = "good"
+    elif capture_rms_db >= -50 and match_score >= 0.2 and onset_error_ms <= 300.0:
+        quality = "borderline"
+    else:
+        quality = "bad"
+    return quality, flags
+
+
 def run_probe(
     stimulus: str,
     duration_ms: int,
@@ -174,6 +192,7 @@ def run_probe(
 
     onset_error_ms = abs(shift - actual_expected_shift) * 1000.0 / SR
     scheduled_onset_error_ms = abs(shift - scheduled_expected_shift) * 1000.0 / SR
+    quality, quality_flags = classify_run_quality(db(observed_rms), score, onset_error_ms)
 
     return {
         "stimulus": stimulus,
@@ -192,6 +211,8 @@ def run_probe(
         "scheduled_onset_error_ms": round(scheduled_onset_error_ms, 4),
         "capture_elapsed_s": round(capture_finished_at - capture_started_at, 4),
         "playback_started": playback_started_at is not None,
+        "quality": quality,
+        "quality_flags": quality_flags,
     }
 
 
@@ -237,6 +258,10 @@ def main() -> None:
         print("  ⚠️  Weak but visible probe-template match.")
     else:
         print("  ❌ Probe-template match is poor. Check routing and room setup.")
+
+    print(f"  Run quality: {result['quality']}")
+    if result["quality_flags"]:
+        print(f"  Flags: {', '.join(result['quality_flags'])}")
 
     print("  Next step: compare chirp vs vowel_ah on the same hardware path.")
 

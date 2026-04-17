@@ -35,21 +35,32 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     match_scores = [float(r["match_score"]) for r in rows]
     onset_errors = [float(r["onset_error_ms"]) for r in rows]
     capture_rms = [float(r["capture_rms_db"]) for r in rows]
+    usable_rows = [r for r in rows if r.get("quality") != "bad"]
+    usable_match_scores = [float(r["match_score"]) for r in usable_rows]
+    usable_onset_errors = [float(r["onset_error_ms"]) for r in usable_rows]
     strong_match_runs = sum(1 for x in match_scores if x >= 0.5)
     visible_match_runs = sum(1 for x in match_scores if x >= 0.2)
     stable_onset_runs = sum(1 for x in onset_errors if x <= 50.0)
+    good_runs = sum(1 for r in rows if r.get("quality") == "good")
+    borderline_runs = sum(1 for r in rows if r.get("quality") == "borderline")
+    bad_runs = sum(1 for r in rows if r.get("quality") == "bad")
     return {
         "runs": len(rows),
+        "good_runs": good_runs,
+        "borderline_runs": borderline_runs,
+        "bad_runs": bad_runs,
         "mean_match_score": round(mean(match_scores), 6),
         "median_match_score": round(median(match_scores), 6),
         "match_score_std": round(pstdev(match_scores), 6) if len(match_scores) > 1 else 0.0,
         "best_match_score": round(max(match_scores), 6),
+        "usable_mean_match_score": round(mean(usable_match_scores), 6) if usable_match_scores else None,
         "strong_match_runs": strong_match_runs,
         "visible_match_runs": visible_match_runs,
         "mean_onset_error_ms": round(mean(onset_errors), 4),
         "median_onset_error_ms": round(median(onset_errors), 4),
         "onset_error_std_ms": round(pstdev(onset_errors), 4) if len(onset_errors) > 1 else 0.0,
         "best_onset_error_ms": round(min(onset_errors), 4),
+        "usable_mean_onset_error_ms": round(mean(usable_onset_errors), 4) if usable_onset_errors else None,
         "stable_onset_runs": stable_onset_runs,
         "mean_capture_rms_db": round(mean(capture_rms), 4),
     }
@@ -104,7 +115,7 @@ def main() -> None:
         append_jsonl(args.results, row)
         print(
             f"summary: match={row['match_score']:.4f} onset_error_ms={row['onset_error_ms']:.2f} "
-            f"capture_rms_db={row['capture_rms_db']:.2f}"
+            f"capture_rms_db={row['capture_rms_db']:.2f} quality={row.get('quality', 'unknown')}"
         )
         print()
 
@@ -127,7 +138,8 @@ def main() -> None:
         print("\nCurrent ranking:")
         for i, (stimulus, stats) in enumerate(ranked, start=1):
             print(
-                f"  {i}. {stimulus} | visible={stats.get('visible_match_runs', 0)}/{stats.get('runs', 0)} "
+                f"  {i}. {stimulus} | good={stats.get('good_runs', 0)} borderline={stats.get('borderline_runs', 0)} bad={stats.get('bad_runs', 0)} "
+                f"visible={stats.get('visible_match_runs', 0)}/{stats.get('runs', 0)} "
                 f"stable_onset={stats.get('stable_onset_runs', 0)}/{stats.get('runs', 0)} "
                 f"median_match={stats.get('median_match_score', 0.0):.4f} "
                 f"median_onset_error_ms={stats.get('median_onset_error_ms', 0.0):.2f}"
