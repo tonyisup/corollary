@@ -8,13 +8,15 @@
 
 ## Summary
 
-Build a closed-loop talking agent that hears itself, first learns to attribute raw sound to self vs world, then learns room acoustics through babbling, and only after that attempts lexical self-suppression and duplex speech understanding. The project maintains working and episodic memory to drive dialogue, but its early hardware milestones are explicitly developmental rather than language-first.
+Build a closed-loop talking agent that hears itself, first learns to attribute raw sound to self vs world, then learns room acoustics through babbling, then learns to distinguish agentive vocal others from environment noise and participate in contingent vocal exchange, and only after that attempts richer conversational memory and reasoning. The project maintains working and episodic memory to drive dialogue, but its early hardware milestones are explicitly developmental rather than language-first.
 
 ## Objectives
 
 - Establish reliable pre-linguistic self-sound attribution before word-level speech tasks
 - Learn room acoustics through babbling and forward-model adaptation
 - Achieve robust self/world source separation under mixed audio
+- Introduce agentive listening before full conversation, distinguishing vocal others from non-agentive environment noise
+- Learn contingent listening and proto-turn-taking before memory-heavy dialogue
 - Later, achieve robust self-voice suppression while speaking (full-duplex)
 - Maintain working and episodic memory to inform responses
 - Provide a reproducible, modular stack with testable milestones
@@ -125,31 +127,41 @@ corollary/
 - Evaluate attribution under partial overlap rather than requiring full lexical suppression
 - **Acceptance:** Strong frame-level or chunk-level attribution performance for self/world/overlap, with low false self-attribution rate
 
-### M2: Speech-Aware Self-Suppression Under Duplex Audio
-- Enable WebRTC AEC; efference masking; speech-aware suppression
+### M2: Speech-Aware Self/World Separation
+- Detect speech vs non-speech in external audio streams
+- Preserve external speech under overlap with self-generated sound
+- Enable speech-aware AEC and efference masking
 - Reintroduce lexical and ASR-oriented evaluation only after M1 attribution is stable
-- **Acceptance:** +15 dB suppression over AEC alone; external WER < 10% degradation
+- **Acceptance:** +15 dB suppression over AEC alone; external WER < 10% degradation; speech/non-speech discrimination remains stable under self overlap
 
-### M3: Self-Voice Detector
+### M3: Agentive Listening and Proto-Turn-Taking
+- Distinguish agentive vocal others from non-agentive environment noise
+- Detect when external speech should suppress or defer self-output
+- Learn contingent listening windows and simple proto-turn-taking behavior
+- Introduce mimicry / echoic response primitives as a bridge between raw vocal learning and dialog
+- **Acceptance:** Reliable agentive-vs-ambient discrimination, stable listen-state gating during external vocal activity, and measurable turn-taking / interruption sensitivity
+
+### M4: Self-Voice Detector and Explicit Attribution Classifier
 - ECAPA/x-vector embeddings + mel similarity classifier
-- Integrate learned attribution priors from M1 into a more explicit self-voice detector
+- Integrate learned attribution priors from M1 and listening priors from M2/M3 into a more explicit self-voice detector
+- Support frame-level self/world/agentive-other attribution for richer interaction contexts
 - **Acceptance:** Frame-level F1 ≥ 0.95 across rooms/devices
 
-### M4: Reasoning Layer + Episodic Memory + SAG-Grounded Learning
-- **Hippocampus (rapid episodic encoding):** Writes salient conversation turns into persistent store. Single events are retrievable but do *not* directly update the SAG.
+### M5: Multi-Speaker World Model + Episodic Memory + SAG-Grounded Learning
+- **Hippocampus (rapid episodic encoding):** Writes salient interaction turns into persistent store. Single events are retrievable but do *not* directly update the SAG.
 - **Neocortex / Reasoning Layer (`packages/reasoning`):** Abstract `ReasoningLayer` interface. Starts with external LLM provider; swap in local model later without touching PFC. All outputs resolve through the SAG before becoming "knowledge."
 - **Offline Consolidation:** Background loop processes accumulated episodic traces, extracts recurring patterns, and writes stable nodes/edges into the SAG. Pattern extraction, not event transcription. Single events → hippocampus only; repeated patterns → SAG structure.
 - **SAG Growth:** The SAG *is* the neocortical knowledge representation — consolidated output of pattern extraction, not a passive recipient of hippocampal writes. The graph is what changes when the CI learns.
-- Diarization + multi-speaker world model.
-- **Acceptance:** ≥95% correct attribution; correct retrieval in dialog; SAG updates correlate with repeated patterns across episodic memory, not single events; reasoning layer answers reference graph state
+- Multi-speaker world model and dialog memory now become first-class.
+- **Acceptance:** ≥95% correct attribution across speakers; correct retrieval in dialog; SAG updates correlate with repeated patterns across episodic memory, not single events; reasoning layer answers reference graph state
 
-### M5: Self-Model and Introspection
+### M6: Self-Model and Introspection
 - Self-concept subtree in the SAG: `Corollary.agent_voice`, `Corollary.speech_patterns`, `Corollary.known_subjects`
 - Self-tape vs world-tape mismatch detection via SAG diffing
 - Agent can query its own knowledge state and report confidence
 - **Acceptance:** Reduced mismatch over time; introspective subtree traversable
 
-### M6+: Amygdala / Valence / Fast-Track Responses
+### M7+: Amygdala / Valence / Fast-Track Responses
 - Amygdala = fast-gate *on* the salience network, not a standalone module
 - High-threat salience → overrides PFC, triggers fast responses (shut up, warn, defer)
 - Emotional valence, risk assessment, urgency signaling

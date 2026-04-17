@@ -6,7 +6,7 @@
 
 ## Overview
 
-Each milestone is evaluated independently. You do not advance from M0 into later hardware milestones until M0's evals pass. For M1, progression should be staged: first self-sound attribution, then babbling-based room learning, then mixed-source attribution, and only then speech-aware duplex suppression. The same eval scripts should run in CI where practical.
+Each milestone is evaluated independently. You do not advance from M0 into later hardware milestones until M0's evals pass. For the developmental hardware path, progression should be staged: first self-sound attribution, then babbling-based room learning, then mixed-source attribution, then speech-aware self/world separation, then agentive listening and proto-turn-taking, and only after that explicit attribution classifiers, memory, and richer conversation. The same eval scripts should run in CI where practical.
 
 ## Eval Structure
 
@@ -187,6 +187,46 @@ jobs:
 - Strong self/world/overlap attribution performance
 - Low false self-attribution rate
 
+## M2 Eval Targets
+
+### 1. Speech-Aware Separation
+
+**What:** Can the system distinguish speech from non-speech while preserving external speech under self overlap?
+
+**Method:**
+- Introduce speech and non-speech external sources during self-generated sound
+- Score speech-preservation and speech/non-speech discrimination under overlap
+
+**Acceptance:**
+- Stable speech/non-speech discrimination
+- External speech preserved with low degradation during self activity
+
+## M3 Eval Targets
+
+### 1. Agentive Listening
+
+**What:** Can the system distinguish vocal agents from non-agentive environment noise?
+
+**Method:**
+- Compare external vocal sources against environmental non-speech and non-agentive sound sources
+- Score agentive-vs-ambient discrimination and listen-state transitions
+
+**Acceptance:**
+- Reliable agentive-vs-ambient discrimination
+- Self-output is gated or deferred appropriately during external vocal activity
+
+### 2. Proto-Turn-Taking
+
+**What:** Can the system detect contingent timing windows for early vocal exchange?
+
+**Method:**
+- Present simple alternating and interrupting vocal patterns
+- Measure interruption sensitivity, listen-state stability, and contingent response timing
+
+**Acceptance:**
+- Measurable turn-taking sensitivity
+- Stable inhibition of self-output during active external vocal windows
+
 ## Metrics Dashboard (Future)
 
 | Milestone | Core Metric | Status |
@@ -195,4 +235,7 @@ jobs:
 | M1a       | Self/not-self attribution | — |
 | M1b       | Convergence / prediction error | — |
 | M1c       | Overlap attribution F1 | — |
-| M2        | SVSR, duplex WER | — |
+| M2        | Speech/non-speech stability, duplex WER | — |
+| M3        | Agentive listening, turn-taking sensitivity | — |
+| M4        | Explicit attribution F1 | — |
+| M5        | Memory + dialog retrieval | — |

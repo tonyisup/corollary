@@ -144,4 +144,13 @@ The next hardware stage should be treated as developmental and pre-linguistic.
 - Add external/world sounds
 - Distinguish self-only, world-only, and overlapping segments
 
-Only after these stages should Corollary push hard on speech-level suppression, SAG-informed lexical processing under overlap, and memory persistence tied to real duplex interaction.
+### M2: Speech-aware self/world separation
+- Detect speech vs non-speech under overlap
+- Preserve external speech while modeling self-generated sound
+
+### M3: Agentive listening and proto-turn-taking
+- Distinguish vocal agents from non-agentive environment noise
+- Detect when to inhibit self-output and listen
+- Introduce contingent timing and proto-turn-taking before full conversation
+
+Only after these stages should Corollary push hard on explicit self-voice classification, multi-speaker memory, SAG-informed lexical processing under overlap, and full conversational persistence.

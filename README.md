@@ -47,10 +47,11 @@ The core question for early hardware work is not yet "what word did I say?" but 
 | M1a | Pre-linguistic self-sound attribution | 🎯 Current focus |
 | M1b | Babbling-driven room model learning | 🧪 In progress |
 | M1c | Mixed-source attribution (self vs world vs overlap) | ⏳ Planned |
-| M2 | Speech-aware self-suppression under duplex audio | ⏳ Planned |
-| M3 | Self-voice detector / attribution classifier | ⏳ Planned |
-| M4 | Multi-speaker world model + memory | ⏳ Planned |
-| M5 | Self-model and introspection | ⏳ Planned |
+| M2 | Speech-aware self/world separation | ⏳ Planned |
+| M3 | Agentive listening and proto-turn-taking | ⏳ Planned |
+| M4 | Self-voice detector / explicit attribution classifier | ⏳ Planned |
+| M5 | Multi-speaker world model + memory | ⏳ Planned |
+| M6 | Self-model and introspection | ⏳ Planned |
 
 ### Developmental framing
 
@@ -60,7 +61,9 @@ Corollary now treats early M1 as a developmental stage closer to infant babbling
 2. determine whether the sound was self-caused
 3. learn how the room transforms self-generated sound
 4. handle mixed self/world audio
-5. only then push toward lexical suppression and speech understanding under overlap
+5. distinguish speech from non-speech and vocal agents from environment noise
+6. learn contingent listening and proto-turn-taking
+7. only then push toward richer conversational memory and reasoning
 
 See `docs/plan.md` for full details.
 
