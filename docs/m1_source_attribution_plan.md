@@ -67,7 +67,7 @@ Start with simple, controllable sound classes:
 - nonsense syllable strings
 - short synthetic speech fragments only after simpler sounds work
 
-**Current repo guidance:** use **chirps** as the primary M1A benchmark stimulus for now, with tones as a secondary comparison stimulus. In current synthetic M1A experiments, chirps produce much stronger onset alignment and more robust causal attribution than clicks, while tones remain workable after the causal-gating fixes.
+**Current repo guidance:** use **chirps** as the primary M1A benchmark stimulus for now, with **vowel-like sounds** and tones as secondary comparison stimuli. In current synthetic M1A experiments, chirps are the most robust across the search space, vowel-like sounds are also strong and developmentally meaningful, and clicks remain a transient-onset challenge case rather than a stable baseline.
 
 Do **not** begin with long, meaningful sentences as the primary benchmark.
 
@@ -85,7 +85,7 @@ Do **not** begin with long, meaningful sentences as the primary benchmark.
 - Reproducible results across repeated runs in the same environment
 - Graceful degradation when room conditions change
 
-**Current interpretation:** the present harness supports chirps and tones as viable M1A stimuli, but clicks are still serving mainly as a stress test for transient onset estimation rather than as a stable baseline.
+**Current interpretation:** the present harness supports chirps, vowel-like sounds, and tones as viable M1A stimuli. Chirps are currently the most robust default, vowel-like sounds are especially interesting for developmental realism, and clicks are still serving mainly as a stress test for transient onset estimation rather than as a stable baseline.
 ### Recommended first experiments
 
 1. **Chirp attribution test**
@@ -93,14 +93,19 @@ Do **not** begin with long, meaningful sentences as the primary benchmark.
    - Record mic return
    - Detect whether the captured event aligns with expected onset
    - Score self attribution
-   - Treat this as the current strongest synthetic baseline
+   - Treat this as the current strongest and most robust synthetic baseline
 
-2. **Tone attribution test**
+2. **Vowel-like attribution test**
+   - Emit a simple vowel-like primitive (for example `ah`)
+   - Use as the developmental comparison stimulus closest to early vocal imitation
+   - Compare robustness and onset quality against chirp
+
+3. **Tone attribution test**
    - Emit a short tone burst
    - Use as a secondary comparison stimulus
    - Verify that attribution remains good under a less onset-rich waveform
 
-3. **Click train attribution test**
+4. **Click train attribution test**
    - Emit short clicks with fixed spacing
    - Keep as an explicit transient-onset challenge case
    - Do not treat clicks as the primary M1A benchmark until transient onset detection improves

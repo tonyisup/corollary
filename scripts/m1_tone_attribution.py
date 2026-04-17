@@ -64,6 +64,13 @@ def generate_stimulus(kind: str, duration_ms: int, amplitude: float) -> np.ndarr
         f0, f1 = 300.0, 1800.0
         phase = 2 * np.pi * (f0 * t + 0.5 * (f1 - f0) * t * t / max(t[-1], 1e-6))
         pcm = np.sin(phase).astype(np.float32)
+    elif kind == "vowel_ah":
+        f0 = 140.0
+        formants = [(800.0, 1.0), (1200.0, 0.35), (2500.0, 0.15)]
+        pcm = np.zeros_like(t, dtype=np.float32)
+        for freq, amp in formants:
+            pcm += amp * np.sin(2 * np.pi * freq * t)
+        pcm *= (0.6 + 0.4 * np.sin(2 * np.pi * f0 * t)).astype(np.float32)
     else:
         raise ValueError(f"Unsupported stimulus kind: {kind}")
 
@@ -78,6 +85,7 @@ WORLD_VARIANTS = {
     "tone": "chirp",
     "chirp": "click",
     "click": "tone",
+    "vowel_ah": "chirp",
 }
 
 
@@ -189,7 +197,7 @@ def estimate_event_onset(audio: np.ndarray, threshold: float, stimulus_kind: str
         idx = np.where(transient >= transient_threshold)[0]
         return int(idx[0]) if len(idx) else 0
 
-    if stimulus_kind == "tone":
+    if stimulus_kind in {"tone", "vowel_ah"}:
         window = max(8, SR // 500)
         kernel = np.ones(window, dtype=np.float32) / window
         envelope = np.convolve(magnitude, kernel, mode="same")

@@ -60,7 +60,7 @@ def generate_m1a_configs(stimulus_filter: str | None = None) -> Iterable[dict[st
         "room_rt60": 0.3,
         "stimulus_duration_ms": 300,
     }
-    stimuli = ["tone", "click", "chirp"] if not stimulus_filter else [stimulus_filter]
+    stimuli = ["tone", "click", "chirp", "vowel_ah"] if not stimulus_filter else [stimulus_filter]
     grid = product(
         stimuli,
         [0.4, 0.7, 0.9],
@@ -163,7 +163,7 @@ def run_eval(script_path: str, config: dict[str, Any], timeout_s: float = 120.0)
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Corollary M1 config search")
     parser.add_argument("--stage", default="M1B")
-    parser.add_argument("--stimulus", choices=["tone", "click", "chirp"], default=None)
+    parser.add_argument("--stimulus", choices=["tone", "click", "chirp", "vowel_ah"], default=None)
     parser.add_argument("--limit", type=int, default=12)
     parser.add_argument("--start-at", type=int, default=0)
     parser.add_argument("--results", default=RESULTS_PATH)
