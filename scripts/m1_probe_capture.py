@@ -97,11 +97,17 @@ def run_probe(
     pcm = generate_stimulus(stimulus, duration_ms, amplitude)
     playback_duration = len(pcm) / SR
 
+    input_name = "default"
+    output_name = "default"
     if input_device is not None:
         dev_info = sd.query_devices(input_device)
         native_sr = int(dev_info["default_samplerate"] or SR)
+        input_name = str(dev_info["name"])
     else:
         native_sr = SR
+
+    if output_device is not None:
+        output_name = str(sd.query_devices(output_device)["name"])
 
     capture_duration = lead_in_s + playback_duration + tail_s
     total_samples = int(capture_duration * native_sr)
@@ -113,8 +119,8 @@ def run_probe(
     print(f"Stimulus: {stimulus}")
     print(f"Playback duration: {playback_duration:.3f}s")
     print(f"Capture duration:  {capture_duration:.3f}s")
-    print(f"Input device:      {input_device if input_device is not None else 'default'}")
-    print(f"Output device:     {output_device if output_device is not None else 'default'}")
+    print(f"Input device:      {input_device if input_device is not None else 'default'} ({input_name})")
+    print(f"Output device:     {output_device if output_device is not None else 'default'} ({output_name})")
     if native_sr != SR:
         print(f"Mic native SR:     {native_sr} Hz (will resample to {SR} Hz)")
 
@@ -164,6 +170,8 @@ def run_probe(
     return {
         "stimulus": stimulus,
         "playback_duration_s": round(playback_duration, 4),
+        "input_device_name": input_name,
+        "output_device_name": output_name,
         "capture_duration_s": round(capture_duration, 4),
         "capture_rms_db": round(db(observed_rms), 2),
         "capture_peak_db": round(db(observed_peak), 2),

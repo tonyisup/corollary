@@ -64,6 +64,10 @@ Recommended sequence:
 
 # 4. compare against the developmental vowel-like probe
 ./.venv/bin/python scripts/m1_probe_capture.py --stimulus vowel_ah --input-device <input_device> --output-device <output_device>
+
+# Current Mac mini + Fifine example
+./.venv/bin/python scripts/m1_probe_capture.py --stimulus chirp --input-device 2 --output-device 3
+./.venv/bin/python scripts/m1_probe_capture.py --stimulus vowel_ah --input-device 2 --output-device 3
 ```
 
 What to look for:
