@@ -54,6 +54,9 @@ class EvalConfig:
     replay_gain: float = 0.9
     hard_negative_noise_db_offset: float = 5.0
     hard_negative_amplitude_jitter: float = 0.15
+    causal_tolerance_ms: float = 20.0
+    causal_weight: float = 0.5
+    similarity_weight: float = 0.5
 
 
 DEFAULT_GUARDRAILS: dict[str, dict[str, Any]] = {
@@ -61,6 +64,8 @@ DEFAULT_GUARDRAILS: dict[str, dict[str, Any]] = {
         "max_false_self_rate": 0.05,
         "max_replay_false_self_rate": 0.10,
         "max_onset_error_ms": 50.0,
+        "min_causal_self_score_mean": 0.45,
+        "max_combined_negative_score_mean": 0.45,
     },
     "M1B": {
         "min_attribution_gain": 0.0,
@@ -217,6 +222,9 @@ def run_eval(config: EvalConfig) -> dict[str, Any]:
             replay_gain=config.replay_gain,
             hard_negative_noise_db_offset=config.hard_negative_noise_db_offset,
             hard_negative_amplitude_jitter=config.hard_negative_amplitude_jitter,
+            causal_tolerance_ms=config.causal_tolerance_ms,
+            causal_weight=config.causal_weight,
+            similarity_weight=config.similarity_weight,
         ))
     elif stage == "M1C":
         raise NotImplementedError("M1C harness not implemented yet. Start with M1B synthetic search scaffold.")
@@ -254,6 +262,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--replay-gain", type=float, default=0.9)
     parser.add_argument("--hard-negative-noise-db-offset", type=float, default=5.0)
     parser.add_argument("--hard-negative-amplitude-jitter", type=float, default=0.15)
+    parser.add_argument("--causal-tolerance-ms", type=float, default=20.0)
+    parser.add_argument("--causal-weight", type=float, default=0.5)
+    parser.add_argument("--similarity-weight", type=float, default=0.5)
     parser.add_argument("--output", default="-")
     return parser.parse_args()
 
@@ -280,6 +291,9 @@ def main() -> None:
         replay_gain=args.replay_gain,
         hard_negative_noise_db_offset=args.hard_negative_noise_db_offset,
         hard_negative_amplitude_jitter=args.hard_negative_amplitude_jitter,
+        causal_tolerance_ms=args.causal_tolerance_ms,
+        causal_weight=args.causal_weight,
+        similarity_weight=args.similarity_weight,
     )
 
     started_at = time.time()

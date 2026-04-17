@@ -68,8 +68,10 @@ def generate_m1a_configs() -> Iterable[dict[str, Any]]:
         [0.05, 0.08, 0.12],
         [4, 8, 12],
         [0.8, 0.9],
+        [20.0, 40.0, 60.0, 80.0],
+        [0.4, 0.6, 0.8],
     )
-    for stimulus, playback_amplitude, noise_db, attribution_threshold, event_threshold, onset_jitter_ms, replay_gain in grid:
+    for stimulus, playback_amplitude, noise_db, attribution_threshold, event_threshold, onset_jitter_ms, replay_gain, causal_tolerance_ms, causal_weight in grid:
         yield {
             **base,
             "stimulus": stimulus,
@@ -82,6 +84,9 @@ def generate_m1a_configs() -> Iterable[dict[str, Any]]:
             "replay_gain": replay_gain,
             "hard_negative_noise_db_offset": 5.0,
             "hard_negative_amplitude_jitter": 0.15,
+            "causal_tolerance_ms": causal_tolerance_ms,
+            "causal_weight": causal_weight,
+            "similarity_weight": round(1.0 - causal_weight + 0.2, 2),
         }
 
 
@@ -140,6 +145,9 @@ def run_eval(script_path: str, config: dict[str, Any], timeout_s: float = 120.0)
         "replay_gain": "--replay-gain",
         "hard_negative_noise_db_offset": "--hard-negative-noise-db-offset",
         "hard_negative_amplitude_jitter": "--hard-negative-amplitude-jitter",
+        "causal_tolerance_ms": "--causal-tolerance-ms",
+        "causal_weight": "--causal-weight",
+        "similarity_weight": "--similarity-weight",
     }
     for key, flag in cli_map.items():
         if key in config:

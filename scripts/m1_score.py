@@ -24,15 +24,21 @@ def score_m1a(metrics: dict[str, Any], guardrails: dict[str, Any] | None = None)
     false_self_rate = _safe_float(metrics, "false_self_rate")
     replay_false_self_rate = _safe_float(metrics, "replay_false_self_rate")
     onset_error_ms = _safe_float(metrics, "onset_error_ms")
+    causal_self_score_mean = _safe_float(metrics, "causal_self_score_mean")
+    combined_negative_score_mean = _safe_float(metrics, "combined_negative_score_mean")
 
     max_false_self = float(guardrails.get("max_false_self_rate", 0.05))
     max_replay_false_self_rate = float(guardrails.get("max_replay_false_self_rate", 0.10))
     max_onset_error_ms = float(guardrails.get("max_onset_error_ms", 50.0))
+    min_causal_self_score_mean = float(guardrails.get("min_causal_self_score_mean", 0.45))
+    max_combined_negative_score_mean = float(guardrails.get("max_combined_negative_score_mean", 0.45))
 
     score = self_f1
-    score *= _clamp01(1.0 - (false_self_rate / max(max_false_self, 1e-9)) * 0.4)
+    score *= _clamp01(1.0 - (false_self_rate / max(max_false_self, 1e-9)) * 0.3)
     score *= _clamp01(1.0 - (replay_false_self_rate / max(max_replay_false_self_rate, 1e-9)) * 0.25)
-    score *= _clamp01(1.0 - (onset_error_ms / max(max_onset_error_ms, 1e-9)) * 0.25)
+    score *= _clamp01(1.0 - (onset_error_ms / max(max_onset_error_ms, 1e-9)) * 0.2)
+    score *= _clamp01(causal_self_score_mean / max(min_causal_self_score_mean, 1e-9))
+    score *= _clamp01(1.0 - (combined_negative_score_mean / max(max_combined_negative_score_mean, 1e-9)) * 0.4)
 
     failures: list[str] = []
     if false_self_rate > max_false_self:
@@ -41,6 +47,10 @@ def score_m1a(metrics: dict[str, Any], guardrails: dict[str, Any] | None = None)
         failures.append("replay_false_self_rate")
     if onset_error_ms > max_onset_error_ms:
         failures.append("onset_error_ms")
+    if causal_self_score_mean < min_causal_self_score_mean:
+        failures.append("causal_self_score_mean")
+    if combined_negative_score_mean > max_combined_negative_score_mean:
+        failures.append("combined_negative_score_mean")
 
     return {
         "score": round(_clamp01(score), 6),

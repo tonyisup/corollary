@@ -39,6 +39,9 @@ class M1AConfig:
     replay_gain: float = 0.9
     hard_negative_noise_db_offset: float = 5.0
     hard_negative_amplitude_jitter: float = 0.15
+    causal_tolerance_ms: float = 20.0
+    causal_weight: float = 0.5
+    similarity_weight: float = 0.5
 
 
 def generate_stimulus(kind: str, duration_ms: int, amplitude: float) -> np.ndarray:
@@ -170,6 +173,39 @@ def compute_f1(tp: int, fp: int, fn: int) -> float:
     return 2 * precision * recall / (precision + recall)
 
 
+def estimate_event_onset(audio: np.ndarray, threshold: float) -> int:
+    if len(audio) == 0:
+        return 0
+    magnitude = np.abs(audio)
+    peak = float(np.max(magnitude))
+    if peak < 1e-9:
+        return 0
+    onset_threshold = max(threshold, peak * 0.2)
+    idx = np.where(magnitude >= onset_threshold)[0]
+    return int(idx[0]) if len(idx) else 0
+
+
+def causal_alignment_score(observed_shift: int, expected_shift: int, tolerance_ms: float) -> float:
+    error_ms = abs(observed_shift - expected_shift) * 1000.0 / SR
+    return max(0.0, 1.0 - (error_ms / max(tolerance_ms, 1e-6)))
+
+
+def combined_attribution_score(
+    similarity_score: float,
+    observed_shift: int,
+    expected_shift: int | None,
+    causal_tolerance_ms: float,
+    causal_weight: float,
+    similarity_weight: float,
+) -> tuple[float, float]:
+    causal_score = 0.0 if expected_shift is None else causal_alignment_score(observed_shift, expected_shift, causal_tolerance_ms)
+    total_weight = max(causal_weight + similarity_weight, 1e-9)
+    combined = (
+        similarity_weight * similarity_score + causal_weight * causal_score
+    ) / total_weight
+    return combined, causal_score
+
+
 def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
     self_stimulus = generate_stimulus(config.stimulus, config.stimulus_duration_ms, config.playback_amplitude)
     world_kind = WORLD_VARIANTS.get(config.stimulus, "chirp")
@@ -186,6 +222,10 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
     replay_scores: list[float] = []
     silence_scores: list[float] = []
     cross_class_scores: list[float] = []
+    causal_scores_self: list[float] = []
+    causal_scores_negative: list[float] = []
+    combined_scores_self: list[float] = []
+    combined_scores_negative: list[float] = []
 
     tp = fp = tn = fn = 0
     replay_fp = 0
@@ -207,9 +247,20 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
 
         captured_self = delayed_room_capture(trial_self, room_ir, delay_samples, config.noise_db, seed=100 + i)
         score_self, shift_self = best_match_score(captured_self, self_stimulus, shift_min_samples, shift_max_samples)
-        predicted_self = event_present(captured_self, config.event_threshold) and score_self >= config.attribution_threshold
+        onset_self = estimate_event_onset(captured_self, config.event_threshold)
+        combined_self, causal_self = combined_attribution_score(
+            score_self,
+            onset_self,
+            delay_samples,
+            config.causal_tolerance_ms,
+            config.causal_weight,
+            config.similarity_weight,
+        )
+        predicted_self = event_present(captured_self, config.event_threshold) and combined_self >= config.attribution_threshold
         positive_scores.append(score_self)
-        onset_errors_ms.append(abs(shift_self - delay_samples) * 1000.0 / SR)
+        causal_scores_self.append(causal_self)
+        combined_scores_self.append(combined_self)
+        onset_errors_ms.append(abs(onset_self - delay_samples) * 1000.0 / SR)
         if predicted_self:
             tp += 1
         else:
@@ -218,9 +269,20 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
         cross_noise_db = config.noise_db + rng.uniform(0.0, config.hard_negative_noise_db_offset)
         captured_world = delayed_room_capture(world_stimulus, room_ir, delay_samples, cross_noise_db, seed=200 + i)
         score_world, _ = best_match_score(captured_world, self_stimulus, shift_min_samples, shift_max_samples)
-        predicted_world_as_self = event_present(captured_world, config.event_threshold) and score_world >= config.attribution_threshold
+        onset_world = estimate_event_onset(captured_world, config.event_threshold)
+        combined_world, causal_world = combined_attribution_score(
+            score_world,
+            onset_world,
+            None,
+            config.causal_tolerance_ms,
+            config.causal_weight,
+            config.similarity_weight,
+        )
+        predicted_world_as_self = event_present(captured_world, config.event_threshold) and combined_world >= config.attribution_threshold
         negative_scores.append(score_world)
         cross_class_scores.append(score_world)
+        causal_scores_negative.append(causal_world)
+        combined_scores_negative.append(combined_world)
         if predicted_world_as_self:
             fp += 1
         else:
@@ -235,9 +297,20 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
             seed=500 + i,
         )
         score_same_class, _ = best_match_score(captured_same_class, self_stimulus, shift_min_samples, shift_max_samples)
-        predicted_same_class_as_self = event_present(captured_same_class, config.event_threshold) and score_same_class >= config.attribution_threshold
+        onset_same_class = estimate_event_onset(captured_same_class, config.event_threshold)
+        combined_same_class, causal_same_class = combined_attribution_score(
+            score_same_class,
+            onset_same_class,
+            None,
+            config.causal_tolerance_ms,
+            config.causal_weight,
+            config.similarity_weight,
+        )
+        predicted_same_class_as_self = event_present(captured_same_class, config.event_threshold) and combined_same_class >= config.attribution_threshold
         negative_scores.append(score_same_class)
         same_class_scores.append(score_same_class)
+        causal_scores_negative.append(causal_same_class)
+        combined_scores_negative.append(combined_same_class)
         if predicted_same_class_as_self:
             fp += 1
             same_class_fp += 1
@@ -255,9 +328,20 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
             seed=600 + i,
         )
         score_replay, _ = best_match_score(captured_replay, self_stimulus, shift_min_samples, shift_max_samples)
-        predicted_replay_as_self = event_present(captured_replay, config.event_threshold) and score_replay >= config.attribution_threshold
+        onset_replay = estimate_event_onset(captured_replay, config.event_threshold)
+        combined_replay, causal_replay = combined_attribution_score(
+            score_replay,
+            onset_replay,
+            None,
+            config.causal_tolerance_ms,
+            config.causal_weight,
+            config.similarity_weight,
+        )
+        predicted_replay_as_self = event_present(captured_replay, config.event_threshold) and combined_replay >= config.attribution_threshold
         negative_scores.append(score_replay)
         replay_scores.append(score_replay)
+        causal_scores_negative.append(causal_replay)
+        combined_scores_negative.append(combined_replay)
         if predicted_replay_as_self:
             fp += 1
             replay_fp += 1
@@ -266,9 +350,20 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
 
         silence = add_noise(np.zeros_like(captured_self), config.noise_db + rng.uniform(0.0, config.hard_negative_noise_db_offset), seed=300 + i)
         score_silence, _ = best_match_score(silence, self_stimulus, shift_min_samples, shift_max_samples)
-        predicted_silence_as_self = event_present(silence, config.event_threshold) and score_silence >= config.attribution_threshold
+        onset_silence = estimate_event_onset(silence, config.event_threshold)
+        combined_silence, causal_silence = combined_attribution_score(
+            score_silence,
+            onset_silence,
+            None,
+            config.causal_tolerance_ms,
+            config.causal_weight,
+            config.similarity_weight,
+        )
+        predicted_silence_as_self = event_present(silence, config.event_threshold) and combined_silence >= config.attribution_threshold
         negative_scores.append(score_silence)
         silence_scores.append(score_silence)
+        causal_scores_negative.append(causal_silence)
+        combined_scores_negative.append(combined_silence)
         if predicted_silence_as_self:
             fp += 1
         else:
@@ -293,6 +388,10 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
         "same_class_score_mean": round(float(np.mean(same_class_scores)) if same_class_scores else 0.0, 6),
         "replay_score_mean": round(float(np.mean(replay_scores)) if replay_scores else 0.0, 6),
         "silence_score_mean": round(float(np.mean(silence_scores)) if silence_scores else 0.0, 6),
+        "causal_self_score_mean": round(float(np.mean(causal_scores_self)) if causal_scores_self else 0.0, 6),
+        "causal_negative_score_mean": round(float(np.mean(causal_scores_negative)) if causal_scores_negative else 0.0, 6),
+        "combined_self_score_mean": round(float(np.mean(combined_scores_self)) if combined_scores_self else 0.0, 6),
+        "combined_negative_score_mean": round(float(np.mean(combined_scores_negative)) if combined_scores_negative else 0.0, 6),
         "positive_trials": config.iterations,
         "negative_trials": config.iterations * 4,
     }
