@@ -173,13 +173,31 @@ def compute_f1(tp: int, fp: int, fn: int) -> float:
     return 2 * precision * recall / (precision + recall)
 
 
-def estimate_event_onset(audio: np.ndarray, threshold: float) -> int:
+def estimate_event_onset(audio: np.ndarray, threshold: float, stimulus_kind: str) -> int:
     if len(audio) == 0:
         return 0
+
     magnitude = np.abs(audio)
     peak = float(np.max(magnitude))
     if peak < 1e-9:
         return 0
+
+    if stimulus_kind == "click":
+        transient = np.abs(np.diff(audio, prepend=audio[0]))
+        transient_peak = float(np.max(transient))
+        transient_threshold = max(threshold * 0.5, transient_peak * 0.25)
+        idx = np.where(transient >= transient_threshold)[0]
+        return int(idx[0]) if len(idx) else 0
+
+    if stimulus_kind == "tone":
+        window = max(8, SR // 500)
+        kernel = np.ones(window, dtype=np.float32) / window
+        envelope = np.convolve(magnitude, kernel, mode="same")
+        env_peak = float(np.max(envelope))
+        env_threshold = max(threshold * 0.75, env_peak * 0.15)
+        idx = np.where(envelope >= env_threshold)[0]
+        return int(idx[0]) if len(idx) else 0
+
     onset_threshold = max(threshold, peak * 0.2)
     idx = np.where(magnitude >= onset_threshold)[0]
     return int(idx[0]) if len(idx) else 0
@@ -247,7 +265,7 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
 
         captured_self = delayed_room_capture(trial_self, room_ir, delay_samples, config.noise_db, seed=100 + i)
         score_self, shift_self = best_match_score(captured_self, self_stimulus, shift_min_samples, shift_max_samples)
-        onset_self = estimate_event_onset(captured_self, config.event_threshold)
+        onset_self = estimate_event_onset(captured_self, config.event_threshold, config.stimulus)
         combined_self, causal_self = combined_attribution_score(
             score_self,
             onset_self,
@@ -269,7 +287,7 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
         cross_noise_db = config.noise_db + rng.uniform(0.0, config.hard_negative_noise_db_offset)
         captured_world = delayed_room_capture(world_stimulus, room_ir, delay_samples, cross_noise_db, seed=200 + i)
         score_world, _ = best_match_score(captured_world, self_stimulus, shift_min_samples, shift_max_samples)
-        onset_world = estimate_event_onset(captured_world, config.event_threshold)
+        onset_world = estimate_event_onset(captured_world, config.event_threshold, config.stimulus)
         combined_world, causal_world = combined_attribution_score(
             score_world,
             onset_world,
@@ -297,7 +315,7 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
             seed=500 + i,
         )
         score_same_class, _ = best_match_score(captured_same_class, self_stimulus, shift_min_samples, shift_max_samples)
-        onset_same_class = estimate_event_onset(captured_same_class, config.event_threshold)
+        onset_same_class = estimate_event_onset(captured_same_class, config.event_threshold, config.stimulus)
         combined_same_class, causal_same_class = combined_attribution_score(
             score_same_class,
             onset_same_class,
@@ -328,7 +346,7 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
             seed=600 + i,
         )
         score_replay, _ = best_match_score(captured_replay, self_stimulus, shift_min_samples, shift_max_samples)
-        onset_replay = estimate_event_onset(captured_replay, config.event_threshold)
+        onset_replay = estimate_event_onset(captured_replay, config.event_threshold, config.stimulus)
         combined_replay, causal_replay = combined_attribution_score(
             score_replay,
             onset_replay,
@@ -350,7 +368,7 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
 
         silence = add_noise(np.zeros_like(captured_self), config.noise_db + rng.uniform(0.0, config.hard_negative_noise_db_offset), seed=300 + i)
         score_silence, _ = best_match_score(silence, self_stimulus, shift_min_samples, shift_max_samples)
-        onset_silence = estimate_event_onset(silence, config.event_threshold)
+        onset_silence = estimate_event_onset(silence, config.event_threshold, config.stimulus)
         combined_silence, causal_silence = combined_attribution_score(
             score_silence,
             onset_silence,
