@@ -41,6 +41,12 @@ The initial simulated loop (M0) has been successfully validated, and the repo no
 
 The core question for early hardware work is not yet "what word did I say?" but "did I just make that sound?"
 
+### Synthetic vs audible work
+
+Most current M1A progress is still **synthetic** rather than audible in-room playback. In the synthetic harness, Corollary generates waveforms in code, passes them through simulated room responses and hard negatives, and scores attribution offline. That means you should **not** expect to hear chirps or vowel-like sounds during those runs.
+
+You should only expect audible sounds once Corollary enters the first **hardware-facing M1A** path, where it intentionally plays a probe signal through a real speaker and captures the result on a real microphone. The existing `scripts/m1_mic_capture.py` and `scripts/m1_loop_test.py` are part of that bridge, but the current M1A benchmark work is still largely silent synthetic evaluation.
+
 | Phase | Description | Status |
 |-------|-------------|--------|
 | M0 | Simulated loop (no hardware) | ✅ Done |

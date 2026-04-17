@@ -148,6 +148,15 @@ jobs:
 
 ## M1 Eval Targets (Revised)
 
+### Synthetic vs hardware eval boundary
+
+The current M1 scaffolds mix two different eval modes that should be reported separately:
+
+- **Synthetic evals:** waveform generation, simulated room effects, and structured negatives run entirely in code. These are regression-friendly and silent in the physical room.
+- **Hardware-facing evals:** real speaker playback plus real microphone capture. These are the point where audible chirps, vowels, or babble should actually be expected.
+
+Synthetic M1A/M1C progress should not be overstated as physical-world validation. Hardware-facing runs should be called out explicitly when reporting results.
+
 ### 1. Self-Sound Attribution
 
 **What:** Can the system determine whether an acoustic event was self-caused, independent of words?

@@ -86,6 +86,19 @@ Do **not** begin with long, meaningful sentences as the primary benchmark.
 - Graceful degradation when room conditions change
 
 **Current interpretation:** the present harness supports chirps, vowel-like sounds, and tones as viable M1A stimuli. Chirps are currently the most robust default, vowel-like sounds are especially interesting for developmental realism, and clicks are still serving mainly as a stress test for transient onset estimation rather than as a stable baseline.
+
+### Synthetic vs hardware-facing M1A
+
+At the moment, most M1A benchmark work is still **synthetic**. The current harness generates probe stimuli in code, applies simulated room effects and structured hard negatives, and scores attribution without requiring physical playback. These runs are intentionally silent from the room's perspective.
+
+The first **hardware-facing M1A** phase begins only when Corollary deliberately:
+- plays a probe stimulus through a real speaker
+- captures the result on a real microphone
+- aligns observed return with the motor command / efference timing
+- scores self-attribution on real acoustic data
+
+That bridge already has partial scaffolding in the repo, especially `scripts/m1_mic_capture.py` and `scripts/m1_loop_test.py`, but current M1A benchmark conclusions should be read as synthetic-regression results unless explicitly marked as hardware runs.
+
 ### Recommended first experiments
 
 1. **Chirp attribution test**
@@ -94,11 +107,13 @@ Do **not** begin with long, meaningful sentences as the primary benchmark.
    - Detect whether the captured event aligns with expected onset
    - Score self attribution
    - Treat this as the current strongest and most robust synthetic baseline
+   - Use as the cleanest first physical probe if the immediate goal is instrumentation rather than developmental realism
 
 2. **Vowel-like attribution test**
    - Emit a simple vowel-like primitive (for example `ah`)
    - Use as the developmental comparison stimulus closest to early vocal imitation
    - Compare robustness and onset quality against chirp
+   - Treat this as the leading candidate for the first developmentally meaningful hardware-facing M1A run
 
 3. **Tone attribution test**
    - Emit a short tone burst
