@@ -50,6 +50,34 @@ def config_hash(config: dict[str, Any]) -> str:
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
 
 
+def generate_m1a_configs() -> Iterable[dict[str, Any]]:
+    base = {
+        "stage": "M1A",
+        "scenario": "tone_attribution_baseline",
+        "iterations": 12,
+        "shift_min_frames": 0,
+        "shift_max_frames": 8,
+        "room_rt60": 0.3,
+        "stimulus_duration_ms": 300,
+    }
+    grid = product(
+        ["tone", "click", "chirp"],
+        [0.4, 0.7, 0.9],
+        [-40.0, -35.0, -30.0],
+        [0.45, 0.55, 0.65],
+        [0.05, 0.08, 0.12],
+    )
+    for stimulus, playback_amplitude, noise_db, attribution_threshold, event_threshold in grid:
+        yield {
+            **base,
+            "stimulus": stimulus,
+            "playback_amplitude": playback_amplitude,
+            "noise_db": noise_db,
+            "attribution_threshold": attribution_threshold,
+            "event_threshold": event_threshold,
+        }
+
+
 def generate_m1b_configs() -> Iterable[dict[str, Any]]:
     base = {
         "stage": "M1B",
@@ -60,10 +88,10 @@ def generate_m1b_configs() -> Iterable[dict[str, Any]]:
         "room_rt60": 0.3,
     }
     grid = product(
-        [0.05, 0.1, 0.25, 0.4],    # nlms_mu
-        [100, 200, 300, 500],      # ir_length_ms
-        [-40.0, -35.0, -30.0],     # noise_db
-        [0.4, 0.7, 0.9],           # playback_amplitude
+        [0.05, 0.1, 0.25, 0.4],
+        [100, 200, 300, 500],
+        [-40.0, -35.0, -30.0],
+        [0.4, 0.7, 0.9],
         ["tone", "click", "chirp"],
     )
     for nlms_mu, ir_length_ms, noise_db, playback_amplitude, stimulus in grid:
@@ -98,6 +126,8 @@ def run_eval(script_path: str, config: dict[str, Any], timeout_s: float = 120.0)
         "stimulus": "--stimulus",
         "stimulus_duration_ms": "--stimulus-duration-ms",
         "room_rt60": "--room-rt60",
+        "attribution_threshold": "--attribution-threshold",
+        "event_threshold": "--event-threshold",
     }
     for key, flag in cli_map.items():
         if key in config:
@@ -122,8 +152,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     stage = args.stage.upper()
-    if stage != "M1B":
-        raise SystemExit("Current search scaffold only implements M1B. Add M1A/M1C harnesses next.")
+    if stage not in {"M1A", "M1B"}:
+        raise SystemExit("Current search scaffold implements M1A and M1B. Add M1C next.")
 
     ensure_results_file(args.results)
     existing = load_results(args.results)
@@ -131,7 +161,8 @@ def main() -> None:
     current_best = best_score(existing, stage)
 
     script_path = os.path.join(os.path.dirname(__file__), "m1_eval_runner.py")
-    configs = islice(generate_m1b_configs(), args.start_at, args.start_at + args.limit)
+    config_iter = generate_m1a_configs() if stage == "M1A" else generate_m1b_configs()
+    configs = islice(config_iter, args.start_at, args.start_at + args.limit)
 
     for idx, config in enumerate(configs, start=args.start_at):
         cfg_hash = config_hash(config)

@@ -30,6 +30,7 @@ from cochlea.capture import pcm_to_mels, SR
 
 sys.path.insert(0, os.path.dirname(__file__))
 from m1_score import score_stage
+from m1_tone_attribution import M1AConfig, evaluate_m1a
 
 
 @dataclass
@@ -46,6 +47,8 @@ class EvalConfig:
     stimulus: str = "tone"
     stimulus_duration_ms: int = 300
     room_rt60: float = 0.3
+    attribution_threshold: float = 0.55
+    event_threshold: float = 0.08
 
 
 DEFAULT_GUARDRAILS: dict[str, dict[str, Any]] = {
@@ -192,7 +195,18 @@ def run_eval(config: EvalConfig) -> dict[str, Any]:
     if stage == "M1B":
         metrics = evaluate_m1b(config)
     elif stage == "M1A":
-        raise NotImplementedError("M1A harness not implemented yet. Start with M1B synthetic search scaffold.")
+        metrics = evaluate_m1a(M1AConfig(
+            stimulus=config.stimulus,
+            stimulus_duration_ms=config.stimulus_duration_ms,
+            playback_amplitude=config.playback_amplitude,
+            room_rt60=config.room_rt60,
+            noise_db=config.noise_db,
+            shift_min_frames=config.shift_min_frames,
+            shift_max_frames=config.shift_max_frames,
+            attribution_threshold=config.attribution_threshold,
+            event_threshold=config.event_threshold,
+            iterations=config.iterations,
+        ))
     elif stage == "M1C":
         raise NotImplementedError("M1C harness not implemented yet. Start with M1B synthetic search scaffold.")
     else:
@@ -222,6 +236,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stimulus", default="tone", choices=["tone", "click", "chirp"])
     parser.add_argument("--stimulus-duration-ms", type=int, default=300)
     parser.add_argument("--room-rt60", type=float, default=0.3)
+    parser.add_argument("--attribution-threshold", type=float, default=0.55)
+    parser.add_argument("--event-threshold", type=float, default=0.08)
     parser.add_argument("--output", default="-")
     return parser.parse_args()
 
@@ -241,6 +257,8 @@ def main() -> None:
         stimulus=args.stimulus,
         stimulus_duration_ms=args.stimulus_duration_ms,
         room_rt60=args.room_rt60,
+        attribution_threshold=args.attribution_threshold,
+        event_threshold=args.event_threshold,
     )
 
     started_at = time.time()
