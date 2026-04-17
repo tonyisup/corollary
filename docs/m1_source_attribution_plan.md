@@ -99,6 +99,29 @@ The first **hardware-facing M1A** phase begins only when Corollary deliberately:
 
 That bridge already has partial scaffolding in the repo, especially `scripts/m1_mic_capture.py` and `scripts/m1_loop_test.py`, but current M1A benchmark conclusions should be read as synthetic-regression results unless explicitly marked as hardware runs.
 
+### Recommended hardware-facing M1A entry sequence
+
+The cleanest path into real audible M1A should be staged, not jumped straight into full TTS-plus-ASR evaluation:
+
+1. **Input chain verification**
+   - Run `scripts/m1_mic_capture.py` to confirm the intended microphone is visible, healthy, and not clipping.
+   - This verifies the capture path only, not self-attribution.
+
+2. **Primitive audible probe playback**
+   - Play a simple chirp or vowel-like probe through the real speaker while recording from the real mic.
+   - Prefer a simple probe generator over full speech here.
+   - This is the first step where audible sounds should be expected in the room.
+
+3. **Timing-aligned self-attribution on real data**
+   - Align probe playback time with observed mic return.
+   - Score self/not-self attribution using the same metrics already used in the synthetic M1A harness.
+
+4. **Only then broaden to full TTS loop checks**
+   - Use `scripts/m1_loop_test.py` after primitive audible probes are working.
+   - Treat the TTS → speaker → mic → ASR loop as a later bridge toward speech-aware milestones, not as the first proof of M1A.
+
+In other words, `m1_mic_capture.py` is the right first hardware sanity check, but `m1_loop_test.py` is better understood as a later bridge toward M2/M3 than as the canonical first hardware-facing M1A experiment.
+
 ### Recommended first experiments
 
 1. **Chirp attribution test**
@@ -276,18 +299,21 @@ Those belong later, once attribution is stable.
 
 Use the existing codebase to make a clean primitive pipeline:
 
-1. `Broca` or signal generator emits simple sound
+1. signal generator emits a simple chirp or vowel-like sound
 2. `Cochlea` captures mic return
-3. `Cerebellum` predicts expected observation
-4. `Thalamus` produces attribution decision
-5. evaluation harness scores outcome
+3. playback/capture timestamps are aligned on the same run
+4. `Cerebellum` predicts expected observation
+5. `Thalamus` produces attribution decision
+6. evaluation harness scores outcome
+
+For the first real hardware step, prefer a primitive probe path over `Broca` speech synthesis. Full TTS playback is useful later, but it introduces lexical and ASR confounds earlier than necessary for M1A.
 
 ### Deliverables
 
-- a simple sound generator utility for tones/clicks/vowels
-- timestamped capture and alignment utilities
+- a simple sound generator utility for chirps, tones, clicks, and vowels
+- timestamped playback/capture alignment utilities
 - attribution decision object with confidence and timing
-- first reproducible local eval script
+- first reproducible local hardware M1A eval script
 
 ## Phase 2: Make babbling the default developmental protocol
 
