@@ -119,6 +119,34 @@ def generate_m1b_configs() -> Iterable[dict[str, Any]]:
         }
 
 
+def generate_m1c_configs(stimulus_filter: str | None = None) -> Iterable[dict[str, Any]]:
+    base = {
+        "stage": "M1C",
+        "scenario": "mixed_source_overlap",
+        "iterations": 12,
+        "room_rt60": 0.3,
+    }
+    stimuli = ["chirp", "tone", "vowel_ah"] if not stimulus_filter else [stimulus_filter]
+    grid = product(
+        stimuli,
+        [0.55, 0.6, 0.65],
+        [-40.0, -35.0, -30.0],
+        [0.6, 0.8, 0.9],
+        [0.7, 0.85, 0.95],
+    )
+    for stimulus, attribution_threshold, noise_db, transformed_world_gain, replay_gain in grid:
+        yield {
+            **base,
+            "stimulus": stimulus,
+            "stimulus_duration_ms": 300,
+            "playback_amplitude": 0.7,
+            "attribution_threshold": attribution_threshold,
+            "noise_db": noise_db,
+            "transformed_world_gain": transformed_world_gain,
+            "replay_gain": replay_gain,
+        }
+
+
 def best_score(rows: list[dict[str, Any]], stage: str) -> float:
     scores = [float(r.get("score", 0.0)) for r in rows if r.get("stage") == stage and r.get("decision") == "keep"]
     return max(scores) if scores else 0.0
@@ -174,8 +202,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     stage = args.stage.upper()
-    if stage not in {"M1A", "M1B"}:
-        raise SystemExit("Current search scaffold implements M1A and M1B. Add M1C next.")
+    if stage not in {"M1A", "M1B", "M1C"}:
+        raise SystemExit("Current search scaffold implements M1A, M1B, and M1C.")
 
     ensure_results_file(args.results)
     existing = load_results(args.results)
@@ -183,7 +211,12 @@ def main() -> None:
     current_best = best_score(existing, stage)
 
     script_path = os.path.join(os.path.dirname(__file__), "m1_eval_runner.py")
-    config_iter = generate_m1a_configs(args.stimulus) if stage == "M1A" else generate_m1b_configs()
+    if stage == "M1A":
+        config_iter = generate_m1a_configs(args.stimulus)
+    elif stage == "M1B":
+        config_iter = generate_m1b_configs()
+    else:
+        config_iter = generate_m1c_configs(args.stimulus)
     configs = islice(config_iter, args.start_at, args.start_at + args.limit)
 
     for idx, config in enumerate(configs, start=args.start_at):

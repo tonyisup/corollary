@@ -31,6 +31,7 @@ from cochlea.capture import pcm_to_mels, SR
 sys.path.insert(0, os.path.dirname(__file__))
 from m1_score import score_stage
 from m1_tone_attribution import M1AConfig, evaluate_m1a
+from m1_mixed_attribution import M1CConfig, evaluate_m1c
 
 
 @dataclass
@@ -227,7 +228,17 @@ def run_eval(config: EvalConfig) -> dict[str, Any]:
             similarity_weight=config.similarity_weight,
         ))
     elif stage == "M1C":
-        raise NotImplementedError("M1C harness not implemented yet. Start with M1B synthetic search scaffold.")
+        metrics = evaluate_m1c(M1CConfig(
+            stimulus=config.stimulus,
+            stimulus_duration_ms=config.stimulus_duration_ms,
+            playback_amplitude=config.playback_amplitude,
+            room_rt60=config.room_rt60,
+            noise_db=config.noise_db,
+            iterations=config.iterations,
+            attribution_threshold=config.attribution_threshold,
+            transformed_world_gain=config.transformed_world_gain,
+            replay_gain=config.replay_gain,
+        ))
     else:
         raise ValueError(f"Unsupported stage: {stage}")
 
