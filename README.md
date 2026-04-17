@@ -37,16 +37,30 @@ pip install -r requirements.txt
 
 ## Project Status Summary
 
-The initial simulated loop (M0) has been successfully validated through 108 tests. The core modules (Cochlea, STG, Broca, etc.) are largely integrated. Current focus areas are progressing towards M2/M3 milestones, particularly solidifying the Cerebellum forward model integration for robust self-voice prediction.
+The initial simulated loop (M0) has been successfully validated, and the repo now contains active M1-era experiments around babbling, adaptive room learning, and forward-model convergence. The immediate focus is no longer word-level self-suppression. Instead, the next milestone is the more fundamental developmental problem: pre-linguistic source separation and self-attribution.
+
+The core question for early hardware work is not yet "what word did I say?" but "did I just make that sound?"
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| M0 | Simulated loop (no hardware) | 🔲 Not started |
-| M1 | Half-duplex with mic+speakers | 🔲 |
-| M2 | Full-duplex AEC + efference copy | 🔲 |
-| M3 | Self-voice detector (F1 ≥ 0.95) | 🔲 |
-| M4 | Multi-speaker world model + memory | 🔲 |
-| M5 | Self-model and introspection | 🔲 |
+| M0 | Simulated loop (no hardware) | ✅ Done |
+| M1a | Pre-linguistic self-sound attribution | 🎯 Current focus |
+| M1b | Babbling-driven room model learning | 🧪 In progress |
+| M1c | Mixed-source attribution (self vs world vs overlap) | ⏳ Planned |
+| M2 | Speech-aware self-suppression under duplex audio | ⏳ Planned |
+| M3 | Self-voice detector / attribution classifier | ⏳ Planned |
+| M4 | Multi-speaker world model + memory | ⏳ Planned |
+| M5 | Self-model and introspection | ⏳ Planned |
+
+### Developmental framing
+
+Corollary now treats early M1 as a developmental stage closer to infant babbling than adult speech. The intended sequence is:
+
+1. detect that a sound occurred
+2. determine whether the sound was self-caused
+3. learn how the room transforms self-generated sound
+4. handle mixed self/world audio
+5. only then push toward lexical suppression and speech understanding under overlap
 
 See `docs/plan.md` for full details.
 

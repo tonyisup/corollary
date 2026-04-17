@@ -128,7 +128,20 @@ In M0, the "world" is simulated silence (only self-voice exists), so the cerebel
 
 ## Next Steps (M1)
 
+The next hardware stage should be treated as developmental and pre-linguistic.
+
+### M1a: Self-sound attribution
 - Real microphone input
-- Multi-speaker simulation (self + world voice recordings)
-- SAG-informed disambiguation
-- Memory persistence (JSON/disk instead of in-memory)
+- Simple emitted sounds first: tones, clicks, vowels, babble, nonsense syllables
+- Efference-copy alignment against observed acoustic events
+- Primary question: "Did I just make that sound?"
+
+### M1b: Babbling-driven room learning
+- Repeated self-generated sounds to adapt the forward model to room acoustics
+- Measure convergence and improved attribution after adaptation
+
+### M1c: Mixed-source attribution
+- Add external/world sounds
+- Distinguish self-only, world-only, and overlapping segments
+
+Only after these stages should Corollary push hard on speech-level suppression, SAG-informed lexical processing under overlap, and memory persistence tied to real duplex interaction.

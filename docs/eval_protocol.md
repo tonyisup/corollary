@@ -6,7 +6,7 @@
 
 ## Overview
 
-Each milestone (M0–M5) is evaluated independently. You do not advance to M1 until M0's evals pass. The same eval scripts should run in CI.
+Each milestone is evaluated independently. You do not advance from M0 into later hardware milestones until M0's evals pass. For M1, progression should be staged: first self-sound attribution, then babbling-based room learning, then mixed-source attribution, and only then speech-aware duplex suppression. The same eval scripts should run in CI where practical.
 
 ## Eval Structure
 
@@ -146,9 +146,53 @@ jobs:
       - run: pytest tests/unit/ -v
 ```
 
+## M1 Eval Targets (Revised)
+
+### 1. Self-Sound Attribution
+
+**What:** Can the system determine whether an acoustic event was self-caused, independent of words?
+
+**Method:**
+- Emit simple sounds: tones, clicks, vowels, babble, nonsense syllables
+- Record mic input with efference-copy timing
+- Evaluate self vs not-self attribution and onset/offset alignment
+
+**Acceptance:**
+- High self/not-self attribution accuracy
+- Stable temporal alignment between emitted and observed sound
+- Reproducible performance across sessions in the same room
+
+### 2. Babbling Convergence
+
+**What:** Does repeated babbling improve the forward model?
+
+**Method:**
+- Run repeated babbling iterations in a fixed environment
+- Measure prediction error and attribution performance over time
+
+**Acceptance:**
+- Prediction error decreases over repeated trials
+- Attribution improves after adaptation
+- Convergence is reproducible
+
+### 3. Mixed-Source Attribution
+
+**What:** Can the system distinguish self-only, world-only, and overlapping audio?
+
+**Method:**
+- Introduce external/world audio during or near self-generated sound
+- Score frame-level or chunk-level attribution labels
+
+**Acceptance:**
+- Strong self/world/overlap attribution performance
+- Low false self-attribution rate
+
 ## Metrics Dashboard (Future)
 
-| Milestone | WER | Efference | SAG Resolve | CI Status |
-|-----------|-----|-----------|-------------|-----------|
-| M0        | TBD | TBD       | TBD         | 🔴        |
-| M1        | —   | —         | —           | —         |
+| Milestone | Core Metric | Status |
+|-----------|-------------|--------|
+| M0        | WER, residual, SAG resolve | TBD |
+| M1a       | Self/not-self attribution | — |
+| M1b       | Convergence / prediction error | — |
+| M1c       | Overlap attribution F1 | — |
+| M2        | SVSR, duplex WER | — |

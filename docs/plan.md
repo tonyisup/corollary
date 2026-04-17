@@ -8,12 +8,14 @@
 
 ## Summary
 
-Build a closed-loop talking agent that hears itself, attenuates its own voice via efference copy + AEC, separates self vs world, and maintains working/episodic memory to drive dialogue.
+Build a closed-loop talking agent that hears itself, first learns to attribute raw sound to self vs world, then learns room acoustics through babbling, and only after that attempts lexical self-suppression and duplex speech understanding. The project maintains working and episodic memory to drive dialogue, but its early hardware milestones are explicitly developmental rather than language-first.
 
 ## Objectives
 
-- Achieve robust self-voice suppression while speaking (full-duplex)
-- Accurate external speech transcription and attribution (Self vs World)
+- Establish reliable pre-linguistic self-sound attribution before word-level speech tasks
+- Learn room acoustics through babbling and forward-model adaptation
+- Achieve robust self/world source separation under mixed audio
+- Later, achieve robust self-voice suppression while speaking (full-duplex)
 - Maintain working and episodic memory to inform responses
 - Provide a reproducible, modular stack with testable milestones
 - Prevent internal semantic drift via Semantic Abstraction Graph (SAG) as the PFC's native knowledge representation
@@ -104,17 +106,33 @@ corollary/
 - Add efference copy (predicted mel-spectrogram) and spectral subtraction
 - **Acceptance:** SVSR ≥ 20 dB; no self tokens; external WER unaffected
 
-### M1: Half-Duplex Hardware
-- Mic + speakers; agent alternates speak/listen
-- Basic AEC or mute ASR during TTS
-- **Acceptance:** No self-transcription during TTS; stable external WER
+### M1a: Pre-Linguistic Self-Sound Attribution
+- Mic + speakers; emit simple sounds, babble, vowels, clicks, tones, nonsense syllables
+- Align efference copy / motor command timing with observed acoustic onset
+- Detect whether an observed acoustic event is self-caused, independent of lexical content
+- Treat attribution as the primary task, not transcription
+- **Acceptance:** Reliable self/not-self attribution on simple sounds with measurable onset/offset alignment and reproducible accuracy across sessions/rooms
 
-### M2: Full-Duplex AEC + Efference Copy
-- Enable WebRTC AEC; efference masking
+### M1b: Babbling-Driven Room Model Learning
+- Use repeated self-generated sounds to learn room acoustics via adaptive forward models
+- Improve prediction error over time through babbling iterations
+- Make babbling the canonical developmental protocol for early hardware learning
+- **Acceptance:** Prediction error decreases over repeated trials; attribution performance improves after adaptation; convergence is reproducible in the same environment
+
+### M1c: Mixed-Source Attribution
+- Introduce world audio alongside self-generated sound
+- Distinguish self-only, world-only, and overlapping self+world segments
+- Evaluate attribution under partial overlap rather than requiring full lexical suppression
+- **Acceptance:** Strong frame-level or chunk-level attribution performance for self/world/overlap, with low false self-attribution rate
+
+### M2: Speech-Aware Self-Suppression Under Duplex Audio
+- Enable WebRTC AEC; efference masking; speech-aware suppression
+- Reintroduce lexical and ASR-oriented evaluation only after M1 attribution is stable
 - **Acceptance:** +15 dB suppression over AEC alone; external WER < 10% degradation
 
 ### M3: Self-Voice Detector
 - ECAPA/x-vector embeddings + mel similarity classifier
+- Integrate learned attribution priors from M1 into a more explicit self-voice detector
 - **Acceptance:** Frame-level F1 ≥ 0.95 across rooms/devices
 
 ### M4: Reasoning Layer + Episodic Memory + SAG-Grounded Learning
@@ -142,9 +160,13 @@ corollary/
 
 | Metric | Target |
 |--------|--------|
+| Self/not-self attribution accuracy | Primary early M1 metric |
+| Attribution onset/offset alignment | Minimize temporal error |
+| Overlap attribution F1 | Primary metric for M1c |
+| Babbling convergence / prediction error | Must improve over repeated trials |
 | SVSR (dB) | ≥ 20 dB (M0), ≥ 35 dB (M2) |
 | External WER under duplex | < 10% degradation |
-| Source attribution accuracy | ≥ 95% |
+| Source attribution accuracy | ≥ 95% by later attribution milestones |
 | End-to-end latency | < 200 ms |
 | Loop index (self-trigger rate) | 0 |
 
