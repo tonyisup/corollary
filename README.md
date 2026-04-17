@@ -76,6 +76,11 @@ What to look for:
 - onset error that is stable across repeated runs
 - chirp vs vowel differences on the same physical setup
 
+Current Mac mini + Fifine observation:
+- both probes produce meaningful captured audio
+- `vowel_ah` currently matches more reliably than `chirp` on the real speaker+mic path
+- `chirp` remains useful as a synthetic benchmark and physical instrumentation probe, but is not currently the strongest real-hardware default on this setup
+
 | Phase | Description | Status |
 |-------|-------------|--------|
 | M0 | Simulated loop (no hardware) | ✅ Done |

@@ -145,6 +145,7 @@ Use this order for the first real-world run:
 5. **Repeat for stability**
    - Re-run each probe a few times on the same setup.
    - Compare capture RMS, match score, and onset error stability before moving on.
+   - On the current Mac mini + Fifine setup, repeated runs show a meaningful pattern: `vowel_ah` is more reliable than `chirp` as the first real hardware-facing probe, even though chirp remains stronger in synthetic benchmarking.
 
 ### Recommended first experiments
 
@@ -161,6 +162,7 @@ Use this order for the first real-world run:
    - Use as the developmental comparison stimulus closest to early vocal imitation
    - Compare robustness and onset quality against chirp
    - Treat this as the leading candidate for the first developmentally meaningful hardware-facing M1A run
+   - On the current Mac mini + Fifine hardware path, repeated first-run probes suggest `vowel_ah` is also the stronger real-world default compared with chirp
 
 3. **Tone attribution test**
    - Emit a short tone burst
