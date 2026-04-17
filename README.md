@@ -45,7 +45,32 @@ The core question for early hardware work is not yet "what word did I say?" but 
 
 Most current M1A progress is still **synthetic** rather than audible in-room playback. In the synthetic harness, Corollary generates waveforms in code, passes them through simulated room responses and hard negatives, and scores attribution offline. That means you should **not** expect to hear chirps or vowel-like sounds during those runs.
 
-You should only expect audible sounds once Corollary enters the first **hardware-facing M1A** path, where it intentionally plays a probe signal through a real speaker and captures the result on a real microphone. The existing `scripts/m1_mic_capture.py` and `scripts/m1_loop_test.py` are part of that bridge, but they serve different roles: `m1_mic_capture.py` is the first hardware sanity check, while `m1_loop_test.py` is better treated as a later full-loop bridge after primitive self-attribution probes are working. The current M1A benchmark work is still largely silent synthetic evaluation.
+You should only expect audible sounds once Corollary enters the first **hardware-facing M1A** path, where it intentionally plays a probe signal through a real speaker and captures the result on a real microphone. The existing `scripts/m1_mic_capture.py`, `scripts/m1_probe_capture.py`, and `scripts/m1_loop_test.py` are part of that bridge, but they serve different roles: `m1_mic_capture.py` is the first hardware sanity check, `m1_probe_capture.py` is the first primitive audible self-attribution probe, and `m1_loop_test.py` is better treated as a later full-loop bridge after primitive self-attribution probes are working. The current M1A benchmark work is still largely silent synthetic evaluation.
+
+### First hardware-facing M1A run
+
+Recommended sequence:
+
+```bash
+# 1. confirm input devices and mic health
+./.venv/bin/python scripts/m1_mic_capture.py --list-only
+./.venv/bin/python scripts/m1_mic_capture.py --device <input_device>
+
+# 2. list devices for probe playback/capture
+./.venv/bin/python scripts/m1_probe_capture.py --list-devices
+
+# 3. run the first audible chirp probe
+./.venv/bin/python scripts/m1_probe_capture.py --stimulus chirp --input-device <input_device> --output-device <output_device>
+
+# 4. compare against the developmental vowel-like probe
+./.venv/bin/python scripts/m1_probe_capture.py --stimulus vowel_ah --input-device <input_device> --output-device <output_device>
+```
+
+What to look for:
+- meaningful capture RMS, not near silence
+- a visible probe-template match score
+- onset error that is stable across repeated runs
+- chirp vs vowel differences on the same physical setup
 
 | Phase | Description | Status |
 |-------|-------------|--------|

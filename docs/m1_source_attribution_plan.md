@@ -120,7 +120,31 @@ The cleanest path into real audible M1A should be staged, not jumped straight in
    - Use `scripts/m1_loop_test.py` after primitive audible probes are working.
    - Treat the TTS → speaker → mic → ASR loop as a later bridge toward speech-aware milestones, not as the first proof of M1A.
 
-In other words, `m1_mic_capture.py` is the right first hardware sanity check, but `m1_loop_test.py` is better understood as a later bridge toward M2/M3 than as the canonical first hardware-facing M1A experiment.
+In other words, `m1_mic_capture.py` is the right first hardware sanity check, `m1_probe_capture.py` is now the canonical first primitive audible probe step, and `m1_loop_test.py` is better understood as a later bridge toward M2/M3 than as the canonical first hardware-facing M1A experiment.
+
+### First-run checklist for audible M1A
+
+Use this order for the first real-world run:
+
+1. **Confirm microphone visibility and level**
+   - `./.venv/bin/python scripts/m1_mic_capture.py --list-only`
+   - `./.venv/bin/python scripts/m1_mic_capture.py --device <input_device>`
+   - Confirm the signal is not near silence and not clipping.
+
+2. **Confirm input/output device indices for the probe path**
+   - `./.venv/bin/python scripts/m1_probe_capture.py --list-devices`
+
+3. **Run the first audible chirp probe**
+   - `./.venv/bin/python scripts/m1_probe_capture.py --stimulus chirp --input-device <input_device> --output-device <output_device>`
+   - Use chirp first if the goal is clean instrumentation and easier physical debugging.
+
+4. **Run the first audible vowel-like probe**
+   - `./.venv/bin/python scripts/m1_probe_capture.py --stimulus vowel_ah --input-device <input_device> --output-device <output_device>`
+   - Use this immediately after chirp on the same setup for developmental comparison.
+
+5. **Repeat for stability**
+   - Re-run each probe a few times on the same setup.
+   - Compare capture RMS, match score, and onset error stability before moving on.
 
 ### Recommended first experiments
 
