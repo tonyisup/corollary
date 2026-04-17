@@ -78,8 +78,10 @@ What to look for:
 
 Current Mac mini + Fifine observation:
 - both probes produce meaningful captured audio
-- `vowel_ah` currently matches more reliably than `chirp` on the real speaker+mic path
-- `chirp` remains useful as a synthetic benchmark and physical instrumentation probe, but is not currently the strongest real-hardware default on this setup
+- `vowel_ah` has shown strong upside on the real speaker+mic path
+- `chirp` remains useful as a synthetic benchmark and physical instrumentation probe
+- single-shot runs are still variable enough that repeatability is the current bottleneck, not just raw probe strength
+- the immediate next hardware step is paired-probe onset stabilization rather than more single-shot comparisons
 
 | Phase | Description | Status |
 |-------|-------------|--------|

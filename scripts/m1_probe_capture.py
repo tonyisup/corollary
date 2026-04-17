@@ -20,6 +20,7 @@ import argparse
 import os
 import sys
 import time
+from statistics import mean, pstdev
 from typing import Any
 
 import numpy as np
@@ -216,6 +217,43 @@ def run_probe(
     }
 
 
+def run_paired_probe(
+    stimulus: str,
+    duration_ms: int,
+    amplitude: float,
+    input_device: int | None,
+    output_device: int | None,
+    lead_in_s: float,
+    tail_s: float,
+    gap_s: float,
+) -> dict[str, Any]:
+    first = run_probe(stimulus, duration_ms, amplitude, input_device, output_device, lead_in_s, tail_s)
+    print(f"\nPaired probe gap: sleeping {gap_s:.3f}s before second run...\n")
+    time.sleep(gap_s)
+    second = run_probe(stimulus, duration_ms, amplitude, input_device, output_device, lead_in_s, tail_s)
+
+    match_scores = [float(first["match_score"]), float(second["match_score"])]
+    onset_errors = [float(first["onset_error_ms"]), float(second["onset_error_ms"])]
+    good_runs = sum(1 for r in (first, second) if r.get("quality") == "good")
+
+    return {
+        "mode": "paired",
+        "stimulus": stimulus,
+        "input_device_name": first.get("input_device_name"),
+        "output_device_name": first.get("output_device_name"),
+        "pair_gap_s": round(gap_s, 4),
+        "runs": [first, second],
+        "mean_match_score": round(mean(match_scores), 6),
+        "match_score_std": round(pstdev(match_scores), 6) if len(match_scores) > 1 else 0.0,
+        "mean_onset_error_ms": round(mean(onset_errors), 4),
+        "onset_error_std_ms": round(pstdev(onset_errors), 4) if len(onset_errors) > 1 else 0.0,
+        "best_match_score": round(max(match_scores), 6),
+        "best_onset_error_ms": round(min(onset_errors), 4),
+        "good_runs": good_runs,
+        "paired_quality": "good" if good_runs == 2 else ("borderline" if good_runs == 1 else "bad"),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hardware-facing primitive M1A probe capture")
     parser.add_argument("--stimulus", choices=["chirp", "vowel_ah", "tone", "click"], default="chirp")
@@ -226,44 +264,75 @@ def main() -> None:
     parser.add_argument("--lead-in-s", type=float, default=0.5)
     parser.add_argument("--tail-s", type=float, default=1.0)
     parser.add_argument("--list-devices", action="store_true")
+    parser.add_argument("--paired", action="store_true", help="Run the same probe twice with a short gap")
+    parser.add_argument("--pair-gap-s", type=float, default=0.35)
     args = parser.parse_args()
 
     if args.list_devices:
         list_devices()
         return
 
-    result = run_probe(
-        stimulus=args.stimulus,
-        duration_ms=args.duration_ms,
-        amplitude=args.amplitude,
-        input_device=args.input_device,
-        output_device=args.output_device,
-        lead_in_s=args.lead_in_s,
-        tail_s=args.tail_s,
-    )
-
-    print("\nResults:\n")
-    for key, value in result.items():
-        print(f"  {key}: {value}")
-
-    print("\nInterpretation:")
-    if result["capture_rms_db"] < -50:
-        print("  ⚠️  Very quiet capture. Check speaker volume, mic gain, and placement.")
+    if args.paired:
+        result = run_paired_probe(
+            stimulus=args.stimulus,
+            duration_ms=args.duration_ms,
+            amplitude=args.amplitude,
+            input_device=args.input_device,
+            output_device=args.output_device,
+            lead_in_s=args.lead_in_s,
+            tail_s=args.tail_s,
+            gap_s=args.pair_gap_s,
+        )
+        print("\nPaired results:\n")
+        print(f"  stimulus: {result['stimulus']}")
+        print(f"  input_device_name: {result['input_device_name']}")
+        print(f"  output_device_name: {result['output_device_name']}")
+        print(f"  pair_gap_s: {result['pair_gap_s']}")
+        print(f"  mean_match_score: {result['mean_match_score']}")
+        print(f"  match_score_std: {result['match_score_std']}")
+        print(f"  mean_onset_error_ms: {result['mean_onset_error_ms']}")
+        print(f"  onset_error_std_ms: {result['onset_error_std_ms']}")
+        print(f"  best_match_score: {result['best_match_score']}")
+        print(f"  best_onset_error_ms: {result['best_onset_error_ms']}")
+        print(f"  good_runs: {result['good_runs']}")
+        print(f"  paired_quality: {result['paired_quality']}")
+        print("\nInterpretation:")
+        print("  Paired mode is a first stab at onset stabilization via repeated measurement.")
+        print("  Lower onset_error_std_ms means the same probe is landing more consistently across repeats.")
+        print("  Next step: compare paired chirp vs paired vowel_ah on the same hardware path.")
     else:
-        print("  ✅ Mic captured meaningful signal.")
+        result = run_probe(
+            stimulus=args.stimulus,
+            duration_ms=args.duration_ms,
+            amplitude=args.amplitude,
+            input_device=args.input_device,
+            output_device=args.output_device,
+            lead_in_s=args.lead_in_s,
+            tail_s=args.tail_s,
+        )
 
-    if result["match_score"] >= 0.5:
-        print("  ✅ Strong probe-template match.")
-    elif result["match_score"] >= 0.2:
-        print("  ⚠️  Weak but visible probe-template match.")
-    else:
-        print("  ❌ Probe-template match is poor. Check routing and room setup.")
+        print("\nResults:\n")
+        for key, value in result.items():
+            print(f"  {key}: {value}")
 
-    print(f"  Run quality: {result['quality']}")
-    if result["quality_flags"]:
-        print(f"  Flags: {', '.join(result['quality_flags'])}")
+        print("\nInterpretation:")
+        if result["capture_rms_db"] < -50:
+            print("  ⚠️  Very quiet capture. Check speaker volume, mic gain, and placement.")
+        else:
+            print("  ✅ Mic captured meaningful signal.")
 
-    print("  Next step: compare chirp vs vowel_ah on the same hardware path.")
+        if result["match_score"] >= 0.5:
+            print("  ✅ Strong probe-template match.")
+        elif result["match_score"] >= 0.2:
+            print("  ⚠️  Weak but visible probe-template match.")
+        else:
+            print("  ❌ Probe-template match is poor. Check routing and room setup.")
+
+        print(f"  Run quality: {result['quality']}")
+        if result["quality_flags"]:
+            print(f"  Flags: {', '.join(result['quality_flags'])}")
+
+        print("  Next step: compare chirp vs vowel_ah on the same hardware path.")
 
 
 if __name__ == "__main__":

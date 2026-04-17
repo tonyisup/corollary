@@ -145,7 +145,12 @@ Use this order for the first real-world run:
 5. **Repeat for stability**
    - Re-run each probe a few times on the same setup.
    - Compare capture RMS, match score, and onset error stability before moving on.
-   - On the current Mac mini + Fifine setup, repeated runs show a meaningful pattern: `vowel_ah` is more reliable than `chirp` as the first real hardware-facing probe, even though chirp remains stronger in synthetic benchmarking.
+   - On the current Mac mini + Fifine setup, single-probe runs are still variable enough that repeatability remains an open question rather than a settled winner.
+
+6. **Add paired-probe onset stabilization**
+   - Run the same probe twice in quick succession on the same hardware path.
+   - Use repeated-measurement agreement, especially onset consistency, to estimate the likely direct-path onset more robustly than a single wideband match.
+   - Treat this as the immediate next step suggested by both the hardware results and the external research review.
 
 ### Recommended first experiments
 
@@ -162,7 +167,7 @@ Use this order for the first real-world run:
    - Use as the developmental comparison stimulus closest to early vocal imitation
    - Compare robustness and onset quality against chirp
    - Treat this as the leading candidate for the first developmentally meaningful hardware-facing M1A run
-   - On the current Mac mini + Fifine hardware path, repeated first-run probes suggest `vowel_ah` is also the stronger real-world default compared with chirp
+   - On the current Mac mini + Fifine hardware path, `vowel_ah` still shows strong upside, but repeatability remains noisy enough that the real-hardware default is not fully settled yet
 
 3. **Tone attribution test**
    - Emit a short tone burst
@@ -425,6 +430,8 @@ That would make M1 evaluation more systematic and less anecdotal.
 ## Design Stance
 
 The thalamus should be judged first as a **source-attribution gate**, not as a word-suppression filter.
+
+A practical implication from current hardware work: single-shot wideband template matching is too fragile to be the final onset/alignment mechanism. Early hardware M1A should likely prefer repeated-probe agreement, subband-aware onset logic, and more robust delay estimation over naive one-pass matching.
 
 The STG should not dominate early M1 evaluation. At this stage, language is downstream.
 
