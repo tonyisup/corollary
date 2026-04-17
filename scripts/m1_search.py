@@ -50,7 +50,7 @@ def config_hash(config: dict[str, Any]) -> str:
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
 
 
-def generate_m1a_configs() -> Iterable[dict[str, Any]]:
+def generate_m1a_configs(stimulus_filter: str | None = None) -> Iterable[dict[str, Any]]:
     base = {
         "stage": "M1A",
         "scenario": "tone_attribution_baseline",
@@ -60,8 +60,9 @@ def generate_m1a_configs() -> Iterable[dict[str, Any]]:
         "room_rt60": 0.3,
         "stimulus_duration_ms": 300,
     }
+    stimuli = ["tone", "click", "chirp"] if not stimulus_filter else [stimulus_filter]
     grid = product(
-        ["tone", "click", "chirp"],
+        stimuli,
         [0.4, 0.7, 0.9],
         [-40.0, -35.0, -30.0],
         [0.45, 0.55, 0.65],
@@ -162,6 +163,7 @@ def run_eval(script_path: str, config: dict[str, Any], timeout_s: float = 120.0)
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Corollary M1 config search")
     parser.add_argument("--stage", default="M1B")
+    parser.add_argument("--stimulus", choices=["tone", "click", "chirp"], default=None)
     parser.add_argument("--limit", type=int, default=12)
     parser.add_argument("--start-at", type=int, default=0)
     parser.add_argument("--results", default=RESULTS_PATH)
@@ -181,7 +183,7 @@ def main() -> None:
     current_best = best_score(existing, stage)
 
     script_path = os.path.join(os.path.dirname(__file__), "m1_eval_runner.py")
-    config_iter = generate_m1a_configs() if stage == "M1A" else generate_m1b_configs()
+    config_iter = generate_m1a_configs(args.stimulus) if stage == "M1A" else generate_m1b_configs()
     configs = islice(config_iter, args.start_at, args.start_at + args.limit)
 
     for idx, config in enumerate(configs, start=args.start_at):
