@@ -35,7 +35,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Phases
+## Project Status Summary
+
+The initial simulated loop (M0) has been successfully validated through 108 tests. The core modules (Cochlea, STG, Broca, etc.) are largely integrated. Current focus areas are progressing towards M2/M3 milestones, particularly solidifying the Cerebellum forward model integration for robust self-voice prediction.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
