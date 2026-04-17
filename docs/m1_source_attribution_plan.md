@@ -67,6 +67,8 @@ Start with simple, controllable sound classes:
 - nonsense syllable strings
 - short synthetic speech fragments only after simpler sounds work
 
+**Current repo guidance:** use **chirps** as the primary M1A benchmark stimulus for now, with tones as a secondary comparison stimulus. In current synthetic M1A experiments, chirps produce much stronger onset alignment and more robust causal attribution than clicks, while tones remain workable after the causal-gating fixes.
+
 Do **not** begin with long, meaningful sentences as the primary benchmark.
 
 ### Required capabilities
@@ -83,20 +85,27 @@ Do **not** begin with long, meaningful sentences as the primary benchmark.
 - Reproducible results across repeated runs in the same environment
 - Graceful degradation when room conditions change
 
+**Current interpretation:** the present harness supports chirps and tones as viable M1A stimuli, but clicks are still serving mainly as a stress test for transient onset estimation rather than as a stable baseline.
 ### Recommended first experiments
 
-1. **Tone attribution test**
-   - Emit a short tone burst
+1. **Chirp attribution test**
+   - Emit a short chirp
    - Record mic return
    - Detect whether the captured event aligns with expected onset
    - Score self attribution
+   - Treat this as the current strongest synthetic baseline
 
-2. **Click train attribution test**
+2. **Tone attribution test**
+   - Emit a short tone burst
+   - Use as a secondary comparison stimulus
+   - Verify that attribution remains good under a less onset-rich waveform
+
+3. **Click train attribution test**
    - Emit short clicks with fixed spacing
-   - Verify that the system attributes those transient events to self
-   - Useful for onset precision and room-delay estimation
+   - Keep as an explicit transient-onset challenge case
+   - Do not treat clicks as the primary M1A benchmark until transient onset detection improves
 
-3. **Babble syllable attribution test**
+4. **Babble syllable attribution test**
    - Emit `ba`, `da`, `ma`, etc.
    - Measure whether attribution remains stable on richer spectra
 

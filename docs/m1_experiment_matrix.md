@@ -103,15 +103,15 @@ Each run should log at minimum:
 
 Answer: **Did I just make that sound?**
 
-## M1a-A: Tone burst attribution baseline
+## M1a-A: Chirp attribution baseline
 
 **Purpose**
-- Establish the simplest self-attribution baseline.
+- Establish the strongest current synthetic self-attribution baseline.
 
 **Setup**
 - quiet room
 - default devices
-- single tone burst
+- single chirp
 - no interference
 
 **Expected label**
@@ -125,8 +125,23 @@ Answer: **Did I just make that sound?**
 
 **Pass signal**
 - strong and repeatable self attribution in quiet conditions
+- currently the best-performing M1A primitive in repo experiments
 
-## M1a-B: Click attribution baseline
+## M1a-B: Tone burst attribution comparison
+
+**Purpose**
+- Compare a simpler periodic waveform against the chirp baseline.
+
+**Setup**
+- quiet room
+- default devices
+- single tone burst
+- no interference
+
+**Expected label**
+- self
+
+## M1a-C: Click attribution challenge
 
 **Purpose**
 - Test attribution on sharp transients.
@@ -141,8 +156,9 @@ Answer: **Did I just make that sound?**
 
 **Why this matters**
 - clicks are useful for precise onset timing and room-delay estimation
+- but currently act more like a detector stress test than a stable baseline
 
-## M1a-C: Sustained vowel attribution
+## M1a-D: Sustained vowel attribution
 
 **Purpose**
 - Move from simple transients to richer spectra.
@@ -160,7 +176,7 @@ Answer: **Did I just make that sound?**
 - alignment quality
 - consistency across vowel types
 
-## M1a-D: Babble syllable attribution
+## M1a-E: Babble syllable attribution
 
 **Purpose**
 - Test pre-linguistic speech-like sounds without semantic pressure.
@@ -173,7 +189,7 @@ Answer: **Did I just make that sound?**
 **Expected label**
 - self
 
-## M1a-E: Silence negative control
+## M1a-F: Silence negative control
 
 **Purpose**
 - Ensure the system does not hallucinate self-authorship.
@@ -188,7 +204,7 @@ Answer: **Did I just make that sound?**
 **Critical metric**
 - false self-attribution rate
 
-## M1a-F: Ambient-noise negative control
+## M1a-G: Ambient-noise negative control
 
 **Purpose**
 - Stress the self/not-self boundary under passive environmental noise.
@@ -347,12 +363,13 @@ This is one of the most important controls in the matrix.
 
 Run experiments in this order unless a blocker appears:
 
-1. M1a-A tone burst baseline
-2. M1a-B click baseline
-3. M1a-E silence negative control
-4. M1a-F ambient-noise negative control
-5. M1a-C sustained vowel attribution
-6. M1a-D babble syllable attribution
+1. M1a-A chirp baseline
+2. M1a-B tone comparison baseline
+3. M1a-F silence negative control
+4. M1a-G ambient-noise negative control
+5. M1a-C click challenge
+6. M1a-D sustained vowel attribution
+7. M1a-E babble syllable attribution
 7. M1b-A fixed-room convergence
 8. M1b-C volume sensitivity
 9. M1b-B alternate-room transfer
@@ -368,8 +385,8 @@ Run experiments in this order unless a blocker appears:
 
 If we want the smallest useful starting set, I’d begin with these five:
 
-1. tone burst baseline
-2. click baseline
+1. chirp baseline
+2. tone comparison baseline
 3. silence negative control
 4. fixed-room babbling convergence
 5. partial overlap attribution
