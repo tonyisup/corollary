@@ -164,8 +164,16 @@ def run_probe(
     observed_rms = float(np.sqrt(np.mean(observed ** 2))) if len(observed) else 0.0
     observed_peak = float(np.max(np.abs(observed))) if len(observed) else 0.0
 
-    expected_shift = int(lead_in_s * SR)
-    onset_error_ms = abs(shift - expected_shift) * 1000.0 / SR
+    scheduled_expected_shift = int(lead_in_s * SR)
+    actual_expected_shift = scheduled_expected_shift
+    playback_start_delay_ms = None
+    if playback_started_at is not None:
+        playback_start_delay_s = max(0.0, playback_started_at - capture_started_at)
+        playback_start_delay_ms = playback_start_delay_s * 1000.0
+        actual_expected_shift = int(playback_start_delay_s * SR)
+
+    onset_error_ms = abs(shift - actual_expected_shift) * 1000.0 / SR
+    scheduled_onset_error_ms = abs(shift - scheduled_expected_shift) * 1000.0 / SR
 
     return {
         "stimulus": stimulus,
@@ -176,9 +184,12 @@ def run_probe(
         "capture_rms_db": round(db(observed_rms), 2),
         "capture_peak_db": round(db(observed_peak), 2),
         "match_score": round(score, 6),
-        "expected_onset_samples": expected_shift,
+        "scheduled_expected_onset_samples": scheduled_expected_shift,
+        "actual_expected_onset_samples": actual_expected_shift,
         "observed_onset_samples": shift,
+        "playback_start_delay_ms": None if playback_start_delay_ms is None else round(playback_start_delay_ms, 4),
         "onset_error_ms": round(onset_error_ms, 4),
+        "scheduled_onset_error_ms": round(scheduled_onset_error_ms, 4),
         "capture_elapsed_s": round(capture_finished_at - capture_started_at, 4),
         "playback_started": playback_started_at is not None,
     }
