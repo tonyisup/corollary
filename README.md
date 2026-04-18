@@ -82,7 +82,8 @@ Current Mac mini + Fifine observation:
 - a bounded variable vowel family, `vowel_ah_var`, beat both chirp and fixed `vowel_ah` in initial paired hardware comparisons and multi-seed mild-noise checks, promoting variable vowels to first-class hardware probes
 - a further constrained subfamily, `vowel_ah_var_nearfield`, is now the strongest current M1A→M1B bridge stimulus class on this setup after dramatically improving adaptation consistency and held-out generalization over the broader family
 - cross-room testing now supports that ranking: `vowel_ah_var_nearfield` transferred to a noisier second room, survived a movie-background stress condition well enough for robustness analysis, regained a clean lead in a quieter third room where timing stability clearly separated it from the broader family, and then survived a live room move with almost no immediate held-out penalty
-- the quiet-room bridge run in `room3_close_quiet_varbridge_v1` is the current clean benchmark, with held-out SVSR `39.49 dB` and `39.98 dB` on seeds `23` and `29`
+- the quiet-room bridge run in `room3_close_quiet_varbridge_v1` is the current clean vowel-family benchmark, with held-out SVSR `39.49 dB` and `39.98 dB` on seeds `23` and `29`
+- the same room now also supports a first small syllabic babble repertoire: `babble_ba_var`, `babble_da_var`, and `babble_ma_var` all passed first gated bridge checks with strong held-out SVSR in `room3_close_quiet`, which pushes Corollary beyond a vowel-only bridge into an early babble-class bridge set
 - the explicit live transfer run (`scripts/m1_room_shift_recovery.py`) currently suggests a sharper cerebellar question than simple recovery: moving from `room3_close_quiet` to `room4_transfer_target` caused only about `0.10 dB` immediate held-out SVSR drop, while a short blind re-adaptation pass made held-out performance worse, suggesting that rebabbling after transfer should likely be trust-gated rather than automatic
 - hallway transfer strengthened that into a code-worthy rule: a larger immediate drop, about `1.89 dB`, justified re-adaptation and recovered about `0.86 dB`, so the first scripted policy is now to evaluate first and only rebabble when the measured held-out degradation crosses threshold
 - on the current close Mac mini + Fifine path, the better-performing subfamily clusters around shorter duration, slightly higher `f0`, faster attack, and shorter release, though noisy-room branch tuning did not outperform the main near-field family
@@ -91,7 +92,7 @@ Current Mac mini + Fifine observation:
 - cheap external speakers did not clearly outperform the simpler built-in Mac mini speaker path in current tests
 - repeatability and onset robustness are still important bottlenecks, but the current hardware-facing developmental default has shifted from fixed `vowel_ah` to variable-vowel probes, and the current clean adaptation-facing baseline is `vowel_ah_var_nearfield` in `room3_close_quiet`
 - noisy rooms with active media should be treated as labeled robustness benches, not the main baseline for promotion decisions
-- the immediate next hardware step is to keep the quiet-room near-field family as the baseline and move to trust-gated room-shift evaluation instead of more family branching
+- the immediate next hardware step is to keep the quiet-room near-field family as the baseline, treat the new `ba`/`da`/`ma` families as an emerging babble-class bridge set, and compare vowel-family versus babble-class behavior under the same trust-gated evaluation logic
 
 | Phase | Description | Status |
 |-------|-------------|--------|

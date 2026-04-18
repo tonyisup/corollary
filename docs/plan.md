@@ -124,6 +124,7 @@ corollary/
 - Current leading bridge family on the Mac mini + Fifine path is the constrained near-field subfamily `vowel_ah_var_nearfield`, which outperformed the broader family in held-out generalization and adaptation consistency
 - Current preferred benchmark condition is the quieter `room3_close_quiet` setup; noisier media-on rooms are useful stress benches but should not drive promotion decisions
 - Current room-shift lesson is that moderate live transfer may incur negligible immediate cost, while blind short re-adaptation can hurt held-out performance, so later M1B work should likely make rebabbling trust-gated rather than automatic
+- The bridge is now beginning to generalize beyond sustained vowels into a small variable babble repertoire (`ba`, `da`, `ma`), which is the first concrete step toward richer pre-linguistic self-generated structure in M1
 - **Acceptance:** Prediction error decreases over repeated trials; attribution performance improves after adaptation; convergence is reproducible in the same environment
 
 ### M1c: Mixed-Source Attribution

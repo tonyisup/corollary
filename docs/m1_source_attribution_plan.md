@@ -209,6 +209,7 @@ The first hardware-facing placement sweep on the Mac mini + Fifine path suggests
 - `chirp` often yields cleaner timing-style onset evidence even when its wider correlation match remains weak
 - cheap external speakers did not clearly beat the simpler built-in speaker path in the first branch tests
 - the next likely gains should come from using `vowel_ah_var_nearfield` as the default adaptation family in a quiet benchmark room, plus continued setup-aware logging, better onset logic, and stronger room-shift evaluation, not more ad hoc physical tweaking alone
+- the project now also has first evidence that the same bridge logic extends into a small early babble repertoire (`babble_ba_var`, `babble_da_var`, `babble_ma_var`), so future work should compare vowel-family versus babble-class behavior rather than treating sustained vowels as the only developmental bridge option
 
 ## M1b: Babbling-Driven Room Model Learning
 

@@ -125,6 +125,30 @@ def generate_stimulus_with_metadata(
             (float(rng.uniform(1050.0, 1280.0)), 0.4),
             (float(rng.uniform(2200.0, 2550.0)), 0.18),
         ]
+    elif kind == "babble_da_var":
+        actual_duration_ms = int(rng.integers(max(170, duration_ms - 60), duration_ms + 61))
+        actual_amplitude = float(np.clip(amplitude * rng.uniform(0.95, 1.08), 0.05, 1.0))
+        attack_ms = float(rng.uniform(5.0, 11.0))
+        release_ms = float(rng.uniform(8.0, 14.0))
+        f0_hz = float(rng.uniform(138.0, 170.0))
+        envelope_lfo_hz = float(rng.uniform(3.0, 4.8))
+        formants = [
+            (float(rng.uniform(820.0, 980.0)), 1.0),
+            (float(rng.uniform(1300.0, 1650.0)), 0.42),
+            (float(rng.uniform(2400.0, 2900.0)), 0.18),
+        ]
+    elif kind == "babble_ma_var":
+        actual_duration_ms = int(rng.integers(max(180, duration_ms - 70), duration_ms + 71))
+        actual_amplitude = float(np.clip(amplitude * rng.uniform(0.94, 1.06), 0.05, 1.0))
+        attack_ms = float(rng.uniform(7.0, 13.0))
+        release_ms = float(rng.uniform(9.0, 15.0))
+        f0_hz = float(rng.uniform(132.0, 162.0))
+        envelope_lfo_hz = float(rng.uniform(2.8, 4.4))
+        formants = [
+            (float(rng.uniform(260.0, 420.0)), 1.0),
+            (float(rng.uniform(1100.0, 1450.0)), 0.45),
+            (float(rng.uniform(2200.0, 2550.0)), 0.16),
+        ]
 
     n = max(1, int(SR * actual_duration_ms / 1000))
     t = np.arange(n, dtype=np.float32) / SR
@@ -141,7 +165,7 @@ def generate_stimulus_with_metadata(
         f0, f1 = 300.0, 1800.0
         phase = 2 * np.pi * (f0 * t + 0.5 * (f1 - f0) * t * t / max(t[-1], 1e-6))
         pcm = np.sin(phase).astype(np.float32)
-    elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var"}:
+    elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_da_var", "babble_ma_var"}:
         if f0_hz is None:
             f0_hz = 140.0
         if envelope_lfo_hz is None:
@@ -153,24 +177,48 @@ def generate_stimulus_with_metadata(
             vowel += formant_amp * np.sin(2 * np.pi * freq * t)
         vowel *= (0.6 + 0.4 * np.sin(2 * np.pi * f0_hz * t)).astype(np.float32)
         vowel *= (0.9 + 0.1 * np.sin(2 * np.pi * envelope_lfo_hz * t)).astype(np.float32)
-        if kind == "babble_ba_var":
-            burst_ms = float(rng.uniform(10.0, 22.0))
-            closure_ms = float(rng.uniform(8.0, 18.0))
+        if kind in {"babble_ba_var", "babble_da_var", "babble_ma_var"}:
+            if kind == "babble_ba_var":
+                burst_ms = float(rng.uniform(10.0, 22.0))
+                closure_ms = float(rng.uniform(8.0, 18.0))
+                burst_strength = 0.45
+                formant_blend = 1.0
+                vowel_onset_gap_samples = max(1, int(0.002 * SR))
+                excitation = rng.standard_normal(n).astype(np.float32)
+            elif kind == "babble_da_var":
+                burst_ms = float(rng.uniform(6.0, 16.0))
+                closure_ms = float(rng.uniform(4.0, 12.0))
+                burst_strength = 0.30
+                formant_blend = 1.15
+                vowel_onset_gap_samples = max(1, int(0.002 * SR))
+                excitation = rng.standard_normal(n).astype(np.float32)
+            else:
+                burst_ms = float(rng.uniform(0.0, 6.0))
+                closure_ms = float(rng.uniform(10.0, 24.0))
+                burst_strength = 0.08
+                formant_blend = 0.9
+                vowel_onset_gap_samples = 0
+                excitation = rng.standard_normal(n).astype(np.float32)
             burst_len = max(1, int(SR * burst_ms / 1000.0))
             closure_len = max(1, int(SR * closure_ms / 1000.0))
-            excitation = rng.standard_normal(n).astype(np.float32)
             burst_env = np.zeros(n, dtype=np.float32)
             start = min(closure_len, n - 1)
             end = min(start + burst_len, n)
             if end > start:
                 burst_env[start:end] = np.linspace(1.0, 0.0, end - start, dtype=np.float32)
-            burst = excitation * burst_env * 0.45
-            vowel_onset = min(end + max(1, int(0.003 * SR)), n)
+            burst = excitation * burst_env * burst_strength
+            vowel_onset = min(end + vowel_onset_gap_samples, n)
             pcm = burst.copy()
+            if kind == "babble_ma_var":
+                nasal_env = np.ones_like(vowel, dtype=np.float32)
+                nasal_env[:min(vowel_onset or 1, len(nasal_env))] *= 0.6
+                vowel_body = vowel * nasal_env * formant_blend
+            else:
+                vowel_body = vowel * formant_blend
             if vowel_onset < n:
-                vowel_tail = vowel[: n - vowel_onset]
+                vowel_tail = vowel_body[: n - vowel_onset]
                 vowel_ramp = np.linspace(0.0, 1.0, len(vowel_tail), dtype=np.float32)
-                pcm[vowel_onset:] += vowel_tail * np.minimum(vowel_ramp * 2.0, 1.0)
+                pcm[vowel_onset:] += vowel_tail * np.minimum(vowel_ramp * 2.5, 1.0)
             attack_ms = max(attack_ms, burst_ms + closure_ms)
         else:
             pcm = vowel
@@ -185,7 +233,7 @@ def generate_stimulus_with_metadata(
 
     return {
         "kind": kind,
-        "family": "babble_ba" if kind == "babble_ba_var" else ("vowel_ah" if kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"} else kind),
+        "family": "babble_ba" if kind == "babble_ba_var" else ("babble_da" if kind == "babble_da_var" else ("babble_ma" if kind == "babble_ma_var" else ("vowel_ah" if kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"} else kind))),
         "seed": resolved_seed,
         "duration_ms": actual_duration_ms,
         "amplitude": round(actual_amplitude, 6),
@@ -209,6 +257,8 @@ WORLD_VARIANTS = {
     "vowel_ah_var_nearfield": "chirp",
     "vowel_ah_var_nearfield_room2": "chirp",
     "babble_ba_var": "chirp",
+    "babble_da_var": "chirp",
+    "babble_ma_var": "chirp",
 }
 
 

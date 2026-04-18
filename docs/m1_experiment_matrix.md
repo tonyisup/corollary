@@ -324,7 +324,8 @@ Answer: **Did I just make that sound?**
 - cross-room validation now supports keeping that ranking: the family transferred across a noisier second room, survived a movie-background stress test as a robustness condition, produced the cleanest current benchmark in `room3_close_quiet_varbridge_v1` with held-out SVSR `39.49 dB` and `39.98 dB`, and then survived an explicit live room move with only about `0.10 dB` immediate held-out SVSR loss
 - an exploratory retune branch, `vowel_ah_var_nearfield_room2`, did not materially improve room-2 held-out bridge performance and should remain a non-promoted branch
 - the short post-transfer re-adaptation pass in the live move experiment made held-out performance worse rather than better, suggesting that automatic rebabbling after moderate room shift may over-specialize instead of help
-- this now makes `vowel_ah_var_nearfield` the leading adaptation-family candidate on the current setup, with `room3_close_quiet` as the preferred benchmark condition
+- the bridge is no longer vowel-only: `babble_ba_var`, `babble_da_var`, and `babble_ma_var` all produced strong first quiet-room gated bridge results, with `ba` strongest/cleanest, `da` somewhat rougher, and `ma` onset-messier but still strongly generalizing
+- this now makes `vowel_ah_var_nearfield` the leading adaptation-family candidate on the current setup, with `room3_close_quiet` as the preferred benchmark condition and a small babble-class bridge set emerging beside it
 
 ## M1b-B: Fixed-room convergence test
 
@@ -394,9 +395,14 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - calibrate on tones, test on vowels
 - calibrate on vowels, test on babble syllables
 - calibrate on babble, test on clicks
+- compare within the new early babble class, for example `ba` vs `da` vs `ma`
 
 **Metrics**
 - post-adaptation attribution by unseen stimulus type
+- whether trust-gated stopping still behaves sensibly across different syllabic babble families
+
+**Current repo lesson**
+- the same trust-gated bridge logic now survives a first small syllabic repertoire (`ba`, `da`, `ma`) in the quiet benchmark room, which is the first evidence that the M1 bridge generalizes beyond sustained vowels into a real early babble class
 
 ## Stage 3, M1c Mixed-Source Attribution
 
