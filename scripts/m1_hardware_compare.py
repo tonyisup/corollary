@@ -182,6 +182,7 @@ def main() -> None:
         ranked = sorted(
             ((stimulus, stats) for stimulus, stats in summaries.items()),
             key=lambda item: (
+                item[1].get("good_runs", 0),
                 item[1].get("visible_match_runs", 0),
                 item[1].get("stable_onset_runs", 0),
                 item[1].get("median_match_score", 0.0),
@@ -197,6 +198,19 @@ def main() -> None:
                 f"stable_onset={stats.get('stable_onset_runs', 0)}/{stats.get('runs', 0)} "
                 f"median_match={stats.get('median_match_score', 0.0):.4f} "
                 f"median_onset_error_ms={stats.get('median_onset_error_ms', 0.0):.2f}"
+            )
+
+        top_stimulus, top_stats = ranked[0]
+        print("\nRecommendation:")
+        if top_stats.get("good_runs", 0) > 0:
+            print(
+                f"  Current best hardware-facing probe on this setup: {top_stimulus} "
+                f"(good_runs={top_stats.get('good_runs', 0)}, median_match={top_stats.get('median_match_score', 0.0):.4f}, "
+                f"median_onset_error_ms={top_stats.get('median_onset_error_ms', 0.0):.2f})"
+            )
+        else:
+            print(
+                f"  No clearly good hardware-facing probe yet. Current least-bad candidate: {top_stimulus}"
             )
 
 
