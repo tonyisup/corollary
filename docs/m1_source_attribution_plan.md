@@ -157,6 +157,12 @@ Use this order for the first real-world run:
    - Do not compare one-off runs as if they were equivalent when the physical geometry changed.
    - Treat placement, orientation, and active speaker path as first-class experimental variables, not background noise.
 
+8. **Promote stress geometries, not just room names**
+   - For transfer or recovery experiments, a label like `hallway` is not enough on its own.
+   - Record the geometry that makes the condition hard: orientation, spacing, wall proximity, and whether intermittent outside speech or media is present.
+   - Only promote a setup to a named stress condition after one calibration run shows a real immediate held-out drop near or above the trust-gate threshold.
+   - After that, reuse the same geometry label for matched family comparisons so future runs test the same hard condition instead of a vaguely similar room.
+
 ### Recommended first experiments
 
 1. **Chirp attribution test**

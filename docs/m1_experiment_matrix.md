@@ -376,6 +376,20 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - first trust-gating evidence now supports a simple policy: small held-out drops should skip re-adaptation, while larger drops, like the hallway shift, justify rebabbling because short re-adaptation can recover part of the loss
 - matched `room3_close_quiet` → `room4_transfer_target` tests now add a second-axis lesson: quiet-room bridge quality and transfer robustness are not identical rankings. `vowel_ah_var_nearfield` and `babble_ba_var` transfer at parity, and both `babble_da_var` and `babble_ma_var` also transfer surprisingly well despite sitting below the co-baseline band in quiet-room held-out quality
 
+**Stress-condition protocol (new rule)**
+- Do not treat labels like `hallway`, `room4`, or `transfer_target` as sufficient descriptions of difficulty by themselves.
+- For any experiment intended as a *hard* transfer or recovery condition, record at least:
+  - room label
+  - mic placement relative to speaker
+  - mic orientation / rotation
+  - speaker orientation
+  - approximate distance to nearest reflective surface or wall
+  - whether nearby human speech, media, or other intermittent world audio was present
+- Use an explicit setup label that encodes the geometry, not just the room, for example `hallway_open_side_rotated`, `room4_wall_close`, or `hallway_far_wall_oblique`.
+- Before promoting a setup as a real stress condition, require one calibration transfer run that actually produces a meaningful immediate held-out drop, for example around or above the current `1.0 dB` trust-gate threshold.
+- If a supposed stress setup does not produce that drop, treat it as an ordinary transfer condition, not a failed hard-condition run.
+- Once a geometry does produce a real drop, reuse that exact geometry label for matched family comparisons instead of re-creating the condition loosely from memory.
+
 ## M1b-C: Volume sensitivity test
 
 **Purpose**
