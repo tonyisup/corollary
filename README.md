@@ -79,13 +79,14 @@ What to look for:
 Current Mac mini + Fifine observation:
 - both probes produce meaningful captured audio, but real-hardware results remain geometry-sensitive
 - fixed `vowel_ah` showed the strongest early hardware-facing upside on the built-in speaker path when the mic was kept close and simply oriented
-- a bounded variable vowel family, `vowel_ah_var`, is now the strongest current embodied hardware probe on this setup after beating both chirp and fixed `vowel_ah` in an initial three-way paired comparison
-- a follow-up multi-seed paired sweep (`seed=0`, `7`, `19`) also held up, with all three seeds producing `paired_quality=good` on the same close Mac mini + Fifine setup
+- a bounded variable vowel family, `vowel_ah_var`, beat both chirp and fixed `vowel_ah` in initial paired hardware comparisons and multi-seed mild-noise checks, promoting variable vowels to first-class hardware probes
+- a further constrained subfamily, `vowel_ah_var_nearfield`, is now the strongest current M1A→M1B bridge stimulus class on this setup after dramatically improving adaptation consistency and held-out generalization over the broader family
+- on the current close Mac mini + Fifine path, the better-performing subfamily clusters around shorter duration, slightly higher `f0`, faster attack, and shorter release
 - `chirp` remains useful as a synthetic benchmark and physical instrumentation probe, and often yields cleaner timing-style onset reads than vowel on fragile hardware setups
 - small physical changes, including mic distance, rotation, and external-speaker substitutions, can flip one-off rankings enough that single paired runs should not be overinterpreted
 - cheap external speakers did not clearly outperform the simpler built-in Mac mini speaker path in current tests
-- repeatability and onset robustness are still important bottlenecks, but the current hardware-facing developmental default should shift from fixed `vowel_ah` toward bounded variable-vowel probes
-- the immediate next hardware step is to persist setup labels alongside seed-aware results, then test whether the `vowel_ah_var` advantage survives mild room noise and later adaptive-learning loops
+- repeatability and onset robustness are still important bottlenecks, but the current hardware-facing developmental default has shifted from fixed `vowel_ah` to variable-vowel probes, and the current adaptation-facing default candidate is `vowel_ah_var_nearfield`
+- the immediate next hardware step is to use the constrained near-field family for further M1B adaptation work and then test whether its generalization survives broader room changes
 
 | Phase | Description | Status |
 |-------|-------------|--------|

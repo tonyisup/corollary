@@ -113,12 +113,15 @@ corollary/
 - Align efference copy / motor command timing with observed acoustic onset
 - Detect whether an observed acoustic event is self-caused, independent of lexical content
 - Treat attribution as the primary task, not transcription
+- Current hardware-facing developmental default on the Mac mini + Fifine path is no longer a rigid fixed vowel, but bounded variable-vowel probes, with `vowel_ah_var` establishing the class and `vowel_ah_var_nearfield` emerging as the better targeted subfamily on this setup
 - **Acceptance:** Reliable self/not-self attribution on simple sounds with measurable onset/offset alignment and reproducible accuracy across sessions/rooms
 
 ### M1b: Babbling-Driven Room Model Learning
 - Use repeated self-generated sounds to learn room acoustics via adaptive forward models
 - Improve prediction error over time through babbling iterations
 - Make babbling the canonical developmental protocol for early hardware learning
+- Bridge from M1a using repeated bounded self-like vowel families before broader syllabic babble, so adaptation learns over natural self-variation instead of one perfectly repeated waveform
+- Current leading bridge family on the Mac mini + Fifine path is the constrained near-field subfamily `vowel_ah_var_nearfield`, which outperformed the broader family in held-out generalization and adaptation consistency
 - **Acceptance:** Prediction error decreases over repeated trials; attribution performance improves after adaptation; convergence is reproducible in the same environment
 
 ### M1c: Mixed-Source Attribution

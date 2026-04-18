@@ -154,7 +154,7 @@ def run_probe(
     print("  COROLLARY — M1 Primitive Probe Capture")
     print("=" * 60)
     print(f"Stimulus: {stimulus}")
-    if stimulus == "vowel_ah_var":
+    if stimulus in {"vowel_ah_var", "vowel_ah_var_nearfield"}:
         print(
             f"Stimulus seed:     {stimulus_meta['seed']} | realized duration: {stimulus_meta['duration_ms']} ms | "
             f"f0: {stimulus_meta['f0_hz']} Hz"
@@ -304,7 +304,7 @@ def run_paired_probe(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hardware-facing primitive M1A probe capture")
-    parser.add_argument("--stimulus", choices=["chirp", "vowel_ah", "vowel_ah_var", "tone", "click"], default="chirp")
+    parser.add_argument("--stimulus", choices=["chirp", "vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "tone", "click"], default="chirp")
     parser.add_argument("--duration-ms", type=int, default=300)
     parser.add_argument("--amplitude", type=float, default=0.7)
     parser.add_argument("--input-device", type=int, default=None)

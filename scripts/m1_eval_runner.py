@@ -265,7 +265,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--playback-amplitude", type=float, default=0.7)
     parser.add_argument("--shift-min-frames", type=int, default=-10)
     parser.add_argument("--shift-max-frames", type=int, default=40)
-    parser.add_argument("--stimulus", default="tone", choices=["tone", "click", "chirp", "vowel_ah", "vowel_ah_var"])
+    parser.add_argument("--stimulus", default="tone", choices=["tone", "click", "chirp", "vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield"])
     parser.add_argument("--stimulus-duration-ms", type=int, default=300)
     parser.add_argument("--room-rt60", type=float, default=0.3)
     parser.add_argument("--attribution-threshold", type=float, default=0.55)

@@ -213,6 +213,7 @@ Answer: **Did I just make that sound?**
 - infant-like babbling is not waveform-identical repetition
 - success here would show robustness to self-variation rather than template memorization
 - this should come after the fixed `vowel_ah` baseline, not replace it
+- current repo evidence now promotes this family to the leading hardware-facing developmental probe on the Mac mini + Fifine path
 
 **Recommended first jitter bounds**
 - duration: roughly 220 to 420 ms
@@ -228,7 +229,30 @@ Answer: **Did I just make that sound?**
 - realized pitch / fundamental estimate
 - realized envelope parameters
 
-## M1a-G: Babble syllable attribution
+## M1a-G: Variable-vowel mild-noise validation
+
+**Purpose**
+- Test whether the variable vowel family remains the better self-attribution probe when the room is not pristinely quiet.
+
+**Setup**
+- same close hardware baseline
+- mild ambient noise / ordinary room state
+- compare fixed `vowel_ah` against seeded `vowel_ah_var`
+- log setup label explicitly
+
+**Expected label**
+- self
+
+**Pass signal**
+- `vowel_ah_var` remains at least as stable as fixed `vowel_ah`
+- variable family keeps better match quality under noise
+- seed-to-seed degradation stays bounded rather than collapsing unpredictably
+
+**Current repo observation**
+- on the current Mac mini + Fifine setup, `vowel_ah_var` remained `good` across multiple seeds under mild noise and beat fixed `vowel_ah` head-to-head, promoting it from comparison stimulus to first-class hardware probe family
+- later parameter-aware bridge analysis refined that family into `vowel_ah_var_nearfield`, which now looks like the stronger default for adaptation-oriented hardware work on this machine
+
+## M1a-H: Babble syllable attribution
 
 **Purpose**
 - Test pre-linguistic speech-like sounds without semantic pressure.
@@ -269,6 +293,37 @@ Answer: **Did I just make that sound?**
 - world or silence/background
 
 ## Stage 2, M1b Babbling-Driven Room Learning
+
+## M1b-A: Variable-vowel adaptation bridge
+
+**Purpose**
+- Bridge M1a into M1b using repeated bounded self-like vowel families before broader syllabic babble.
+
+**Setup**
+- fixed close hardware setup with explicit setup label
+- repeated variable-vowel emissions across a small seed set
+- adaptive forward model update after each capture
+
+**Metrics**
+- prediction error by iteration
+- attribution quality across seeds before vs after adaptation
+- whether adaptation on one small seed set improves neighboring seeds
+
+**Pass signal**
+- prediction error decreases across repeated variable-vowel trials
+- self-attribution remains strong while the forward model learns across natural self-variation
+- adaptation generalizes across nearby seeds better than a model trained on one rigid fixed vowel alone
+
+**Why this matters**
+- this is the cleanest developmental bridge from primitive self-attribution into room learning
+- it pressures the cerebellum to learn a class of self-generated sounds, not one exact utterance template
+
+**Current repo observation**
+- the broad family `vowel_ah_var` made the bridge viable on real hardware
+- the constrained subfamily `vowel_ah_var_nearfield` then won a direct bridge-vs-bridge comparison by making both training behavior and held-out generalization dramatically more consistent
+- this now makes `vowel_ah_var_nearfield` the leading adaptation-family candidate on the current setup
+
+## M1b-B: Fixed-room convergence test
 
 ## Goal
 

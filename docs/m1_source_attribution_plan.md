@@ -171,8 +171,8 @@ Use this order for the first real-world run:
    - Emit a simple vowel-like primitive (for example `ah`)
    - Use as the developmental comparison stimulus closest to early vocal imitation
    - Compare robustness and onset quality against chirp
-   - Treat this as the leading candidate for the first developmentally meaningful hardware-facing M1A run
-   - On the current Mac mini + Fifine hardware path, fixed `vowel_ah` showed the strongest early hardware-facing upside when the mic stayed close and the geometry was simple, but the newer bounded variable family `vowel_ah_var` may now be the stronger embodied hardware probe if the result holds across seeds
+   - Treat this as the leading candidate family for the first developmentally meaningful hardware-facing M1A run
+   - On the current Mac mini + Fifine hardware path, fixed `vowel_ah` showed the strongest early hardware-facing upside when the mic stayed close and the geometry was simple, but later evidence promoted bounded variable families, with `vowel_ah_var_nearfield` now the strongest current adaptation-facing candidate on this setup
 
 3. **Tone attribution test**
    - Emit a short tone burst
@@ -201,10 +201,12 @@ The first hardware-facing placement sweep on the Mac mini + Fifine path suggests
 - a small rotation away from the better close baseline can collapse both chirp and vowel performance at once
 - fixed `vowel_ah` appeared to have the best early embodied hardware upside when placement was favorable
 - a bounded variable family, `vowel_ah_var`, later produced the first clearly good paired hardware result and beat both chirp and fixed `vowel_ah` in an initial three-way comparison on the same close Mac mini + Fifine setup
-- a follow-up multi-seed paired sweep for `vowel_ah_var` (`seed=0`, `7`, `19`) produced `paired_quality=good` for all tested seeds, which is the strongest current evidence that bounded self-like variation is a better embodied hardware probe than one rigid canned vowel on this machine
+- a follow-up multi-seed paired sweep for `vowel_ah_var` (`seed=0`, `7`, `19`) produced `paired_quality=good` for all tested seeds, and mild-noise head-to-head comparison against fixed `vowel_ah` still favored the variable family
+- parameter-aware bridge analysis then suggested that the current room path favors shorter, slightly higher-`f0`, faster-attack, shorter-release members of the family
+- a constrained subfamily, `vowel_ah_var_nearfield`, was created from that map and clearly beat the broader family in M1A→M1B bridge-vs-bridge comparison by dramatically improving held-out generalization and collapsing the bad tail
 - `chirp` often yields cleaner timing-style onset evidence even when its wider correlation match remains weak
 - cheap external speakers did not clearly beat the simpler built-in speaker path in the first branch tests
-- the next likely gains should come from setup-aware result logging, mild-noise validation of `vowel_ah_var`, better onset logic, and delay estimation, not more ad hoc physical tweaking alone
+- the next likely gains should come from using `vowel_ah_var_nearfield` as the default adaptation family, plus continued setup-aware logging, better onset logic, and delay estimation, not more ad hoc physical tweaking alone
 
 ## M1b: Babbling-Driven Room Model Learning
 
