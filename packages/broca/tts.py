@@ -120,6 +120,18 @@ def _decode_mp3_to_pcm(mp3_bytes: bytes) -> np.ndarray:
         with open(wav_path, "rb") as f:
             raw = f.read()
         samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+
+        # Edge-TTS MP3 decode often includes a consistent leading silence pad.
+        # Trim only the front using a conservative energy threshold so soft
+        # onsets still survive.
+        if len(samples) > 0:
+            peak = float(np.max(np.abs(samples)))
+            if peak > 0.0:
+                threshold = peak * 0.01
+                onset = np.where(np.abs(samples) > threshold)[0]
+                if len(onset):
+                    samples = samples[int(onset[0]):]
+
         return samples
     finally:
         for p in [mp3_path, wav_path]:
