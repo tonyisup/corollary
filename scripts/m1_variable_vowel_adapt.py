@@ -5,6 +5,11 @@ This script uses the hardware-facing variable vowel family (`vowel_ah_var`) as a
 seed-aware babbling protocol. It repeatedly emits bounded self-like vowel probes,
 captures the room response, updates the cerebellum forward model, and can then
 score held-out variable-vowel seeds against the adapted model.
+
+It now also supports trust-gated continuation. After a configurable warmup,
+held-out evaluation can be used to decide whether additional adaptation cycles
+are justified or should be skipped because degradation is already below a chosen
+threshold.
 """
 
 from __future__ import annotations
@@ -185,6 +190,43 @@ def summarize_parameter_effects(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def evaluate_heldout(
+    cerebellum: BabblingCerebellum,
+    heldout_seeds: list[int],
+    args: argparse.Namespace,
+    phase: str,
+) -> list[dict[str, Any]]:
+    heldout_rows: list[dict[str, Any]] = []
+    for seed in heldout_seeds:
+        meta = generate_stimulus_with_metadata(args.stimulus_kind, args.duration_ms, args.amplitude, seed=seed)
+        capture = capture_probe(
+            meta["pcm"],
+            input_device=args.input_device,
+            output_device=args.output_device,
+            lead_in_s=args.lead_in_s,
+            tail_s=args.tail_s,
+        )
+        predicted_pcm = cerebellum.predict_pcm(meta["pcm"])
+        svsr = aligned_svsr(capture["captured_pcm"], predicted_pcm)
+        row = {
+            "phase": phase,
+            "seed": seed,
+            "setup_label": args.setup_label,
+            "stimulus_family": meta["family"],
+            "stimulus_amplitude_realized": meta["amplitude"],
+            "stimulus_duration_realized_ms": meta["duration_ms"],
+            "stimulus_f0_hz": meta["f0_hz"],
+            "stimulus_attack_ms": meta["attack_ms"],
+            "stimulus_release_ms": meta["release_ms"],
+            "stimulus_envelope_lfo_hz": meta["envelope_lfo_hz"],
+            "svsr_db": round(svsr, 4),
+            "logged_at": time.time(),
+        }
+        heldout_rows.append(row)
+        print(f"\n{phase} seed={seed} | svsr_db={row['svsr_db']:.2f}")
+    return heldout_rows
+
+
 def run_adaptation(args: argparse.Namespace) -> dict[str, Any]:
     train_seeds = parse_seed_list(args.train_seeds)
     heldout_seeds = parse_seed_list(args.heldout_seeds) if args.heldout_seeds else []
@@ -202,6 +244,13 @@ def run_adaptation(args: argparse.Namespace) -> dict[str, Any]:
 
     cerebellum = BabblingCerebellum(ir_length_ms=args.ir_length_ms, nlms_mu=args.nlms_mu)
     history: list[dict[str, Any]] = []
+    gating: dict[str, Any] = {
+        "enabled": bool(args.trust_gate),
+        "warmup_cycles": int(args.gate_warmup_cycles),
+        "readapt_threshold_db": round(float(args.readapt_threshold_db), 4),
+        "forced_continue": bool(args.force_continue),
+        "decision": None,
+    }
 
     print("\n" + "=" * 64)
     print("  COROLLARY — M1 Variable-Vowel Adaptation Bridge")
@@ -213,9 +262,13 @@ def run_adaptation(args: argparse.Namespace) -> dict[str, Any]:
     print(f"  cycles:        {args.cycles}")
     print(f"  ir_length_ms:  {args.ir_length_ms}")
     print(f"  nlms_mu:       {args.nlms_mu}")
+    if args.trust_gate:
+        print(f"  trust_gate:    on (warmup_cycles={args.gate_warmup_cycles}, threshold_db={args.readapt_threshold_db:.4f})")
     print("=" * 64)
 
     iteration = 0
+    stopped_early = False
+    pre_gate_heldout_rows: list[dict[str, Any]] = []
     for cycle in range(args.cycles):
         for seed in train_seeds:
             iteration += 1
@@ -261,33 +314,40 @@ def run_adaptation(args: argparse.Namespace) -> dict[str, Any]:
                 f"  error_db={row['prediction_error_db']:.2f} | svsr_db={row['svsr_db']:.2f} | trust={row['trust']:.3f}"
             )
 
-    heldout_rows: list[dict[str, Any]] = []
-    for seed in heldout_seeds:
-        meta = generate_stimulus_with_metadata(args.stimulus_kind, args.duration_ms, args.amplitude, seed=seed)
-        capture = capture_probe(
-            meta["pcm"],
-            input_device=args.input_device,
-            output_device=args.output_device,
-            lead_in_s=args.lead_in_s,
-            tail_s=args.tail_s,
-        )
-        predicted_pcm = cerebellum.predict_pcm(meta["pcm"])
-        svsr = aligned_svsr(capture["captured_pcm"], predicted_pcm)
-        row = {
-            "seed": seed,
-            "setup_label": args.setup_label,
-            "stimulus_family": meta["family"],
-            "stimulus_amplitude_realized": meta["amplitude"],
-            "stimulus_duration_realized_ms": meta["duration_ms"],
-            "stimulus_f0_hz": meta["f0_hz"],
-            "stimulus_attack_ms": meta["attack_ms"],
-            "stimulus_release_ms": meta["release_ms"],
-            "stimulus_envelope_lfo_hz": meta["envelope_lfo_hz"],
-            "svsr_db": round(svsr, 4),
-            "logged_at": time.time(),
-        }
-        heldout_rows.append(row)
-        print(f"\nheldout seed={seed} | svsr_db={row['svsr_db']:.2f}")
+        if args.trust_gate and heldout_seeds and (cycle + 1) == args.gate_warmup_cycles:
+            pre_gate_heldout_rows = evaluate_heldout(cerebellum, heldout_seeds, args, "gate_probe_heldout")
+            pre_gate_mean = round(mean(r["svsr_db"] for r in pre_gate_heldout_rows), 4)
+            latest_train_mean = round(mean(r["svsr_db"] for r in history[-len(train_seeds):]), 4) if train_seeds else None
+            degradation_db = None if latest_train_mean is None else round(latest_train_mean - pre_gate_mean, 4)
+            should_continue = bool(args.force_continue)
+            decision_reason = "force_continue" if args.force_continue else "below_threshold"
+            if not args.force_continue and degradation_db is not None and degradation_db >= args.readapt_threshold_db:
+                should_continue = True
+                decision_reason = "threshold_exceeded"
+            elif not args.force_continue:
+                should_continue = False
+                decision_reason = "below_threshold"
+
+            gating.update({
+                "decision": {
+                    "cycle": cycle + 1,
+                    "latest_train_mean_svsr_db": latest_train_mean,
+                    "probe_heldout_mean_svsr_db": pre_gate_mean,
+                    "degradation_db": degradation_db,
+                    "should_continue": should_continue,
+                    "reason": decision_reason,
+                }
+            })
+            print(
+                f"\nTrust-gated bridge decision: latest_train_mean_svsr_db={latest_train_mean} | "
+                f"probe_heldout_mean_svsr_db={pre_gate_mean} | degradation_db={degradation_db} | "
+                f"threshold_db={args.readapt_threshold_db:.4f} | should_continue={should_continue} | reason={decision_reason}"
+            )
+            if not should_continue:
+                stopped_early = True
+                break
+
+    heldout_rows = evaluate_heldout(cerebellum, heldout_seeds, args, "heldout")
 
     result = {
         "mode": "adaptation",
@@ -330,6 +390,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ir-length-ms", type=int, default=300)
     parser.add_argument("--nlms-mu", type=float, default=0.25)
     parser.add_argument("--setup-label", default="baseline_close_varbridge")
+    parser.add_argument("--trust-gate", action="store_true",
+                        help="After the warmup cycle count, probe held-out performance and stop early when degradation stays below threshold")
+    parser.add_argument("--gate-warmup-cycles", type=int, default=1,
+                        help="Number of cycles to run before the trust gate probes held-out performance")
+    parser.add_argument("--readapt-threshold-db", type=float, default=1.0,
+                        help="Continue adaptation only when measured degradation meets or exceeds this threshold in dB")
+    parser.add_argument("--force-continue", action="store_true",
+                        help="Force continuation even when the trust gate would stop early")
     parser.add_argument("--output", default="-")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
