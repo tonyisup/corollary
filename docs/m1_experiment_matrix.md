@@ -370,6 +370,7 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - ordinary room changes are informative and can preserve the near-field family ranking
 - active media in the background is a stronger confound and should be treated as a separate stress-test condition, not the main benchmark for promotion decisions
 - moderate live room moves may impose very small immediate held-out cost, so the next evaluation question should be when re-adaptation is actually justified rather than assuming rebabbling is always needed
+- first trust-gating evidence now supports a simple policy: small held-out drops should skip re-adaptation, while larger drops, like the hallway shift, justify rebabbling because short re-adaptation can recover part of the loss
 
 ## M1b-C: Volume sensitivity test
 
