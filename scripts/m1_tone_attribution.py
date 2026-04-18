@@ -90,16 +90,28 @@ def generate_stimulus_with_metadata(
             (float(rng.uniform(2300.0, 2700.0)), 0.15),
         ]
     elif kind == "vowel_ah_var_nearfield":
-        actual_duration_ms = int(rng.integers(max(160, duration_ms - 90), duration_ms + 21))
+        actual_duration_ms = int(rng.integers(max(170, duration_ms - 85), duration_ms + 21))
         actual_amplitude = float(np.clip(amplitude * rng.uniform(0.98, 1.08), 0.05, 1.0))
-        attack_ms = float(rng.uniform(6.0, 10.0))
-        release_ms = float(rng.uniform(8.0, 13.0))
-        f0_hz = float(rng.uniform(145.0, 170.0))
-        envelope_lfo_hz = float(rng.uniform(3.2, 4.6))
+        attack_ms = float(rng.uniform(6.8, 9.6))
+        release_ms = float(rng.uniform(8.0, 12.0))
+        f0_hz = float(rng.uniform(148.0, 163.0))
+        envelope_lfo_hz = float(rng.uniform(3.4, 4.5))
         formants = [
-            (float(rng.uniform(760.0, 870.0)), 1.0),
-            (float(rng.uniform(1120.0, 1280.0)), 0.35),
-            (float(rng.uniform(2350.0, 2600.0)), 0.15),
+            (float(rng.uniform(770.0, 855.0)), 1.0),
+            (float(rng.uniform(1140.0, 1265.0)), 0.35),
+            (float(rng.uniform(2380.0, 2570.0)), 0.15),
+        ]
+    elif kind == "vowel_ah_var_nearfield_room2":
+        actual_duration_ms = int(rng.integers(max(230, duration_ms - 70), duration_ms + 16))
+        actual_amplitude = float(np.clip(amplitude * rng.uniform(0.99, 1.07), 0.05, 1.0))
+        attack_ms = float(rng.uniform(8.0, 9.2))
+        release_ms = float(rng.uniform(8.0, 9.3))
+        f0_hz = float(rng.uniform(149.0, 157.0))
+        envelope_lfo_hz = float(rng.uniform(3.7, 4.45))
+        formants = [
+            (float(rng.uniform(770.0, 840.0)), 1.0),
+            (float(rng.uniform(1145.0, 1245.0)), 0.35),
+            (float(rng.uniform(2385.0, 2560.0)), 0.15),
         ]
 
     n = max(1, int(SR * actual_duration_ms / 1000))
@@ -117,7 +129,7 @@ def generate_stimulus_with_metadata(
         f0, f1 = 300.0, 1800.0
         phase = 2 * np.pi * (f0 * t + 0.5 * (f1 - f0) * t * t / max(t[-1], 1e-6))
         pcm = np.sin(phase).astype(np.float32)
-    elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield"}:
+    elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"}:
         if f0_hz is None:
             f0_hz = 140.0
         if envelope_lfo_hz is None:
@@ -140,7 +152,7 @@ def generate_stimulus_with_metadata(
 
     return {
         "kind": kind,
-        "family": "vowel_ah" if kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield"} else kind,
+        "family": "vowel_ah" if kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"} else kind,
         "seed": resolved_seed,
         "duration_ms": actual_duration_ms,
         "amplitude": round(actual_amplitude, 6),
@@ -162,6 +174,7 @@ WORLD_VARIANTS = {
     "vowel_ah": "chirp",
     "vowel_ah_var": "chirp",
     "vowel_ah_var_nearfield": "chirp",
+    "vowel_ah_var_nearfield_room2": "chirp",
 }
 
 

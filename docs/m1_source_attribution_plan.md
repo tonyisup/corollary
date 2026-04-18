@@ -204,9 +204,11 @@ The first hardware-facing placement sweep on the Mac mini + Fifine path suggests
 - a follow-up multi-seed paired sweep for `vowel_ah_var` (`seed=0`, `7`, `19`) produced `paired_quality=good` for all tested seeds, and mild-noise head-to-head comparison against fixed `vowel_ah` still favored the variable family
 - parameter-aware bridge analysis then suggested that the current room path favors shorter, slightly higher-`f0`, faster-attack, shorter-release members of the family
 - a constrained subfamily, `vowel_ah_var_nearfield`, was created from that map and clearly beat the broader family in M1A→M1B bridge-vs-bridge comparison by dramatically improving held-out generalization and collapsing the bad tail
+- later cross-room checks strengthened that result: the family transferred to a noisier second room, remained usable under movie-background stress as a robustness condition, and then regained a cleaner lead in a quieter third room where paired timing stability clearly separated it from the broader family
+- a room-2-specific retune branch (`vowel_ah_var_nearfield_room2`) was explored and rejected because it was more conservative but did not improve held-out bridge performance over the main near-field family
 - `chirp` often yields cleaner timing-style onset evidence even when its wider correlation match remains weak
 - cheap external speakers did not clearly beat the simpler built-in speaker path in the first branch tests
-- the next likely gains should come from using `vowel_ah_var_nearfield` as the default adaptation family, plus continued setup-aware logging, better onset logic, and delay estimation, not more ad hoc physical tweaking alone
+- the next likely gains should come from using `vowel_ah_var_nearfield` as the default adaptation family in a quiet benchmark room, plus continued setup-aware logging, better onset logic, and stronger room-shift evaluation, not more ad hoc physical tweaking alone
 
 ## M1b: Babbling-Driven Room Model Learning
 
