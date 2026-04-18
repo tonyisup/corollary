@@ -321,8 +321,9 @@ Answer: **Did I just make that sound?**
 **Current repo observation**
 - the broad family `vowel_ah_var` made the bridge viable on real hardware
 - the constrained subfamily `vowel_ah_var_nearfield` then won a direct bridge-vs-bridge comparison by making both training behavior and held-out generalization dramatically more consistent
-- cross-room validation now supports keeping that ranking: the family transferred across a noisier second room, survived a movie-background stress test as a robustness condition, and produced the cleanest current benchmark in `room3_close_quiet_varbridge_v1` with held-out SVSR `39.49 dB` and `39.98 dB`
+- cross-room validation now supports keeping that ranking: the family transferred across a noisier second room, survived a movie-background stress test as a robustness condition, produced the cleanest current benchmark in `room3_close_quiet_varbridge_v1` with held-out SVSR `39.49 dB` and `39.98 dB`, and then survived an explicit live room move with only about `0.10 dB` immediate held-out SVSR loss
 - an exploratory retune branch, `vowel_ah_var_nearfield_room2`, did not materially improve room-2 held-out bridge performance and should remain a non-promoted branch
+- the short post-transfer re-adaptation pass in the live move experiment made held-out performance worse rather than better, suggesting that automatic rebabbling after moderate room shift may over-specialize instead of help
 - this now makes `vowel_ah_var_nearfield` the leading adaptation-family candidate on the current setup, with `room3_close_quiet` as the preferred benchmark condition
 
 ## M1b-B: Fixed-room convergence test
@@ -368,6 +369,7 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 **Current repo lesson**
 - ordinary room changes are informative and can preserve the near-field family ranking
 - active media in the background is a stronger confound and should be treated as a separate stress-test condition, not the main benchmark for promotion decisions
+- moderate live room moves may impose very small immediate held-out cost, so the next evaluation question should be when re-adaptation is actually justified rather than assuming rebabbling is always needed
 
 ## M1b-C: Volume sensitivity test
 
