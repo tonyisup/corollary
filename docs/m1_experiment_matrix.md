@@ -324,8 +324,10 @@ Answer: **Did I just make that sound?**
 - cross-room validation now supports keeping that ranking: the family transferred across a noisier second room, survived a movie-background stress test as a robustness condition, produced the cleanest current benchmark in `room3_close_quiet_varbridge_v1` with held-out SVSR `39.49 dB` and `39.98 dB`, and then survived an explicit live room move with only about `0.10 dB` immediate held-out SVSR loss
 - an exploratory retune branch, `vowel_ah_var_nearfield_room2`, did not materially improve room-2 held-out bridge performance and should remain a non-promoted branch
 - the short post-transfer re-adaptation pass in the live move experiment made held-out performance worse rather than better, suggesting that automatic rebabbling after moderate room shift may over-specialize instead of help
-- the bridge is no longer vowel-only: `babble_ba_var`, `babble_da_var`, and `babble_ma_var` all produced strong first quiet-room gated bridge results, with `ba` strongest/cleanest, `da` somewhat rougher, and `ma` onset-messier but still strongly generalizing
-- this now makes `vowel_ah_var_nearfield` the leading adaptation-family candidate on the current setup, with `room3_close_quiet` as the preferred benchmark condition and a small babble-class bridge set emerging beside it
+- the bridge is no longer vowel-only: `babble_ba_var`, `babble_da_var`, and `babble_ma_var` all produced strong quiet-room gated bridge results, with `ba` strongest/cleanest, `da` somewhat rougher, and `ma` onset-messier but still strongly generalizing
+- a direct replicated room-3 comparison against `vowel_ah_var_nearfield` now supports a stronger but still disciplined interpretation: the near-field vowel family remains an established bridge baseline, and `babble_ba_var` now matches it closely enough to be promoted to co-baseline status
+- subsequent replication sharpens the babble picture into a tiered family structure rather than a flat class: `babble_da_var` and `babble_ma_var` remain genuinely strong peer families, but they sit below the co-baseline band and behave more like challenge families than default baselines
+- this now makes `vowel_ah_var_nearfield` and `babble_ba_var` the leading co-baseline adaptation families on the current setup, with `room3_close_quiet` as the preferred benchmark condition and `da` / `ma` serving as secondary peer families for harder follow-up transfer questions
 
 ## M1b-B: Fixed-room convergence test
 
@@ -403,6 +405,8 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 
 **Current repo lesson**
 - the same trust-gated bridge logic now survives a first small syllabic repertoire (`ba`, `da`, `ma`) in the quiet benchmark room, which is the first evidence that the M1 bridge generalizes beyond sustained vowels into a real early babble class
+- matched room-3 comparison now suggests that this babble class is not just viable but competitive with the established near-field vowel bridge; after replication, the right current claim is co-baseline status for `babble_ba_var`, not outright replacement of the vowel family
+- further replication shows the babble class is structured: `ba` forms the first babble co-baseline, while `da` and `ma` remain strong but more fragile peer families that sometimes approach the trust-gate continuation threshold more closely than vowel or `ba`
 
 ## Stage 3, M1c Mixed-Source Attribution
 

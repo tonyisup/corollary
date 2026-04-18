@@ -210,6 +210,8 @@ The first hardware-facing placement sweep on the Mac mini + Fifine path suggests
 - cheap external speakers did not clearly beat the simpler built-in speaker path in the first branch tests
 - the next likely gains should come from using `vowel_ah_var_nearfield` as the default adaptation family in a quiet benchmark room, plus continued setup-aware logging, better onset logic, and stronger room-shift evaluation, not more ad hoc physical tweaking alone
 - the project now also has first evidence that the same bridge logic extends into a small early babble repertoire (`babble_ba_var`, `babble_da_var`, `babble_ma_var`), so future work should compare vowel-family versus babble-class behavior rather than treating sustained vowels as the only developmental bridge option
+- current comparison evidence in `room3_close_quiet` now supports a concrete promotion decision: `vowel_ah_var_nearfield` remains an established baseline, and replicated matched runs show `babble_ba_var` at practical parity, so both should be treated as co-baseline bridge families
+- follow-up replication also shows the babble class is tiered rather than flat: `babble_da_var` and `babble_ma_var` remain strong and useful, but they currently behave more like secondary peer / challenge families than default baselines, especially when judged by trust-gated held-out stability
 
 ## M1b: Babbling-Driven Room Model Learning
 
