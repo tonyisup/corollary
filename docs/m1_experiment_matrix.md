@@ -374,6 +374,7 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - active media in the background is a stronger confound and should be treated as a separate stress-test condition, not the main benchmark for promotion decisions
 - moderate live room moves may impose very small immediate held-out cost, so the next evaluation question should be when re-adaptation is actually justified rather than assuming rebabbling is always needed
 - first trust-gating evidence now supports a simple policy: small held-out drops should skip re-adaptation, while larger drops, like the hallway shift, justify rebabbling because short re-adaptation can recover part of the loss
+- matched `room3_close_quiet` → `room4_transfer_target` tests now add a second-axis lesson: quiet-room bridge quality and transfer robustness are not identical rankings. `vowel_ah_var_nearfield` and `babble_ba_var` transfer at parity, and both `babble_da_var` and `babble_ma_var` also transfer surprisingly well despite sitting below the co-baseline band in quiet-room held-out quality
 
 ## M1b-C: Volume sensitivity test
 
@@ -407,6 +408,7 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - the same trust-gated bridge logic now survives a first small syllabic repertoire (`ba`, `da`, `ma`) in the quiet benchmark room, which is the first evidence that the M1 bridge generalizes beyond sustained vowels into a real early babble class
 - matched room-3 comparison now suggests that this babble class is not just viable but competitive with the established near-field vowel bridge; after replication, the right current claim is co-baseline status for `babble_ba_var`, not outright replacement of the vowel family
 - further replication shows the babble class is structured: `ba` forms the first babble co-baseline, while `da` and `ma` remain strong but more fragile peer families that sometimes approach the trust-gate continuation threshold more closely than vowel or `ba`
+- transfer replication now supports a fuller two-axis interpretation: `da` and `ma` are weaker than `ba` in quiet-room bridge ranking, but both still survive the `room3_close_quiet` → `room4_transfer_target` move without triggering re-adaptation, so transfer-friendliness appears at least partly decoupled from quiet-room held-out ranking
 
 ## Stage 3, M1c Mixed-Source Attribution
 

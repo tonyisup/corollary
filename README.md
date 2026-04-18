@@ -93,7 +93,8 @@ Current Mac mini + Fifine observation:
 - cheap external speakers did not clearly outperform the simpler built-in Mac mini speaker path in current tests
 - repeatability and onset robustness are still important bottlenecks, but the current hardware-facing developmental default has shifted from fixed `vowel_ah` to variable-vowel probes, and the current clean adaptation-facing baseline is `vowel_ah_var_nearfield` in `room3_close_quiet`
 - noisy rooms with active media should be treated as labeled robustness benches, not the main baseline for promotion decisions
-- the immediate next hardware step is to treat `vowel_ah_var_nearfield` and `babble_ba_var` as co-baseline bridge families in the quiet room, treat `babble_da_var` and `babble_ma_var` as strong but more fragile secondary peer families, and use this tiered structure to drive transfer and recovery experiments rather than assuming the whole babble class is flat
+- the immediate next hardware step is to treat `vowel_ah_var_nearfield` and `babble_ba_var` as co-baseline bridge families in the quiet room, treat `babble_da_var` and `babble_ma_var` as strong but more fragile secondary peer families, and use this tiered structure together with the new transfer-robustness axis to drive harder recovery or stress experiments rather than assuming the whole babble class is flat
+- first transfer results now suggest a second axis beyond quiet-room held-out quality: `vowel_ah_var_nearfield`, `babble_ba_var`, `babble_da_var`, and `babble_ma_var` all survived the matched `room3_close_quiet` → `room4_transfer_target` move with effectively no immediate loss large enough to trigger re-adaptation, so transfer robustness does not appear to rank the same way as quiet-room baseline quality
 
 | Phase | Description | Status |
 |-------|-------------|--------|

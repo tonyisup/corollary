@@ -212,6 +212,7 @@ The first hardware-facing placement sweep on the Mac mini + Fifine path suggests
 - the project now also has first evidence that the same bridge logic extends into a small early babble repertoire (`babble_ba_var`, `babble_da_var`, `babble_ma_var`), so future work should compare vowel-family versus babble-class behavior rather than treating sustained vowels as the only developmental bridge option
 - current comparison evidence in `room3_close_quiet` now supports a concrete promotion decision: `vowel_ah_var_nearfield` remains an established baseline, and replicated matched runs show `babble_ba_var` at practical parity, so both should be treated as co-baseline bridge families
 - follow-up replication also shows the babble class is tiered rather than flat: `babble_da_var` and `babble_ma_var` remain strong and useful, but they currently behave more like secondary peer / challenge families than default baselines, especially when judged by trust-gated held-out stability
+- matched transfer results now add a second axis to that picture: `babble_da_var` and `babble_ma_var` still rank below the co-baseline families in quiet-room held-out quality, but both survive the `room3_close_quiet` → `room4_transfer_target` move without triggering re-adaptation, suggesting that benchmark strength and transfer robustness should be tracked separately rather than collapsed into one family ranking
 
 ## M1b: Babbling-Driven Room Model Learning
 
