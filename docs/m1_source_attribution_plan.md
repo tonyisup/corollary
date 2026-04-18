@@ -152,6 +152,11 @@ Use this order for the first real-world run:
    - Use repeated-measurement agreement, especially onset consistency, to estimate the likely direct-path onset more robustly than a single wideband match.
    - Treat this as the immediate next step suggested by both the hardware results and the external research review.
 
+7. **Track placement as experimental state**
+   - Record a short setup label for each hardware run, for example `baseline_close`, `one_foot_away`, `close_rotated`, or `external_speaker_side`.
+   - Do not compare one-off runs as if they were equivalent when the physical geometry changed.
+   - Treat placement, orientation, and active speaker path as first-class experimental variables, not background noise.
+
 ### Recommended first experiments
 
 1. **Chirp attribution test**
@@ -167,7 +172,7 @@ Use this order for the first real-world run:
    - Use as the developmental comparison stimulus closest to early vocal imitation
    - Compare robustness and onset quality against chirp
    - Treat this as the leading candidate for the first developmentally meaningful hardware-facing M1A run
-   - On the current Mac mini + Fifine hardware path, `vowel_ah` still shows strong upside, but repeatability remains noisy enough that the real-hardware default is not fully settled yet
+   - On the current Mac mini + Fifine hardware path, fixed `vowel_ah` showed the strongest early hardware-facing upside when the mic stayed close and the geometry was simple, but the newer bounded variable family `vowel_ah_var` may now be the stronger embodied hardware probe if the result holds across seeds
 
 3. **Tone attribution test**
    - Emit a short tone burst
@@ -186,6 +191,20 @@ Use this order for the first real-world run:
 6. **Silence negative-control test**
    - No self emission
    - Ensure ambient events are not mislabeled as self
+
+### Current hardware lessons from first placement sweep
+
+The first hardware-facing placement sweep on the Mac mini + Fifine path suggests:
+
+- the built-in speaker path is workable, but fragile and geometry-sensitive
+- keeping the mic close to the Mac mini is generally better than moving it farther away on this setup
+- a small rotation away from the better close baseline can collapse both chirp and vowel performance at once
+- fixed `vowel_ah` appeared to have the best early embodied hardware upside when placement was favorable
+- a bounded variable family, `vowel_ah_var`, later produced the first clearly good paired hardware result and beat both chirp and fixed `vowel_ah` in an initial three-way comparison on the same close Mac mini + Fifine setup
+- a follow-up multi-seed paired sweep for `vowel_ah_var` (`seed=0`, `7`, `19`) produced `paired_quality=good` for all tested seeds, which is the strongest current evidence that bounded self-like variation is a better embodied hardware probe than one rigid canned vowel on this machine
+- `chirp` often yields cleaner timing-style onset evidence even when its wider correlation match remains weak
+- cheap external speakers did not clearly beat the simpler built-in speaker path in the first branch tests
+- the next likely gains should come from setup-aware result logging, mild-noise validation of `vowel_ah_var`, better onset logic, and delay estimation, not more ad hoc physical tweaking alone
 
 ## M1b: Babbling-Driven Room Model Learning
 

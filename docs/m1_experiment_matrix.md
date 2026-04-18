@@ -182,7 +182,7 @@ Answer: **Did I just make that sound?**
 
 **Setup**
 - quiet room
-- sustained vowel like `aa` or `oo`
+- sustained fixed vowel like `aa` or `oo`
 - no interference
 
 **Expected label**
@@ -193,7 +193,42 @@ Answer: **Did I just make that sound?**
 - alignment quality
 - consistency across vowel types
 
-## M1a-F: Babble syllable attribution
+**Note**
+- treat the fixed vowel as the calibration probe and the later variable vowel family as the developmental robustness probe
+
+## M1a-F: Variable vowel-family attribution
+
+**Purpose**
+- Test whether Corollary can recognize self-caused vocal output across small natural variation rather than one exact canned waveform.
+
+**Setup**
+- quiet room
+- seeded `vowel_ah` family with bounded jitter in duration, amplitude, pitch, and envelope
+- no interference
+
+**Expected label**
+- self
+
+**Why this matters**
+- infant-like babbling is not waveform-identical repetition
+- success here would show robustness to self-variation rather than template memorization
+- this should come after the fixed `vowel_ah` baseline, not replace it
+
+**Recommended first jitter bounds**
+- duration: roughly 220 to 420 ms
+- amplitude: small gain jitter only
+- pitch: small bounded fundamental shift
+- envelope: slight onset/decay softness variation
+
+**Logging requirements**
+- family name
+- random seed
+- realized duration
+- realized amplitude
+- realized pitch / fundamental estimate
+- realized envelope parameters
+
+## M1a-G: Babble syllable attribution
 
 **Purpose**
 - Test pre-linguistic speech-like sounds without semantic pressure.
@@ -206,7 +241,7 @@ Answer: **Did I just make that sound?**
 **Expected label**
 - self
 
-## M1a-G: Silence negative control
+## M1a-H: Silence negative control
 
 **Purpose**
 - Ensure the system does not hallucinate self-authorship.

@@ -42,16 +42,57 @@ class M1AConfig:
     causal_tolerance_ms: float = 20.0
     causal_weight: float = 0.5
     similarity_weight: float = 0.5
+    stimulus_seed: int = 0
 
 
-def generate_stimulus(kind: str, duration_ms: int, amplitude: float) -> np.ndarray:
-    n = max(1, int(SR * duration_ms / 1000))
-    t = np.arange(n, dtype=np.float32) / SR
-    ramp_len = max(1, int(0.01 * SR))
+def build_ramp(n: int, attack_ms: float = 10.0, release_ms: float | None = None) -> np.ndarray:
+    release_ms = attack_ms if release_ms is None else release_ms
+    attack_len = max(1, int((attack_ms / 1000.0) * SR))
+    release_len = max(1, int((release_ms / 1000.0) * SR))
     ramp = np.ones(n, dtype=np.float32)
-    if 2 * ramp_len < n:
-        ramp[:ramp_len] = np.linspace(0.0, 1.0, ramp_len, dtype=np.float32)
-        ramp[-ramp_len:] = np.linspace(1.0, 0.0, ramp_len, dtype=np.float32)
+    if attack_len + release_len < n:
+        ramp[:attack_len] = np.linspace(0.0, 1.0, attack_len, dtype=np.float32)
+        ramp[-release_len:] = np.linspace(1.0, 0.0, release_len, dtype=np.float32)
+    return ramp
+
+
+def generate_stimulus(kind: str, duration_ms: int, amplitude: float, seed: int | None = None) -> np.ndarray:
+    return generate_stimulus_with_metadata(kind, duration_ms, amplitude, seed=seed)["pcm"]
+
+
+def generate_stimulus_with_metadata(
+    kind: str,
+    duration_ms: int,
+    amplitude: float,
+    seed: int | None = None,
+) -> dict[str, Any]:
+    resolved_seed = 0 if seed is None else int(seed)
+    rng = np.random.default_rng(resolved_seed)
+
+    actual_duration_ms = int(duration_ms)
+    actual_amplitude = float(amplitude)
+    attack_ms = 10.0
+    release_ms = 10.0
+    f0_hz = None
+    envelope_lfo_hz = None
+    formants: list[tuple[float, float]] | None = None
+
+    if kind == "vowel_ah_var":
+        actual_duration_ms = int(rng.integers(max(80, duration_ms - 80), duration_ms + 121))
+        actual_amplitude = float(np.clip(amplitude * rng.uniform(0.9, 1.1), 0.05, 1.0))
+        attack_ms = float(rng.uniform(6.0, 18.0))
+        release_ms = float(rng.uniform(8.0, 24.0))
+        f0_hz = float(rng.uniform(120.0, 170.0))
+        envelope_lfo_hz = float(rng.uniform(2.0, 4.5))
+        formants = [
+            (float(rng.uniform(720.0, 900.0)), 1.0),
+            (float(rng.uniform(1080.0, 1320.0)), 0.35),
+            (float(rng.uniform(2300.0, 2700.0)), 0.15),
+        ]
+
+    n = max(1, int(SR * actual_duration_ms / 1000))
+    t = np.arange(n, dtype=np.float32) / SR
+    ramp = build_ramp(n, attack_ms=attack_ms, release_ms=release_ms)
 
     if kind == "tone":
         pcm = np.sin(2 * np.pi * 440.0 * t).astype(np.float32)
@@ -64,13 +105,18 @@ def generate_stimulus(kind: str, duration_ms: int, amplitude: float) -> np.ndarr
         f0, f1 = 300.0, 1800.0
         phase = 2 * np.pi * (f0 * t + 0.5 * (f1 - f0) * t * t / max(t[-1], 1e-6))
         pcm = np.sin(phase).astype(np.float32)
-    elif kind == "vowel_ah":
-        f0 = 140.0
-        formants = [(800.0, 1.0), (1200.0, 0.35), (2500.0, 0.15)]
+    elif kind in {"vowel_ah", "vowel_ah_var"}:
+        if f0_hz is None:
+            f0_hz = 140.0
+        if envelope_lfo_hz is None:
+            envelope_lfo_hz = 3.0
+        if formants is None:
+            formants = [(800.0, 1.0), (1200.0, 0.35), (2500.0, 0.15)]
         pcm = np.zeros_like(t, dtype=np.float32)
-        for freq, amp in formants:
-            pcm += amp * np.sin(2 * np.pi * freq * t)
-        pcm *= (0.6 + 0.4 * np.sin(2 * np.pi * f0 * t)).astype(np.float32)
+        for freq, formant_amp in formants:
+            pcm += formant_amp * np.sin(2 * np.pi * freq * t)
+        pcm *= (0.6 + 0.4 * np.sin(2 * np.pi * f0_hz * t)).astype(np.float32)
+        pcm *= (0.9 + 0.1 * np.sin(2 * np.pi * envelope_lfo_hz * t)).astype(np.float32)
     else:
         raise ValueError(f"Unsupported stimulus kind: {kind}")
 
@@ -78,7 +124,23 @@ def generate_stimulus(kind: str, duration_ms: int, amplitude: float) -> np.ndarr
     peak = float(np.max(np.abs(pcm)))
     if peak > 0:
         pcm = pcm / peak
-    return (pcm * amplitude).astype(np.float32)
+    pcm = (pcm * actual_amplitude).astype(np.float32)
+
+    return {
+        "kind": kind,
+        "family": "vowel_ah" if kind in {"vowel_ah", "vowel_ah_var"} else kind,
+        "seed": resolved_seed,
+        "duration_ms": actual_duration_ms,
+        "amplitude": round(actual_amplitude, 6),
+        "attack_ms": round(attack_ms, 4),
+        "release_ms": round(release_ms, 4),
+        "f0_hz": None if f0_hz is None else round(f0_hz, 4),
+        "envelope_lfo_hz": None if envelope_lfo_hz is None else round(envelope_lfo_hz, 4),
+        "formants": None if formants is None else [
+            {"hz": round(freq, 4), "amp": round(formant_amp, 4)} for freq, formant_amp in formants
+        ],
+        "pcm": pcm,
+    }
 
 
 WORLD_VARIANTS = {
@@ -86,6 +148,7 @@ WORLD_VARIANTS = {
     "chirp": "click",
     "click": "tone",
     "vowel_ah": "chirp",
+    "vowel_ah_var": "chirp",
 }
 
 
@@ -233,9 +296,21 @@ def combined_attribution_score(
 
 
 def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
-    self_stimulus = generate_stimulus(config.stimulus, config.stimulus_duration_ms, config.playback_amplitude)
+    self_meta = generate_stimulus_with_metadata(
+        config.stimulus,
+        config.stimulus_duration_ms,
+        config.playback_amplitude,
+        seed=config.stimulus_seed,
+    )
+    self_stimulus = self_meta["pcm"]
     world_kind = WORLD_VARIANTS.get(config.stimulus, "chirp")
-    world_stimulus = generate_stimulus(world_kind, config.stimulus_duration_ms, config.playback_amplitude)
+    world_meta = generate_stimulus_with_metadata(
+        world_kind,
+        config.stimulus_duration_ms,
+        config.playback_amplitude,
+        seed=config.stimulus_seed + 1,
+    )
+    world_stimulus = world_meta["pcm"]
     room_ir = generate_room_ir(config.room_rt60, seed=7)
 
     shift_min_samples = max(0, config.shift_min_frames * 160)
@@ -420,4 +495,12 @@ def evaluate_m1a(config: M1AConfig) -> dict[str, Any]:
         "combined_negative_score_mean": round(float(np.mean(combined_scores_negative)) if combined_scores_negative else 0.0, 6),
         "positive_trials": config.iterations,
         "negative_trials": config.iterations * 4,
+        "stimulus_family": self_meta["family"],
+        "stimulus_seed": self_meta["seed"],
+        "stimulus_duration_realized_ms": self_meta["duration_ms"],
+        "stimulus_amplitude_realized": self_meta["amplitude"],
+        "stimulus_attack_ms": self_meta["attack_ms"],
+        "stimulus_release_ms": self_meta["release_ms"],
+        "stimulus_f0_hz": self_meta["f0_hz"],
+        "stimulus_envelope_lfo_hz": self_meta["envelope_lfo_hz"],
     }

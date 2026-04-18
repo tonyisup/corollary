@@ -104,6 +104,8 @@ def main() -> None:
     parser.add_argument("--input-device", type=int, required=True)
     parser.add_argument("--output-device", type=int, required=True)
     parser.add_argument("--stimuli", nargs="+", default=["chirp", "vowel_ah"])
+    parser.add_argument("--stimulus-seed", type=int, default=0)
+    parser.add_argument("--setup-label", default=None)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--duration-ms", type=int, default=300)
     parser.add_argument("--amplitude", type=float, default=0.7)
@@ -138,6 +140,8 @@ def main() -> None:
                 lead_in_s=args.lead_in_s,
                 tail_s=args.tail_s,
                 gap_s=args.pair_gap_s,
+                stimulus_seed=args.stimulus_seed,
+                setup_label=args.setup_label,
             )
             if args.paired
             else run_probe(
@@ -148,6 +152,8 @@ def main() -> None:
                 output_device=args.output_device,
                 lead_in_s=args.lead_in_s,
                 tail_s=args.tail_s,
+                stimulus_seed=args.stimulus_seed,
+                setup_label=args.setup_label,
             )
         )
         row.update({
@@ -158,6 +164,8 @@ def main() -> None:
             "amplitude": args.amplitude,
             "lead_in_s": args.lead_in_s,
             "tail_s": args.tail_s,
+            "stimulus_seed": args.stimulus_seed,
+            "setup_label": args.setup_label,
         })
         rows_by_stimulus[stimulus].append(row)
         append_jsonl(args.results, row)

@@ -58,6 +58,7 @@ class EvalConfig:
     causal_tolerance_ms: float = 20.0
     causal_weight: float = 0.5
     similarity_weight: float = 0.5
+    stimulus_seed: int = 0
 
 
 DEFAULT_GUARDRAILS: dict[str, dict[str, Any]] = {
@@ -226,6 +227,7 @@ def run_eval(config: EvalConfig) -> dict[str, Any]:
             causal_tolerance_ms=config.causal_tolerance_ms,
             causal_weight=config.causal_weight,
             similarity_weight=config.similarity_weight,
+            stimulus_seed=config.stimulus_seed,
         ))
     elif stage == "M1C":
         metrics = evaluate_m1c(M1CConfig(
@@ -263,7 +265,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--playback-amplitude", type=float, default=0.7)
     parser.add_argument("--shift-min-frames", type=int, default=-10)
     parser.add_argument("--shift-max-frames", type=int, default=40)
-    parser.add_argument("--stimulus", default="tone", choices=["tone", "click", "chirp", "vowel_ah"])
+    parser.add_argument("--stimulus", default="tone", choices=["tone", "click", "chirp", "vowel_ah", "vowel_ah_var"])
     parser.add_argument("--stimulus-duration-ms", type=int, default=300)
     parser.add_argument("--room-rt60", type=float, default=0.3)
     parser.add_argument("--attribution-threshold", type=float, default=0.55)
@@ -276,6 +278,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--causal-tolerance-ms", type=float, default=20.0)
     parser.add_argument("--causal-weight", type=float, default=0.5)
     parser.add_argument("--similarity-weight", type=float, default=0.5)
+    parser.add_argument("--stimulus-seed", type=int, default=0)
     parser.add_argument("--output", default="-")
     return parser.parse_args()
 
@@ -305,6 +308,7 @@ def main() -> None:
         causal_tolerance_ms=args.causal_tolerance_ms,
         causal_weight=args.causal_weight,
         similarity_weight=args.similarity_weight,
+        stimulus_seed=args.stimulus_seed,
     )
 
     started_at = time.time()

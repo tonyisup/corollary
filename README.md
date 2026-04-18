@@ -77,11 +77,15 @@ What to look for:
 - chirp vs vowel differences on the same physical setup
 
 Current Mac mini + Fifine observation:
-- both probes produce meaningful captured audio
-- `vowel_ah` has shown strong upside on the real speaker+mic path
-- `chirp` remains useful as a synthetic benchmark and physical instrumentation probe
-- single-shot runs are still variable enough that repeatability is the current bottleneck, not just raw probe strength
-- the immediate next hardware step is paired-probe onset stabilization rather than more single-shot comparisons
+- both probes produce meaningful captured audio, but real-hardware results remain geometry-sensitive
+- fixed `vowel_ah` showed the strongest early hardware-facing upside on the built-in speaker path when the mic was kept close and simply oriented
+- a bounded variable vowel family, `vowel_ah_var`, is now the strongest current embodied hardware probe on this setup after beating both chirp and fixed `vowel_ah` in an initial three-way paired comparison
+- a follow-up multi-seed paired sweep (`seed=0`, `7`, `19`) also held up, with all three seeds producing `paired_quality=good` on the same close Mac mini + Fifine setup
+- `chirp` remains useful as a synthetic benchmark and physical instrumentation probe, and often yields cleaner timing-style onset reads than vowel on fragile hardware setups
+- small physical changes, including mic distance, rotation, and external-speaker substitutions, can flip one-off rankings enough that single paired runs should not be overinterpreted
+- cheap external speakers did not clearly outperform the simpler built-in Mac mini speaker path in current tests
+- repeatability and onset robustness are still important bottlenecks, but the current hardware-facing developmental default should shift from fixed `vowel_ah` toward bounded variable-vowel probes
+- the immediate next hardware step is to persist setup labels alongside seed-aware results, then test whether the `vowel_ah_var` advantage survives mild room noise and later adaptive-learning loops
 
 | Phase | Description | Status |
 |-------|-------------|--------|

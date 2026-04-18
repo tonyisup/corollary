@@ -60,9 +60,10 @@ def generate_m1a_configs(stimulus_filter: str | None = None) -> Iterable[dict[st
         "room_rt60": 0.3,
         "stimulus_duration_ms": 300,
     }
-    stimuli = ["tone", "click", "chirp", "vowel_ah"] if not stimulus_filter else [stimulus_filter]
+    stimuli = ["tone", "click", "chirp", "vowel_ah", "vowel_ah_var"] if not stimulus_filter else [stimulus_filter]
     grid = product(
         stimuli,
+        [0, 7, 19],
         [0.4, 0.7, 0.9],
         [-40.0, -35.0, -30.0],
         [0.45, 0.55, 0.65],
@@ -72,10 +73,11 @@ def generate_m1a_configs(stimulus_filter: str | None = None) -> Iterable[dict[st
         [20.0, 40.0, 60.0, 80.0],
         [0.4, 0.6, 0.8],
     )
-    for stimulus, playback_amplitude, noise_db, attribution_threshold, event_threshold, onset_jitter_ms, replay_gain, causal_tolerance_ms, causal_weight in grid:
+    for stimulus, stimulus_seed, playback_amplitude, noise_db, attribution_threshold, event_threshold, onset_jitter_ms, replay_gain, causal_tolerance_ms, causal_weight in grid:
         yield {
             **base,
             "stimulus": stimulus,
+            "stimulus_seed": stimulus_seed,
             "playback_amplitude": playback_amplitude,
             "noise_db": noise_db,
             "attribution_threshold": attribution_threshold,
@@ -177,6 +179,7 @@ def run_eval(script_path: str, config: dict[str, Any], timeout_s: float = 120.0)
         "causal_tolerance_ms": "--causal-tolerance-ms",
         "causal_weight": "--causal-weight",
         "similarity_weight": "--similarity-weight",
+        "stimulus_seed": "--stimulus-seed",
     }
     for key, flag in cli_map.items():
         if key in config:
@@ -191,7 +194,7 @@ def run_eval(script_path: str, config: dict[str, Any], timeout_s: float = 120.0)
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Corollary M1 config search")
     parser.add_argument("--stage", default="M1B")
-    parser.add_argument("--stimulus", choices=["tone", "click", "chirp", "vowel_ah"], default=None)
+    parser.add_argument("--stimulus", choices=["tone", "click", "chirp", "vowel_ah", "vowel_ah_var"], default=None)
     parser.add_argument("--limit", type=int, default=12)
     parser.add_argument("--start-at", type=int, default=0)
     parser.add_argument("--results", default=RESULTS_PATH)

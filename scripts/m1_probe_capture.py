@@ -36,7 +36,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 from cochlea.capture import SR
 
 sys.path.insert(0, os.path.dirname(__file__))
-from m1_tone_attribution import generate_stimulus
+from m1_tone_attribution import generate_stimulus_with_metadata
 
 
 def resample_audio(audio: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
@@ -127,8 +127,11 @@ def run_probe(
     output_device: int | None,
     lead_in_s: float,
     tail_s: float,
+    stimulus_seed: int = 0,
+    setup_label: str | None = None,
 ) -> dict[str, Any]:
-    pcm = generate_stimulus(stimulus, duration_ms, amplitude)
+    stimulus_meta = generate_stimulus_with_metadata(stimulus, duration_ms, amplitude, seed=stimulus_seed)
+    pcm = stimulus_meta["pcm"]
     playback_duration = len(pcm) / SR
 
     input_name = "default"
@@ -151,10 +154,17 @@ def run_probe(
     print("  COROLLARY — M1 Primitive Probe Capture")
     print("=" * 60)
     print(f"Stimulus: {stimulus}")
+    if stimulus == "vowel_ah_var":
+        print(
+            f"Stimulus seed:     {stimulus_meta['seed']} | realized duration: {stimulus_meta['duration_ms']} ms | "
+            f"f0: {stimulus_meta['f0_hz']} Hz"
+        )
     print(f"Playback duration: {playback_duration:.3f}s")
     print(f"Capture duration:  {capture_duration:.3f}s")
     print(f"Input device:      {input_device if input_device is not None else 'default'} ({input_name})")
     print(f"Output device:     {output_device if output_device is not None else 'default'} ({output_name})")
+    if setup_label:
+        print(f"Setup label:       {setup_label}")
     if native_sr != SR:
         print(f"Mic native SR:     {native_sr} Hz (will resample to {SR} Hz)")
 
@@ -214,6 +224,15 @@ def run_probe(
 
     return {
         "stimulus": stimulus,
+        "stimulus_family": stimulus_meta["family"],
+        "stimulus_seed": stimulus_meta["seed"],
+        "stimulus_duration_realized_ms": stimulus_meta["duration_ms"],
+        "stimulus_amplitude_realized": stimulus_meta["amplitude"],
+        "stimulus_attack_ms": stimulus_meta["attack_ms"],
+        "stimulus_release_ms": stimulus_meta["release_ms"],
+        "stimulus_f0_hz": stimulus_meta["f0_hz"],
+        "stimulus_envelope_lfo_hz": stimulus_meta["envelope_lfo_hz"],
+        "setup_label": setup_label,
         "playback_duration_s": round(playback_duration, 4),
         "input_device_name": input_name,
         "output_device_name": output_name,
@@ -245,11 +264,13 @@ def run_paired_probe(
     lead_in_s: float,
     tail_s: float,
     gap_s: float,
+    stimulus_seed: int = 0,
+    setup_label: str | None = None,
 ) -> dict[str, Any]:
-    first = run_probe(stimulus, duration_ms, amplitude, input_device, output_device, lead_in_s, tail_s)
+    first = run_probe(stimulus, duration_ms, amplitude, input_device, output_device, lead_in_s, tail_s, stimulus_seed=stimulus_seed, setup_label=setup_label)
     print(f"\nPaired probe gap: sleeping {gap_s:.3f}s before second run...\n")
     time.sleep(gap_s)
-    second = run_probe(stimulus, duration_ms, amplitude, input_device, output_device, lead_in_s, tail_s)
+    second = run_probe(stimulus, duration_ms, amplitude, input_device, output_device, lead_in_s, tail_s, stimulus_seed=stimulus_seed + 1, setup_label=setup_label)
 
     match_scores = [float(first["match_score"]), float(second["match_score"])]
     onset_errors = [float(first["onset_error_ms"]), float(second["onset_error_ms"])]
@@ -260,6 +281,9 @@ def run_paired_probe(
     return {
         "mode": "paired",
         "stimulus": stimulus,
+        "stimulus_family": first.get("stimulus_family"),
+        "stimulus_seed_start": stimulus_seed,
+        "setup_label": setup_label,
         "input_device_name": first.get("input_device_name"),
         "output_device_name": first.get("output_device_name"),
         "pair_gap_s": round(gap_s, 4),
@@ -280,7 +304,7 @@ def run_paired_probe(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hardware-facing primitive M1A probe capture")
-    parser.add_argument("--stimulus", choices=["chirp", "vowel_ah", "tone", "click"], default="chirp")
+    parser.add_argument("--stimulus", choices=["chirp", "vowel_ah", "vowel_ah_var", "tone", "click"], default="chirp")
     parser.add_argument("--duration-ms", type=int, default=300)
     parser.add_argument("--amplitude", type=float, default=0.7)
     parser.add_argument("--input-device", type=int, default=None)
@@ -290,6 +314,8 @@ def main() -> None:
     parser.add_argument("--list-devices", action="store_true")
     parser.add_argument("--paired", action="store_true", help="Run the same probe twice with a short gap")
     parser.add_argument("--pair-gap-s", type=float, default=0.35)
+    parser.add_argument("--stimulus-seed", type=int, default=0, help="Seed for variable stimulus generation")
+    parser.add_argument("--setup-label", default=None, help="Short label for the physical setup / geometry")
     args = parser.parse_args()
 
     if args.list_devices:
@@ -306,12 +332,18 @@ def main() -> None:
             lead_in_s=args.lead_in_s,
             tail_s=args.tail_s,
             gap_s=args.pair_gap_s,
+            stimulus_seed=args.stimulus_seed,
+            setup_label=args.setup_label,
         )
         print("\nPaired results:\n")
         print(f"  stimulus: {result['stimulus']}")
+        if 'stimulus_seed_start' in result:
+            print(f"  stimulus_seed_start: {result['stimulus_seed_start']}")
         print(f"  input_device_name: {result['input_device_name']}")
         print(f"  output_device_name: {result['output_device_name']}")
         print(f"  pair_gap_s: {result['pair_gap_s']}")
+        if result.get('setup_label'):
+            print(f"  setup_label: {result['setup_label']}")
         print(f"  mean_match_score: {result['mean_match_score']}")
         print(f"  match_score_std: {result['match_score_std']}")
         print(f"  mean_onset_error_ms: {result['mean_onset_error_ms']}")
@@ -326,7 +358,7 @@ def main() -> None:
         print("\nInterpretation:")
         print("  Paired mode is a first stab at onset stabilization via repeated measurement.")
         print("  Lower onset_error_std_ms means the same probe is landing more consistently across repeats.")
-        print("  Next step: compare paired chirp vs paired vowel_ah on the same hardware path.")
+        print("  Next step: compare paired chirp vs paired vowel probes on the same hardware path.")
     else:
         result = run_probe(
             stimulus=args.stimulus,
@@ -336,6 +368,8 @@ def main() -> None:
             output_device=args.output_device,
             lead_in_s=args.lead_in_s,
             tail_s=args.tail_s,
+            stimulus_seed=args.stimulus_seed,
+            setup_label=args.setup_label,
         )
 
         print("\nResults:\n")
@@ -359,7 +393,7 @@ def main() -> None:
         if result["quality_flags"]:
             print(f"  Flags: {', '.join(result['quality_flags'])}")
 
-        print("  Next step: compare chirp vs vowel_ah on the same hardware path.")
+        print("  Next step: compare chirp vs vowel probes on the same hardware path.")
 
 
 if __name__ == "__main__":
