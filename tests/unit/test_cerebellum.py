@@ -42,6 +42,13 @@ def known_signal():
     return sig / (np.max(np.abs(sig)) * 1.1)
 
 
+def make_interfered_capture(known_signal: np.ndarray, room_ir: np.ndarray, noise_scale: float = 2.0) -> np.ndarray:
+    """Return a room-colored capture with strong added interference."""
+    captured = fftconvolve(known_signal, room_ir, mode="full").astype(np.float32)
+    noise = np.random.randn(*captured.shape).astype(np.float32) * noise_scale
+    return captured + noise
+
+
 # ── BabblingCerebellum Tests ─────────────────────────────────────────────
 
 
@@ -86,6 +93,31 @@ class TestBabblingCerebellumUpdate:
             cerebellum.update(known_signal, captured)
         final = cerebellum.trust_status()
         assert final["trust"] > initial["trust"]
+
+    def test_update_learns_under_interference_when_not_yet_trusted(self, known_signal, short_room_ir):
+        """Low-trust models should still keep learning, even from rough captures."""
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        captured = make_interfered_capture(known_signal, short_room_ir)
+
+        initial_updates = cerebellum.total_updates
+        cerebellum.update(known_signal, captured)
+
+        assert cerebellum.total_updates == initial_updates + 1
+
+    def test_update_skips_learning_under_high_trust_interference(self, known_signal, short_room_ir):
+        """High-trust models should freeze updates on likely interference blocks."""
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        cerebellum.trust.state.trust = 0.9
+        cerebellum.trust.state.avg_error_db = -30.0
+
+        captured = make_interfered_capture(known_signal, short_room_ir)
+        initial_updates = cerebellum.total_updates
+        initial_ir = cerebellum.room_ir.copy()
+
+        cerebellum.update(known_signal, captured)
+
+        assert cerebellum.total_updates == initial_updates
+        np.testing.assert_array_equal(cerebellum.room_ir, initial_ir)
 
 
 class TestBabblingCerebellumPredict:

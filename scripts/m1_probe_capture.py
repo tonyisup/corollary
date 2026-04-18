@@ -129,6 +129,7 @@ def run_probe(
     tail_s: float,
     stimulus_seed: int = 0,
     setup_label: str | None = None,
+    save_path: str | None = None,
 ) -> dict[str, Any]:
     stimulus_meta = generate_stimulus_with_metadata(stimulus, duration_ms, amplitude, seed=stimulus_seed)
     pcm = stimulus_meta["pcm"]
@@ -204,6 +205,13 @@ def run_probe(
         audio = resample_audio(audio, native_sr, SR)
 
     observed = audio.astype(np.float32)
+
+    if save_path:
+        save_dir = os.path.dirname(save_path)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+        np.savez(save_path, known_pcm=pcm, captured_pcm=observed, sr=SR, metadata=stimulus_meta)
+
     score, shift = normalized_xcorr(observed, pcm)
     envelope_shift = estimate_envelope_onset(observed)
     observed_rms = float(np.sqrt(np.mean(observed ** 2))) if len(observed) else 0.0
@@ -266,11 +274,42 @@ def run_paired_probe(
     gap_s: float,
     stimulus_seed: int = 0,
     setup_label: str | None = None,
+    save_capture: bool = False,
+    output_dir: str = "data/benchmark_samples",
 ) -> dict[str, Any]:
-    first = run_probe(stimulus, duration_ms, amplitude, input_device, output_device, lead_in_s, tail_s, stimulus_seed=stimulus_seed, setup_label=setup_label)
+    save_path_1 = None
+    save_path_2 = None
+    if save_capture:
+        ts = int(time.time())
+        save_path_1 = os.path.join(output_dir, f"{stimulus}_seed{stimulus_seed}_{ts}_1.npz")
+        save_path_2 = os.path.join(output_dir, f"{stimulus}_seed{stimulus_seed + 1}_{ts}_2.npz")
+
+    first = run_probe(
+        stimulus,
+        duration_ms,
+        amplitude,
+        input_device,
+        output_device,
+        lead_in_s,
+        tail_s,
+        stimulus_seed=stimulus_seed,
+        setup_label=setup_label,
+        save_path=save_path_1,
+    )
     print(f"\nPaired probe gap: sleeping {gap_s:.3f}s before second run...\n")
     time.sleep(gap_s)
-    second = run_probe(stimulus, duration_ms, amplitude, input_device, output_device, lead_in_s, tail_s, stimulus_seed=stimulus_seed + 1, setup_label=setup_label)
+    second = run_probe(
+        stimulus,
+        duration_ms,
+        amplitude,
+        input_device,
+        output_device,
+        lead_in_s,
+        tail_s,
+        stimulus_seed=stimulus_seed + 1,
+        setup_label=setup_label,
+        save_path=save_path_2,
+    )
 
     match_scores = [float(first["match_score"]), float(second["match_score"])]
     onset_errors = [float(first["onset_error_ms"]), float(second["onset_error_ms"])]
@@ -316,6 +355,8 @@ def main() -> None:
     parser.add_argument("--pair-gap-s", type=float, default=0.35)
     parser.add_argument("--stimulus-seed", type=int, default=0, help="Seed for variable stimulus generation")
     parser.add_argument("--setup-label", default=None, help="Short label for the physical setup / geometry")
+    parser.add_argument("--save-capture", action="store_true", help="Save capture(s) as .npz for later analysis")
+    parser.add_argument("--output-dir", default="data/benchmark_samples", help="Directory for saved capture .npz files")
     args = parser.parse_args()
 
     if args.list_devices:
@@ -334,6 +375,8 @@ def main() -> None:
             gap_s=args.pair_gap_s,
             stimulus_seed=args.stimulus_seed,
             setup_label=args.setup_label,
+            save_capture=args.save_capture,
+            output_dir=args.output_dir,
         )
         print("\nPaired results:\n")
         print(f"  stimulus: {result['stimulus']}")
@@ -360,6 +403,11 @@ def main() -> None:
         print("  Lower onset_error_std_ms means the same probe is landing more consistently across repeats.")
         print("  Next step: compare paired chirp vs paired vowel probes on the same hardware path.")
     else:
+        save_path = None
+        if args.save_capture:
+            ts = int(time.time())
+            save_path = os.path.join(args.output_dir, f"{args.stimulus}_seed{args.stimulus_seed}_{ts}.npz")
+
         result = run_probe(
             stimulus=args.stimulus,
             duration_ms=args.duration_ms,
@@ -370,6 +418,7 @@ def main() -> None:
             tail_s=args.tail_s,
             stimulus_seed=args.stimulus_seed,
             setup_label=args.setup_label,
+            save_path=save_path,
         )
 
         print("\nResults:\n")

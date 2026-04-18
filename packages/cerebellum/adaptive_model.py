@@ -178,9 +178,33 @@ class BabblingCerebellum:
 
         # Align timing via cross-correlation
         delay, captured_aligned, known_aligned = self._align_signals(known, captured)
-        error = self._nlms_update(known_aligned, captured_aligned)
 
-        self.total_updates += 1
+        predicted = fftconvolve(known_aligned, self.room_ir, mode="full").astype(np.float32)[: len(captured_aligned)]
+        error_before = captured_aligned - predicted
+        error_rms_before = float(np.sqrt(np.mean(error_before ** 2)))
+        error_db_before = 20 * np.log10(max(error_rms_before, 1e-10))
+
+        prediction_norm = float(np.linalg.norm(predicted))
+        captured_norm = float(np.linalg.norm(captured_aligned))
+        denom = max(prediction_norm * captured_norm, 1e-10)
+        prediction_similarity = float(np.dot(captured_aligned, predicted) / denom)
+
+        should_gate_update = False
+        if self.trust.state.trust >= 0.7:
+            avg_error_db = float(self.trust.state.avg_error_db)
+            if (
+                error_db_before > avg_error_db + 10.0
+                or error_db_before > -5.0
+                or prediction_similarity < 0.3
+            ):
+                should_gate_update = True
+
+        if should_gate_update:
+            error = error_before
+        else:
+            error = self._nlms_update(known_aligned, captured_aligned)
+            self.total_updates += 1
+
         error_rms = float(np.sqrt(np.mean(error ** 2)))
         error_db = 20 * np.log10(max(error_rms, 1e-10))
         self.prediction_errors.append(error_rms)
