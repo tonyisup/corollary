@@ -82,6 +82,21 @@ def normalized_xcorr(observed: np.ndarray, template: np.ndarray) -> tuple[float,
     return max(0.0, best_score), best_shift
 
 
+def estimate_envelope_onset(audio: np.ndarray, threshold_ratio: float = 0.2, smooth_ms: float = 12.0) -> int:
+    if len(audio) == 0:
+        return 0
+    magnitude = np.abs(audio.astype(np.float32))
+    window = max(1, int(SR * smooth_ms / 1000.0))
+    kernel = np.ones(window, dtype=np.float32) / window
+    envelope = np.convolve(magnitude, kernel, mode="same")
+    peak = float(np.max(envelope))
+    if peak < 1e-9:
+        return 0
+    threshold = peak * threshold_ratio
+    idx = np.where(envelope >= threshold)[0]
+    return int(idx[0]) if len(idx) else 0
+
+
 def db(x: float) -> float:
     return 20.0 * np.log10(max(x, 1e-10))
 
@@ -180,6 +195,7 @@ def run_probe(
 
     observed = audio.astype(np.float32)
     score, shift = normalized_xcorr(observed, pcm)
+    envelope_shift = estimate_envelope_onset(observed)
     observed_rms = float(np.sqrt(np.mean(observed ** 2))) if len(observed) else 0.0
     observed_peak = float(np.max(np.abs(observed))) if len(observed) else 0.0
 
@@ -193,6 +209,7 @@ def run_probe(
 
     onset_error_ms = abs(shift - actual_expected_shift) * 1000.0 / SR
     scheduled_onset_error_ms = abs(shift - scheduled_expected_shift) * 1000.0 / SR
+    envelope_onset_error_ms = abs(envelope_shift - actual_expected_shift) * 1000.0 / SR
     quality, quality_flags = classify_run_quality(db(observed_rms), score, onset_error_ms)
 
     return {
@@ -207,9 +224,11 @@ def run_probe(
         "scheduled_expected_onset_samples": scheduled_expected_shift,
         "actual_expected_onset_samples": actual_expected_shift,
         "observed_onset_samples": shift,
+        "envelope_onset_samples": envelope_shift,
         "playback_start_delay_ms": None if playback_start_delay_ms is None else round(playback_start_delay_ms, 4),
         "onset_error_ms": round(onset_error_ms, 4),
         "scheduled_onset_error_ms": round(scheduled_onset_error_ms, 4),
+        "envelope_onset_error_ms": round(envelope_onset_error_ms, 4),
         "capture_elapsed_s": round(capture_finished_at - capture_started_at, 4),
         "playback_started": playback_started_at is not None,
         "quality": quality,
@@ -236,6 +255,8 @@ def run_paired_probe(
     onset_errors = [float(first["onset_error_ms"]), float(second["onset_error_ms"])]
     good_runs = sum(1 for r in (first, second) if r.get("quality") == "good")
 
+    envelope_onset_errors = [float(first["envelope_onset_error_ms"]), float(second["envelope_onset_error_ms"])]
+
     return {
         "mode": "paired",
         "stimulus": stimulus,
@@ -247,8 +268,11 @@ def run_paired_probe(
         "match_score_std": round(pstdev(match_scores), 6) if len(match_scores) > 1 else 0.0,
         "mean_onset_error_ms": round(mean(onset_errors), 4),
         "onset_error_std_ms": round(pstdev(onset_errors), 4) if len(onset_errors) > 1 else 0.0,
+        "mean_envelope_onset_error_ms": round(mean(envelope_onset_errors), 4),
+        "envelope_onset_error_std_ms": round(pstdev(envelope_onset_errors), 4) if len(envelope_onset_errors) > 1 else 0.0,
         "best_match_score": round(max(match_scores), 6),
         "best_onset_error_ms": round(min(onset_errors), 4),
+        "best_envelope_onset_error_ms": round(min(envelope_onset_errors), 4),
         "good_runs": good_runs,
         "paired_quality": "good" if good_runs == 2 else ("borderline" if good_runs == 1 else "bad"),
     }
@@ -292,8 +316,11 @@ def main() -> None:
         print(f"  match_score_std: {result['match_score_std']}")
         print(f"  mean_onset_error_ms: {result['mean_onset_error_ms']}")
         print(f"  onset_error_std_ms: {result['onset_error_std_ms']}")
+        print(f"  mean_envelope_onset_error_ms: {result['mean_envelope_onset_error_ms']}")
+        print(f"  envelope_onset_error_std_ms: {result['envelope_onset_error_std_ms']}")
         print(f"  best_match_score: {result['best_match_score']}")
         print(f"  best_onset_error_ms: {result['best_onset_error_ms']}")
+        print(f"  best_envelope_onset_error_ms: {result['best_envelope_onset_error_ms']}")
         print(f"  good_runs: {result['good_runs']}")
         print(f"  paired_quality: {result['paired_quality']}")
         print("\nInterpretation:")
