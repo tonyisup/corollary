@@ -113,6 +113,18 @@ def generate_stimulus_with_metadata(
             (float(rng.uniform(1145.0, 1245.0)), 0.35),
             (float(rng.uniform(2385.0, 2560.0)), 0.15),
         ]
+    elif kind == "babble_ba_var":
+        actual_duration_ms = int(rng.integers(max(170, duration_ms - 60), duration_ms + 61))
+        actual_amplitude = float(np.clip(amplitude * rng.uniform(0.95, 1.08), 0.05, 1.0))
+        attack_ms = float(rng.uniform(6.0, 12.0))
+        release_ms = float(rng.uniform(8.0, 14.0))
+        f0_hz = float(rng.uniform(135.0, 165.0))
+        envelope_lfo_hz = float(rng.uniform(3.0, 4.6))
+        formants = [
+            (float(rng.uniform(700.0, 880.0)), 1.0),
+            (float(rng.uniform(1050.0, 1280.0)), 0.4),
+            (float(rng.uniform(2200.0, 2550.0)), 0.18),
+        ]
 
     n = max(1, int(SR * actual_duration_ms / 1000))
     t = np.arange(n, dtype=np.float32) / SR
@@ -129,18 +141,39 @@ def generate_stimulus_with_metadata(
         f0, f1 = 300.0, 1800.0
         phase = 2 * np.pi * (f0 * t + 0.5 * (f1 - f0) * t * t / max(t[-1], 1e-6))
         pcm = np.sin(phase).astype(np.float32)
-    elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"}:
+    elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var"}:
         if f0_hz is None:
             f0_hz = 140.0
         if envelope_lfo_hz is None:
             envelope_lfo_hz = 3.0
         if formants is None:
             formants = [(800.0, 1.0), (1200.0, 0.35), (2500.0, 0.15)]
-        pcm = np.zeros_like(t, dtype=np.float32)
+        vowel = np.zeros_like(t, dtype=np.float32)
         for freq, formant_amp in formants:
-            pcm += formant_amp * np.sin(2 * np.pi * freq * t)
-        pcm *= (0.6 + 0.4 * np.sin(2 * np.pi * f0_hz * t)).astype(np.float32)
-        pcm *= (0.9 + 0.1 * np.sin(2 * np.pi * envelope_lfo_hz * t)).astype(np.float32)
+            vowel += formant_amp * np.sin(2 * np.pi * freq * t)
+        vowel *= (0.6 + 0.4 * np.sin(2 * np.pi * f0_hz * t)).astype(np.float32)
+        vowel *= (0.9 + 0.1 * np.sin(2 * np.pi * envelope_lfo_hz * t)).astype(np.float32)
+        if kind == "babble_ba_var":
+            burst_ms = float(rng.uniform(10.0, 22.0))
+            closure_ms = float(rng.uniform(8.0, 18.0))
+            burst_len = max(1, int(SR * burst_ms / 1000.0))
+            closure_len = max(1, int(SR * closure_ms / 1000.0))
+            excitation = rng.standard_normal(n).astype(np.float32)
+            burst_env = np.zeros(n, dtype=np.float32)
+            start = min(closure_len, n - 1)
+            end = min(start + burst_len, n)
+            if end > start:
+                burst_env[start:end] = np.linspace(1.0, 0.0, end - start, dtype=np.float32)
+            burst = excitation * burst_env * 0.45
+            vowel_onset = min(end + max(1, int(0.003 * SR)), n)
+            pcm = burst.copy()
+            if vowel_onset < n:
+                vowel_tail = vowel[: n - vowel_onset]
+                vowel_ramp = np.linspace(0.0, 1.0, len(vowel_tail), dtype=np.float32)
+                pcm[vowel_onset:] += vowel_tail * np.minimum(vowel_ramp * 2.0, 1.0)
+            attack_ms = max(attack_ms, burst_ms + closure_ms)
+        else:
+            pcm = vowel
     else:
         raise ValueError(f"Unsupported stimulus kind: {kind}")
 
@@ -152,7 +185,7 @@ def generate_stimulus_with_metadata(
 
     return {
         "kind": kind,
-        "family": "vowel_ah" if kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"} else kind,
+        "family": "babble_ba" if kind == "babble_ba_var" else ("vowel_ah" if kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"} else kind),
         "seed": resolved_seed,
         "duration_ms": actual_duration_ms,
         "amplitude": round(actual_amplitude, 6),
@@ -175,6 +208,7 @@ WORLD_VARIANTS = {
     "vowel_ah_var": "chirp",
     "vowel_ah_var_nearfield": "chirp",
     "vowel_ah_var_nearfield_room2": "chirp",
+    "babble_ba_var": "chirp",
 }
 
 
