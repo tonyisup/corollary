@@ -1,0 +1,1 @@
+python scripts/m1_room_shift_recovery.py --input-device 1 --output-device 2 --stimulus-kind vowel_ah_var_nearfield --force-readapt --room-a-label room3_close_quiet --room-b-label hallway_transfer_tv_facing_loud --output data/stress_test/vowel_ah_var_nearfield_room3_hallway_TV_facing_loud.json
