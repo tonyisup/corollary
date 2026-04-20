@@ -66,8 +66,22 @@ def list_input_devices() -> list[dict]:
             })
     return inputs
 
+def list_output_devices() -> list[dict]:
+    """List all available audio output devices."""
+    devices = sd.query_devices()
+    outputs = []
+    for i, dev in enumerate(devices):
+        if dev["max_output_channels"] > 0:
+            outputs.append({
+                "index": i,
+                "name": dev["name"],
+                "channels": dev["max_output_channels"],
+                "default_sr": dev["default_samplerate"],
+                "is_default": i == sd.default.device[1],
+            })
+    return outputs
 
-def print_device_table(devices: list[dict]) -> None:
+def print_input_devices_table(devices: list[dict]) -> None:
     """Print a formatted table of input devices."""
     print("\nAvailable audio INPUT devices:\n")
     print(f"{'Index':<8} {'Name':<50} {'Ch':<4} {'SR':<10} {'Default'}")
@@ -79,6 +93,22 @@ def print_device_table(devices: list[dict]) -> None:
             f"{dev['index']:<8} {dev['name']:<50} {dev['channels']:<4} {sr:<10}{marker}"
         )
     print()
+
+
+def print_output_devices_table(devices: list[dict]) -> None:
+    """Print a formatted table of output devices."""
+    print("\nAvailable audio OUTPUT devices:\n")
+    print(f"{'Index':<8} {'Name':<50} {'Ch':<4} {'SR':<10} {'Default'}")
+    print("-" * 80)
+    for dev in devices:
+        marker = " ← DEFAULT" if dev["is_default"] else ""
+        sr = f"{dev['default_sr']:.0f}" if dev["default_sr"] else "N/A"
+        print(
+            f"{dev['index']:<8} {dev['name']:<50} {dev['channels']:<4} {sr:<10}{marker}"
+        )
+    print()
+
+
 
 
 # ── Capture ────────────────────────────────────────────────────────────────
@@ -242,8 +272,15 @@ def main() -> None:
         print("\n❌ No audio input devices found!")
         sys.exit(1)
 
-    print_device_table(devices)
+    print_input_devices_table(devices)
 
+
+    devices = list_output_devices()
+    if not devices:
+        print("\n❌ No audio output devices found!")
+        sys.exit(1)
+
+    print_output_devices_table(devices)
     if args.list_only:
         return
 

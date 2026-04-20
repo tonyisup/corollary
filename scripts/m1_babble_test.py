@@ -13,7 +13,7 @@ Usage:
     python scripts/m1_babble_test.py --iterations 20
 
     # Use specific devices
-    python scripts/m1_babble_test.py --input-device 2 --output-device 0
+    python scripts/m1_babble_test.py --input-device 2 --output-device 3
 
 The system tracks SVSR over iterations. In babbling mode, SVSR should
 CLIMB from near-zero toward 20+ dB as the forward model converges.
