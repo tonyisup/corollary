@@ -379,7 +379,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the M1 variable-vowel adaptation bridge")
     parser.add_argument("--input-device", type=int, required=True)
     parser.add_argument("--output-device", type=int, required=True)
-    parser.add_argument("--stimulus-kind", default="vowel_ah_var", choices=["vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_ba_repeat_var", "babble_da_var", "babble_ma_var"])
+    parser.add_argument("--stimulus-kind", default="vowel_ah_var", choices=["vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_da_var", "babble_ma_var"])
     parser.add_argument("--train-seeds", default="0,7,19")
     parser.add_argument("--heldout-seeds", default="23,29")
     parser.add_argument("--cycles", type=int, default=2)

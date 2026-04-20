@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Corollary M1 quiet baseline sanity check for repeated ba
+# Corollary M1 repeated-ba quiet tuning batch
 #
 # Purpose:
-# - compare single ba vs repeated ba in quiet only
-# - determine whether repeated ba can build a strong held-out baseline at all
-# - avoid noise-transfer interpretation until baseline competence is established
+# - compare single ba against several simpler repeated-ba variants in quiet only
+# - test whether shorter trains, fewer syllables, or wider inter-syllable gaps
+#   recover a strong held-out baseline
 #
 # Stimuli:
 # - babble_ba_var
-# - babble_ba_repeat_var
+# - babble_ba_repeat_short_var
+# - babble_ba_repeat_few_var
+# - babble_ba_repeat_wide_var
 #
 # Output directory:
-# - data/quiet_ba_repeat_sanity/
+# - data/quiet_ba_repeat_tuning/
 
 REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
 HARNESS="$REPO_DIR/scripts/m1_variable_vowel_adapt.py"
-OUT_DIR="$REPO_DIR/data/quiet_ba_repeat_sanity"
+OUT_DIR="$REPO_DIR/data/quiet_ba_repeat_tuning"
 
 mkdir -p "$OUT_DIR"
 cd "$REPO_DIR"
@@ -50,7 +52,14 @@ run_case() {
 }
 
 run_case "babble_ba_var" 300 "single_ba_quiet.json"
-pause_between_runs "single ba quiet baseline" "repeated ba quiet baseline"
-run_case "babble_ba_repeat_var" 700 "repeated ba quiet baseline"
+# pause_between_runs "single ba quiet baseline" "repeated ba short-train baseline"
 
-# End of quiet baseline sanity check.
+run_case "babble_ba_repeat_short_var" 480 "repeated_ba_short_quiet.json"
+# pause_between_runs "repeated ba short-train baseline" "repeated ba few-syllable baseline"
+
+run_case "babble_ba_repeat_few_var" 520 "repeated_ba_few_quiet.json"
+# pause_between_runs "repeated ba few-syllable baseline" "repeated ba wide-gap baseline"
+
+run_case "babble_ba_repeat_wide_var" 760 "repeated_ba_wide_quiet.json"
+
+# End of repeated-ba quiet tuning batch.
