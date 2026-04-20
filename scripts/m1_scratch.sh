@@ -54,8 +54,9 @@ common_args=(
 )
 
 pause_between_profiles() {
-  local profile_desc="$1"
-  read -r -p "Done with ${profile_desc}. Set up the next profile, then press Enter to continue..."
+  local profile_done="$1"
+  local profile_next="$2"
+  read -r -p "Done with ${profile_done}. Set up the ${profile_next} profile, then press Enter to continue..."
 }
 
 run_profile() {
@@ -71,22 +72,22 @@ run_profile() {
 # Core controlled-noise bench
 # -----------------------------------------------------------------------------
 run_profile "01" "profile_01_white_noise_vowel_main.json"
-pause_between_profiles "profile 01 / white noise"
+pause_between_profiles "profile 01 / white noise" "profile 06 / fan 2"
 
 run_profile "06" "profile_06_fan_2_vowel_main.json"
-pause_between_profiles "profile 06 / fan 2"
+pause_between_profiles "profile 06 / fan 2" "profile 08 / fan 4"
 
 run_profile "08" "profile_08_fan_4_vowel_main.json"
-pause_between_profiles "profile 08 / fan 4"
+pause_between_profiles "profile 08 / fan 4" "profile 14 / stream 3"
 
 run_profile "14" "profile_14_stream_3_vowel_main.json"
-pause_between_profiles "profile 14 / stream 3"
+pause_between_profiles "profile 14 / stream 3" "profile 18 / birds"
 
 # -----------------------------------------------------------------------------
 # Optional naturalistic add-on
 # -----------------------------------------------------------------------------
 run_profile "18" "profile_18_birds_vowel_main.json"
-pause_between_profiles "profile 18 / birds"
+pause_between_profiles "profile 18 / birds" "profile 04 / noise 4 / static"
 
 # -----------------------------------------------------------------------------
 # Weak control
