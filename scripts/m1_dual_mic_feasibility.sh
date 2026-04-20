@@ -27,8 +27,8 @@ PROBE="$REPO_DIR/scripts/m1_probe_capture.py"
 OUT_DIR="$REPO_DIR/data/dual_mic_feasibility"
 
 CARDIOID_INPUT_DEVICE=2
-HEADSET_INPUT_DEVICE=__SET_ME__
-OUTPUT_DEVICE=3
+HEADSET_INPUT_DEVICE=3
+OUTPUT_DEVICE=5
 
 mkdir -p "$OUT_DIR"
 cd "$REPO_DIR"

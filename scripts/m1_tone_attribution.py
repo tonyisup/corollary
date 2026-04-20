@@ -125,20 +125,26 @@ def generate_stimulus_with_metadata(
             (float(rng.uniform(1050.0, 1280.0)), 0.4),
             (float(rng.uniform(2200.0, 2550.0)), 0.18),
         ]
-    elif kind in {"babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var"}:
+    elif kind in {"babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_ba_repeat_short_tight_var"}:
         if kind == "babble_ba_repeat_short_var":
             actual_duration_ms = int(rng.integers(max(360, duration_ms - 90), duration_ms + 91))
         elif kind == "babble_ba_repeat_few_var":
             actual_duration_ms = int(rng.integers(max(420, duration_ms - 100), duration_ms + 111))
         elif kind == "babble_ba_repeat_wide_var":
             actual_duration_ms = int(rng.integers(max(620, duration_ms - 140), duration_ms + 161))
+        elif kind == "babble_ba_repeat_short_tight_var":
+            actual_duration_ms = int(rng.integers(max(360, duration_ms - 40), duration_ms + 21))
         else:
             actual_duration_ms = int(rng.integers(max(540, duration_ms - 120), duration_ms + 141))
-        actual_amplitude = float(np.clip(amplitude * rng.uniform(0.94, 1.06), 0.05, 1.0))
+        actual_amplitude = float(np.clip(amplitude * rng.uniform(0.97, 1.04), 0.05, 1.0))
         attack_ms = float(rng.uniform(5.0, 10.0))
         release_ms = float(rng.uniform(10.0, 18.0))
-        f0_hz = float(rng.uniform(135.0, 165.0))
-        envelope_lfo_hz = float(rng.uniform(3.0, 4.8))
+        if kind == "babble_ba_repeat_short_tight_var":
+            f0_hz = float(rng.uniform(148.0, 160.0))
+            envelope_lfo_hz = float(rng.uniform(4.1, 4.7))
+        else:
+            f0_hz = float(rng.uniform(135.0, 165.0))
+            envelope_lfo_hz = float(rng.uniform(3.0, 4.8))
         formants = [
             (float(rng.uniform(700.0, 880.0)), 1.0),
             (float(rng.uniform(1050.0, 1280.0)), 0.4),
@@ -184,7 +190,7 @@ def generate_stimulus_with_metadata(
         f0, f1 = 300.0, 1800.0
         phase = 2 * np.pi * (f0 * t + 0.5 * (f1 - f0) * t * t / max(t[-1], 1e-6))
         pcm = np.sin(phase).astype(np.float32)
-    elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_da_var", "babble_ma_var"}:
+    elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_ba_repeat_short_tight_var", "babble_da_var", "babble_ma_var"}:
         if f0_hz is None:
             f0_hz = 140.0
         if envelope_lfo_hz is None:
@@ -196,8 +202,8 @@ def generate_stimulus_with_metadata(
             vowel += formant_amp * np.sin(2 * np.pi * freq * t)
         vowel *= (0.6 + 0.4 * np.sin(2 * np.pi * f0_hz * t)).astype(np.float32)
         vowel *= (0.9 + 0.1 * np.sin(2 * np.pi * envelope_lfo_hz * t)).astype(np.float32)
-        if kind in {"babble_ba_var", "babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_da_var", "babble_ma_var"}:
-            if kind in {"babble_ba_var", "babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var"}:
+        if kind in {"babble_ba_var", "babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_ba_repeat_short_tight_var", "babble_da_var", "babble_ma_var"}:
+            if kind in {"babble_ba_var", "babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_ba_repeat_short_tight_var"}:
                 burst_ms = float(rng.uniform(10.0, 22.0))
                 closure_ms = float(rng.uniform(8.0, 18.0))
                 burst_strength = 0.45
@@ -242,7 +248,7 @@ def generate_stimulus_with_metadata(
                     segment_pcm[vowel_onset:] += vowel_tail * np.minimum(vowel_ramp * 2.5, 1.0)
                 return segment_pcm, vowel_onset
 
-            if kind in {"babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var"}:
+            if kind in {"babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_ba_repeat_short_tight_var"}:
                 if kind == "babble_ba_repeat_short_var":
                     syllable_count = int(rng.integers(3, 5))
                     gap_ms = float(rng.uniform(28.0, 48.0))
@@ -252,6 +258,9 @@ def generate_stimulus_with_metadata(
                 elif kind == "babble_ba_repeat_wide_var":
                     syllable_count = int(rng.integers(4, 6))
                     gap_ms = float(rng.uniform(85.0, 130.0))
+                elif kind == "babble_ba_repeat_short_tight_var":
+                    syllable_count = int(rng.integers(3, 4))
+                    gap_ms = float(rng.uniform(24.0, 36.0))
                 else:
                     syllable_count = int(rng.integers(4, 7))
                     gap_ms = float(rng.uniform(35.0, 70.0))
@@ -286,7 +295,7 @@ def generate_stimulus_with_metadata(
 
     return {
         "kind": kind,
-        "family": "babble_ba_repeat" if kind in {"babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var"} else ("babble_ba" if kind == "babble_ba_var" else ("babble_da" if kind == "babble_da_var" else ("babble_ma" if kind == "babble_ma_var" else ("vowel_ah" if kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"} else kind)))),
+        "family": "babble_ba_repeat" if kind in {"babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_ba_repeat_short_tight_var"} else ("babble_ba" if kind == "babble_ba_var" else ("babble_da" if kind == "babble_da_var" else ("babble_ma" if kind == "babble_ma_var" else ("vowel_ah" if kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2"} else kind)))),
         "seed": resolved_seed,
         "duration_ms": actual_duration_ms,
         "amplitude": round(actual_amplitude, 6),
@@ -314,6 +323,7 @@ WORLD_VARIANTS = {
     "babble_ba_repeat_short_var": "chirp",
     "babble_ba_repeat_few_var": "chirp",
     "babble_ba_repeat_wide_var": "chirp",
+    "babble_ba_repeat_short_tight_var": "chirp",
     "babble_da_var": "chirp",
     "babble_ma_var": "chirp",
 }

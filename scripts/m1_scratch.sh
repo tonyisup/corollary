@@ -1,30 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Corollary M1 quiet held-out seed expansion
+# Corollary M1 constrained repeated-short quiet validation
 #
 # Purpose:
-# - compare single ba vs short repeated ba in quiet with a wider held-out set
-# - determine whether repeated-short instability is a family-wide issue or just
-#   an artifact of the original two held-out seeds
+# - validate a tighter repeated-short family shaped after the one strong held-out seed
+# - test whether constraining total duration and keeping modulation lively recovers
+#   a more usable repeated-babble family in quiet
 #
 # Stimuli:
 # - babble_ba_var
 # - babble_ba_repeat_short_var
+# - babble_ba_repeat_short_tight_var
 #
 # Output directory:
-# - data/quiet_ba_seed_expansion/
+# - data/quiet_ba_repeat_short_tight_validation/
 
 REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
 HARNESS="$REPO_DIR/scripts/m1_variable_vowel_adapt.py"
-OUT_DIR="$REPO_DIR/data/noisy_ba_seed_expansion_headset_mic"
+OUT_DIR="$REPO_DIR/data/quiet_ba_repeat_short_tight_validation"
+
 mkdir -p "$OUT_DIR"
 cd "$REPO_DIR"
 
 common_args=(
-  --input-device 3
-  --output-device 5
+  --input-device 2
+  --output-device 3
   --train-seeds 0,7,19
   --heldout-seeds 23,29,31,37,41,43
   --cycles 2
@@ -48,8 +50,12 @@ run_case() {
     --output "$OUT_DIR/$outfile"
 }
 
-run_case "babble_ba_var" 300 "single_ba_quiet_seed_expansion.json"
-pause_between_runs "single ba quiet seed expansion" "short repeated ba quiet seed expansion"
-run_case "babble_ba_repeat_short_var" 480 "short_repeated_ba_quiet_seed_expansion.json"
+run_case "babble_ba_var" 300 "single_ba_quiet.json"
+pause_between_runs "single ba quiet baseline" "repeated short quiet baseline"
 
-# End of quiet held-out seed expansion.
+run_case "babble_ba_repeat_short_var" 480 "repeated_short_quiet.json"
+pause_between_runs "repeated short quiet baseline" "repeated short tight quiet baseline"
+
+run_case "babble_ba_repeat_short_tight_var" 420 "repeated_short_tight_quiet.json"
+
+# End of constrained repeated-short quiet validation.
