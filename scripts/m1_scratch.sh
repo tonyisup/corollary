@@ -51,10 +51,10 @@ run_case() {
 }
 
 run_case "babble_ba_var" 300 "single_ba_quiet.json"
-pause_between_runs "single ba quiet baseline" "repeated short quiet baseline"
+# pause_between_runs "single ba quiet baseline" "repeated short quiet baseline"
 
 run_case "babble_ba_repeat_short_var" 480 "repeated_short_quiet.json"
-pause_between_runs "repeated short quiet baseline" "repeated short tight quiet baseline"
+# pause_between_runs "repeated short quiet baseline" "repeated short tight quiet baseline"
 
 run_case "babble_ba_repeat_short_tight_var" 420 "repeated_short_tight_quiet.json"
 
