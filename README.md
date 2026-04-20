@@ -103,6 +103,7 @@ Current Mac mini + Fifine observation:
 - the next useful test of that idea is not a broad family promotion claim but a focused comparison between single-token `babble_ba_var` probes and short repeated `babababa`-style trains under a tightened moderate interference protocol
 - another protocol lesson from the same stress work is that variable music was doing two jobs badly at once: it was acting as both interference source and benchmark condition. Future stress work should separate controlled-noise calibration benches from ecological-validity benches using music, TV, or natural speech
 - when a controlled-noise device offers many profiles, the first pass should be a shallow all-profile screening run rather than a human-picked subset: keep geometry fixed, use one baseline family, skip readaptation by default, and let measured immediate drop plus seed consistency select the shortlist for deeper follow-up
+- the first room-1 sound-machine screen did exactly that and narrowed the field, but it also surfaced baseline drift, so the current profile ranking is only a shortlist signal, not a final promotion result. A follow-up confirmation pass, expanded with newly discovered profiles `16` through `20`, now supports a practical main bench: core profiles `01` (white noise), `06` (fan 2), `08` (fan 4), and `14` (stream 3), with `18` (birds) as a strong optional naturalistic add-on and `04` (noise 4/static) as a weak control
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -122,6 +123,7 @@ Current Mac mini + Fifine observation:
 - geometry, obstruction, and cardioid mic orientation are part of the protocol, not incidental setup details
 - contaminated world-audio conditions should default to evaluate-first and usually no-learn unless contaminated learning is the explicit thing being studied
 - when many interference profiles are available, let the screening data choose candidate profiles before human intuition names or groups them
+- treat shortlist results from a first-pass screen as provisional whenever room-A baseline drift is visible
 
 ### Developmental framing
 

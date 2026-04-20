@@ -1,33 +1,42 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Corollary M1 scratch run sheet
+# Corollary M1 main noise-machine bench
 #
 # Purpose:
-# - shallow screening pass across all 15 sound-machine profiles
-# - fixed geometry in room 1
-# - one baseline family first: vowel_ah_var_nearfield
-# - skip-readapt by default so the first pass measures immediate stress, not contaminated learning
+# - run the selected main experiment bench after the room-1 screening and confirmation passes
+# - keep geometry fixed in room 1
+# - preserve pause_between_profiles() for manual flow
 #
-# How to use:
-# 1. Set the sound machine to profile 01.
-# 2. Run the corresponding command block below.
-# 3. Keep geometry, distance, and machine placement fixed for the entire sweep.
-# 4. Repeat for profiles 02..15.
-# 5. Send the resulting JSON files back for ranking/shortlisting.
+# Selected bench:
+#   Core controlled-noise profiles:
+#   - 01 white noise
+#   - 06 fan 2
+#   - 08 fan 4
+#   - 14 stream 3
 #
-# Notes:
-# - This harness pauses after room-A setup and waits for Enter. Because room A and room B
-#   are the same physical room here, use that pause to turn ON the chosen sound-machine profile,
-#   keeping the rest of the geometry fixed.
-# - `--readapt-threshold-db 999` is intentional. It disables room-B learning so this pass
-#   measures immediate degradation only.
-# - Output files are named by profile number so you can swap human-friendly profile names later.
+#   Optional naturalistic add-on:
+#   - 18 birds
+#
+#   Weak control:
+#   - 04 noise 4 / static
+#
+# Default here:
+# - vowel_ah_var_nearfield first
+# - skip-readapt default remains in place for initial characterization
+# - outputs go to data/noise_machine_main_bench/
+#
+# Usage:
+# 1. Machine OFF for room-A baseline.
+# 2. Run this script.
+# 3. At the harness pause, turn ON the specified profile and press Enter.
+# 4. Keep machine placement, geometry, distance, and volume fixed.
+# 5. Use pause_between_profiles() prompts between runs.
 
 REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
 HARNESS="$REPO_DIR/scripts/m1_room_shift_recovery.py"
-OUT_DIR="$REPO_DIR/data/noise_machine_screen"
+OUT_DIR="$REPO_DIR/data/noise_machine_main_bench"
 
 mkdir -p "$OUT_DIR"
 cd "$REPO_DIR"
@@ -45,146 +54,43 @@ common_args=(
 )
 
 pause_between_profiles() {
-  local profile="$1"
-  read -r -p "Done with profile ${profile}. Set next profile, then press Enter to continue..."
+  local profile_desc="$1"
+  read -r -p "Done with ${profile_desc}. Set up the next profile, then press Enter to continue..."
 }
 
-# Optional quick sanity check:
-# "$PY" "$HARNESS" --help
+run_profile() {
+  local profile="$1"
+  local outfile="$2"
+  "$PY" "$HARNESS" \
+    "${common_args[@]}" \
+    --room-b-label "room1_noise_profile_${profile}" \
+    --output "$OUT_DIR/$outfile"
+}
 
 # -----------------------------------------------------------------------------
-# Profile 01
+# Core controlled-noise bench
 # -----------------------------------------------------------------------------
-# Sound machine OFF for room A, then turn profile 01 ON at the pause and press Enter.
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_01 \
-  --output "$OUT_DIR/profile_01_vowel_screen.json"
-pause_between_profiles "01"
+run_profile "01" "profile_01_white_noise_vowel_main.json"
+pause_between_profiles "profile 01 / white noise"
+
+run_profile "06" "profile_06_fan_2_vowel_main.json"
+pause_between_profiles "profile 06 / fan 2"
+
+run_profile "08" "profile_08_fan_4_vowel_main.json"
+pause_between_profiles "profile 08 / fan 4"
+
+run_profile "14" "profile_14_stream_3_vowel_main.json"
+pause_between_profiles "profile 14 / stream 3"
 
 # -----------------------------------------------------------------------------
-# Profile 02
+# Optional naturalistic add-on
 # -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_02 \
-  --output "$OUT_DIR/profile_02_vowel_screen.json"
-pause_between_profiles "02"
+run_profile "18" "profile_18_birds_vowel_main.json"
+pause_between_profiles "profile 18 / birds"
 
 # -----------------------------------------------------------------------------
-# Profile 03
+# Weak control
 # -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_03 \
-  --output "$OUT_DIR/profile_03_vowel_screen.json"
-pause_between_profiles "03"
+run_profile "04" "profile_04_static_vowel_main.json"
 
-# -----------------------------------------------------------------------------
-# Profile 04
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_04 \
-  --output "$OUT_DIR/profile_04_vowel_screen.json"
-pause_between_profiles "04"
-
-# -----------------------------------------------------------------------------
-# Profile 05
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_05 \
-  --output "$OUT_DIR/profile_05_vowel_screen.json"
-pause_between_profiles "05"
-
-# -----------------------------------------------------------------------------
-# Profile 06
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_06 \
-  --output "$OUT_DIR/profile_06_vowel_screen.json"
-pause_between_profiles "06"
-
-# -----------------------------------------------------------------------------
-# Profile 07
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_07 \
-  --output "$OUT_DIR/profile_07_vowel_screen.json"
-pause_between_profiles "07"
-
-# -----------------------------------------------------------------------------
-# Profile 08
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_08 \
-  --output "$OUT_DIR/profile_08_vowel_screen.json"
-pause_between_profiles "08"
-
-# -----------------------------------------------------------------------------
-# Profile 09
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_09 \
-  --output "$OUT_DIR/profile_09_vowel_screen.json"
-pause_between_profiles "09"
-
-# -----------------------------------------------------------------------------
-# Profile 10
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_10 \
-  --output "$OUT_DIR/profile_10_vowel_screen.json"
-pause_between_profiles "10"
-
-# -----------------------------------------------------------------------------
-# Profile 11
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_11 \
-  --output "$OUT_DIR/profile_11_vowel_screen.json"
-pause_between_profiles "11"
-
-# -----------------------------------------------------------------------------
-# Profile 12
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_12 \
-  --output "$OUT_DIR/profile_12_vowel_screen.json"
-pause_between_profiles "12"
-
-# -----------------------------------------------------------------------------
-# Profile 13
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_13 \
-  --output "$OUT_DIR/profile_13_vowel_screen.json"
-pause_between_profiles "13"
-
-# -----------------------------------------------------------------------------
-# Profile 14
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_14 \
-  --output "$OUT_DIR/profile_14_vowel_screen.json"
-pause_between_profiles "14"
-
-# -----------------------------------------------------------------------------
-# Profile 15
-# -----------------------------------------------------------------------------
-"$PY" "$HARNESS" \
-  "${common_args[@]}" \
-  --room-b-label room1_noise_profile_15 \
-  --output "$OUT_DIR/profile_15_vowel_screen.json"
-
-# End of screening run sheet.
+# End of main bench run sheet.
