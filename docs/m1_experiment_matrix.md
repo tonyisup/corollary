@@ -434,6 +434,12 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - Current operational policy should therefore split more sharply by regime: ordinary room transfer remains trust-gated M1b work, while media-contaminated conditions should be evaluate-first and generally no-learn unless the explicit purpose is to study mixed-source attribution failure or contaminated-learning safety.
 - A new developmental hypothesis now emerges from the contamination results: repeated babble trains may be a more natural and more robust self-attribution strategy than isolated single tokens in noisy environments. The motivation is temporal redundancy, stronger self-consistency, and better averaging against irregular world audio.
 - Immediate next experiment for that hypothesis: compare single-token `babble_ba_var` probes against short repeated `babababa`-style trains under a tightened `phone_music_moderate` protocol before making broader claims about babble-family robustness.
+- Additional debrief lesson: variable music should not be the default calibration stressor because it changes amplitude, spectral content, rhythmic density, and vocal/transient structure over time. For future stress calibration, use more controlled interference sources such as pink noise, speech-shaped noise, or fixed repeated phrase loops, and reserve music/TV/speech media for ecological-validity benches.
+
+**2026-04-19 debrief summary**
+- controlled-noise calibration benches and ecological-validity benches should be tracked separately
+- geometry, obstruction, and cardioid mic orientation are first-class experimental variables
+- catastrophic near-field contamination is often more informative for M1c-style mixed-source failure analysis than for ordinary M1b transfer ranking
 
 ## Stage 3, M1c Mixed-Source Attribution
 

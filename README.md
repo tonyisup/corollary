@@ -101,6 +101,7 @@ Current Mac mini + Fifine observation:
 - current practical policy is therefore tightening: ordinary room transfer can stay trust-gated, but media-contaminated conditions should be evaluated first and should generally avoid adaptation until the contamination is removed or the condition is explicitly being studied as a mixed-source failure mode
 - a new developmental hypothesis now follows from the contamination work: repeated self-generated babble trains, for example `ba ba ba ba ba`, may be more robust than isolated single tokens in chaotic environments because repetition provides temporal redundancy, stronger self-consistency cues, and better averaging against irregular world noise
 - the next useful test of that idea is not a broad family promotion claim but a focused comparison between single-token `babble_ba_var` probes and short repeated `babababa`-style trains under a tightened moderate interference protocol
+- another protocol lesson from the same stress work is that variable music was doing two jobs badly at once: it was acting as both interference source and benchmark condition. Future stress work should separate controlled-noise calibration benches from ecological-validity benches using music, TV, or natural speech
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -113,6 +114,12 @@ Current Mac mini + Fifine observation:
 | M4 | Self-voice detector / explicit attribution classifier | ⏳ Planned |
 | M5 | Multi-speaker world model + memory | ⏳ Planned |
 | M6 | Self-model and introspection | ⏳ Planned |
+
+### 2026-04-19 debrief lessons
+
+- controlled-noise benches and ecological-validity benches should be treated as different experiment types
+- geometry, obstruction, and cardioid mic orientation are part of the protocol, not incidental setup details
+- contaminated world-audio conditions should default to evaluate-first and usually no-learn unless contaminated learning is the explicit thing being studied
 
 ### Developmental framing
 

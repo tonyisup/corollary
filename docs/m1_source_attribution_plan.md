@@ -224,6 +224,13 @@ The first hardware-facing placement sweep on the Mac mini + Fifine path suggests
 - recent `babble_ba_var` replications extend that lesson to the moderate phone-music setup as well: because the condition itself still varies widely across runs, it is premature to interpret current vowel-versus-`ba` differences as a stable family ranking under contamination. The immediate next need is tighter protocol control for `phone_music_moderate`, not more promotion claims.
 - updated safety implication: under contaminated world-audio conditions, evaluation without adaptation is now the safer default hypothesis. Re-adaptation should be treated as an explicit test condition, not the normal continuation path.
 - new developmental hypothesis: infants may move quickly from isolated sounds to repeated syllabic trains partly because repetition is a robustness strategy, not just a motor pattern. For Corollary, short repeated `babababa`-style sequences may help preserve self attribution in chaotic environments by giving the model multiple aligned self-generated events instead of one fragile token.
+- additional protocol lesson: variable music is a poor default calibration stressor because it changes too many properties at once. Future controlled stress benches should prefer stable interference profiles, while music/TV/speech media should be reserved for ecological-validity and mixed-source realism checks.
+
+### 2026-04-19 debrief lessons
+
+- treat geometry, obstruction, and microphone polar pattern as explicit protocol fields
+- separate controlled-noise calibration from naturalistic media stress
+- under contaminated world-audio conditions, evaluate first and treat learning as an explicit test variable rather than a default continuation step
 
 ## M1b: Babbling-Driven Room Model Learning
 
