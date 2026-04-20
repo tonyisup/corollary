@@ -282,6 +282,31 @@ The current babbling scripts are already pointed at this problem. That is the co
    - Evaluate on vowels/babble
    - Then invert
 
+## Dual-mic branch to preserve for later M1c work
+
+A promising branch emerged from the first headset-versus-cardioid comparison on the Mac mini setup.
+
+Current interpretation:
+- the cardioid Fifine path appears much better for self-model learning and self-sound attribution
+- the headset path appears worse for precise self prediction, but may still be useful as a broader world / ambient listening channel
+- these two microphones should therefore be treated as potentially different sensing roles, not just redundant device swaps
+
+Recommended stance for now:
+- do not pivot the main M1b workstream into full dual-mic integration yet
+- keep the main self-model training path on the cardioid mic
+- preserve dual-mic as a documented M1c-facing branch for later self vs world vs overlap work
+- allow small feasibility probes now if they are cheap and clarifying
+
+Working hypothesis for later stages:
+- cardioid mic = self-biased channel
+- headset / wider-pattern mic = world-biased or ambient-context channel
+- future thalamic fusion could use disagreement between these channels as evidence for external-source presence or overlap
+
+Minimal feasibility question allowed before M1c:
+- do the two channels diverge in a useful direction on the same emitted stimulus, especially when an external source intrudes?
+
+If yes, promote dual-mic fusion from architectural note to planned M1c experiment family.
+
 ## M1c: Mixed-Source Attribution
 
 ### Goal

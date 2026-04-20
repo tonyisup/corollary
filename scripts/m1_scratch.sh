@@ -18,14 +18,13 @@ set -euo pipefail
 REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
 HARNESS="$REPO_DIR/scripts/m1_variable_vowel_adapt.py"
-OUT_DIR="$REPO_DIR/data/quiet_ba_seed_expansion"
-
+OUT_DIR="$REPO_DIR/data/noisy_ba_seed_expansion_headset_mic"
 mkdir -p "$OUT_DIR"
 cd "$REPO_DIR"
 
 common_args=(
-  --input-device 2
-  --output-device 3
+  --input-device 3
+  --output-device 5
   --train-seeds 0,7,19
   --heldout-seeds 23,29,31,37,41,43
   --cycles 2
