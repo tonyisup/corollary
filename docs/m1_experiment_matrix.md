@@ -435,11 +435,14 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - A new developmental hypothesis now emerges from the contamination results: repeated babble trains may be a more natural and more robust self-attribution strategy than isolated single tokens in noisy environments. The motivation is temporal redundancy, stronger self-consistency, and better averaging against irregular world audio.
 - Immediate next experiment for that hypothesis: compare single-token `babble_ba_var` probes against short repeated `babababa`-style trains under a tightened `phone_music_moderate` protocol before making broader claims about babble-family robustness.
 - Additional debrief lesson: variable music should not be the default calibration stressor because it changes amplitude, spectral content, rhythmic density, and vocal/transient structure over time. For future stress calibration, use more controlled interference sources such as pink noise, speech-shaped noise, or fixed repeated phrase loops, and reserve music/TV/speech media for ecological-validity benches.
+- New screening protocol for controlled-noise devices: when a device offers many interference profiles, prefer a shallow all-profile screening pass over intuitive hand-picking. Run one fixed geometry, one baseline family, and skip-readapt by default across all profiles first, then let measured immediate drop and held-out-seed consistency choose the shortlist for deeper experiments.
+- For the first pass on a multi-profile noise machine, the right question is not which profile sounds weirdest to a human, but which profiles actually produce distinct and reproducible stress behavior for Corollary on the current mic, room, and geometry.
 
 **2026-04-19 debrief summary**
 - controlled-noise calibration benches and ecological-validity benches should be tracked separately
 - geometry, obstruction, and cardioid mic orientation are first-class experimental variables
 - catastrophic near-field contamination is often more informative for M1c-style mixed-source failure analysis than for ordinary M1b transfer ranking
+- when many controlled interference profiles are available, data should choose shortlist candidates before human interpretation does
 
 ## Stage 3, M1c Mixed-Source Attribution
 

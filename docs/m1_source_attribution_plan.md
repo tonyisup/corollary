@@ -231,6 +231,7 @@ The first hardware-facing placement sweep on the Mac mini + Fifine path suggests
 - treat geometry, obstruction, and microphone polar pattern as explicit protocol fields
 - separate controlled-noise calibration from naturalistic media stress
 - under contaminated world-audio conditions, evaluate first and treat learning as an explicit test variable rather than a default continuation step
+- when a sound machine or similar device offers many interference profiles, start with a shallow all-profile screening pass and let measured immediate drop plus consistency choose the shortlist before relying on human profile descriptions
 
 ## M1b: Babbling-Driven Room Model Learning
 
