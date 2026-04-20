@@ -1,4 +1,8 @@
-"""Thalamus — corollary discharge gate (sensory attenuation).
+"""Thalamus — Source Attribution and Gating.
 
-Phase 0 (M0): Aligns efference copy to mic mel, applies spectral gate.
+The Thalamus handles source attribution (self vs. world) and 
+sensory gating (attenuation of self-caused signals).
 """
+
+from .gate import ThalamicGate
+from .attributor import ThalamicAttributor, SourceVerdict, AttributionResult
