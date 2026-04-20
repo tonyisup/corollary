@@ -140,7 +140,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Cross-room transfer and recovery harness")
     parser.add_argument("--input-device", type=int, required=True)
     parser.add_argument("--output-device", type=int, required=True)
-    parser.add_argument("--stimulus-kind", default="vowel_ah_var_nearfield", choices=["vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_da_var", "babble_ma_var"])
+    parser.add_argument("--stimulus-kind", default="vowel_ah_var_nearfield", choices=["vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_ba_repeat_var", "babble_da_var", "babble_ma_var"])
     parser.add_argument("--train-seeds", default="0,7,19")
     parser.add_argument("--heldout-seeds", default="23,29")
     parser.add_argument("--room-a-cycles", type=int, default=2)

@@ -343,7 +343,7 @@ def run_paired_probe(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hardware-facing primitive M1A probe capture")
-    parser.add_argument("--stimulus", choices=["chirp", "vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_da_var", "babble_ma_var", "tone", "click"], default="chirp")
+    parser.add_argument("--stimulus", choices=["chirp", "vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_ba_repeat_var", "babble_da_var", "babble_ma_var", "tone", "click"], default="chirp")
     parser.add_argument("--duration-ms", type=int, default=300)
     parser.add_argument("--amplitude", type=float, default=0.7)
     parser.add_argument("--input-device", type=int, default=None)

@@ -1,25 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Corollary M1 focused babble_ba_var replication batch
+# Corollary M1 single-vs-repeated ba hypothesis batch
 #
 # Purpose:
-# - replicate the strongest controlled-noise profiles after the first ba-vs-vowel comparison pass
-# - test whether the apparent ba mean-robustness advantage is stable or just variance-heavy luck
+# - compare single ba against repeated ba trains under the two most informative
+#   controlled-noise profiles from the earlier tradeoff work
+# - test whether repetition preserves the apparent mean-robustness signal while
+#   reducing the seed-instability seen in single-token babble_ba_var
 # - keep skip-readapt default and preserve pause_between_profiles()
 #
-# Focused replication targets:
+# Profiles:
 # - 01 white noise
-# - 06 fan 2
 # - 08 fan 4
 #
+# Stimuli:
+# - babble_ba_var
+# - babble_ba_repeat_var
+#
 # Output directory:
-# - data/noise_machine_main_bench_ba_replica/
+# - data/noise_machine_ba_repeat_hypothesis/
 
 REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
 HARNESS="$REPO_DIR/scripts/m1_room_shift_recovery.py"
-OUT_DIR="$REPO_DIR/data/noise_machine_main_bench_ba_replica"
+OUT_DIR="$REPO_DIR/data/noise_machine_ba_repeat_hypothesis"
 
 mkdir -p "$OUT_DIR"
 cd "$REPO_DIR"
@@ -27,7 +32,6 @@ cd "$REPO_DIR"
 common_args=(
   --input-device 2
   --output-device 0
-  --stimulus-kind babble_ba_var
   --train-seeds 0,7,19
   --heldout-seeds 23,29
   --room-a-cycles 2
@@ -37,44 +41,39 @@ common_args=(
 )
 
 pause_between_profiles() {
-  local profile_done="$1"
-  local profile_next="$2"
-  read -r -p "Done with ${profile_done}. Set up ${profile_next}, then press Enter to continue..."
+  local done_label="$1"
+  local next_label="$2"
+  read -r -p "Done with ${done_label}. Set up ${next_label}, then press Enter to continue..."
 }
 
-run_profile() {
-  local profile="$1"
-  local outfile="$2"
+run_case() {
+  local stimulus_kind="$1"
+  local profile="$2"
+  local outfile="$3"
+  local duration_ms="$4"
   "$PY" "$HARNESS" \
     "${common_args[@]}" \
+    --stimulus-kind "$stimulus_kind" \
+    --duration-ms "$duration_ms" \
     --room-b-label "room1_noise_profile_${profile}" \
     --output "$OUT_DIR/$outfile"
 }
 
 # -----------------------------------------------------------------------------
-# White noise replications
+# Profile 01 / white noise
 # -----------------------------------------------------------------------------
-run_profile "01" "profile_01_white_noise_ba_replica_1.json"
-pause_between_profiles "profile 01 / white noise replica 1" "profile 01 / white noise replica 2"
+run_case "babble_ba_var" "01" "profile_01_white_noise_single_ba.json" 300
+pause_between_profiles "profile 01 / white noise / single ba" "profile 01 / white noise / repeated ba"
 
-run_profile "01" "profile_01_white_noise_ba_replica_2.json"
-pause_between_profiles "profile 01 / white noise replica 2" "profile 06 / fan 2 replica 1"
-
-# -----------------------------------------------------------------------------
-# Fan 2 replications
-# -----------------------------------------------------------------------------
-run_profile "06" "profile_06_fan_2_ba_replica_1.json"
-pause_between_profiles "profile 06 / fan 2 replica 1" "profile 06 / fan 2 replica 2"
-
-run_profile "06" "profile_06_fan_2_ba_replica_2.json"
-pause_between_profiles "profile 06 / fan 2 replica 2" "profile 08 / fan 4 replica 1"
+run_case "babble_ba_repeat_var" "01" "profile_01_white_noise_repeated_ba.json" 700
+pause_between_profiles "profile 01 / white noise / repeated ba" "profile 08 / fan 4 / single ba"
 
 # -----------------------------------------------------------------------------
-# Fan 4 replications
+# Profile 08 / fan 4
 # -----------------------------------------------------------------------------
-run_profile "08" "profile_08_fan_4_ba_replica_1.json"
-pause_between_profiles "profile 08 / fan 4 replica 1" "profile 08 / fan 4 replica 2"
+run_case "babble_ba_var" "08" "profile_08_fan_4_single_ba.json" 300
+pause_between_profiles "profile 08 / fan 4 / single ba" "profile 08 / fan 4 / repeated ba"
 
-run_profile "08" "profile_08_fan_4_ba_replica_2.json"
+run_case "babble_ba_repeat_var" "08" "profile_08_fan_4_repeated_ba.json" 700
 
-# End of focused babble_ba_var replication batch.
+# End of single-vs-repeated ba hypothesis batch.
