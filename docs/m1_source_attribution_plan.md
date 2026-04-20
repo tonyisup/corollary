@@ -223,6 +223,7 @@ The first hardware-facing placement sweep on the Mac mini + Fifine path suggests
 - current planning implication: severe near-field media interference should be treated as a mixed-source attribution and contaminated-learning case. It is useful for probing failure boundaries and readaptation safety, but it should not be conflated with routine room-transfer robustness.
 - recent `babble_ba_var` replications extend that lesson to the moderate phone-music setup as well: because the condition itself still varies widely across runs, it is premature to interpret current vowel-versus-`ba` differences as a stable family ranking under contamination. The immediate next need is tighter protocol control for `phone_music_moderate`, not more promotion claims.
 - updated safety implication: under contaminated world-audio conditions, evaluation without adaptation is now the safer default hypothesis. Re-adaptation should be treated as an explicit test condition, not the normal continuation path.
+- new developmental hypothesis: infants may move quickly from isolated sounds to repeated syllabic trains partly because repetition is a robustness strategy, not just a motor pattern. For Corollary, short repeated `babababa`-style sequences may help preserve self attribution in chaotic environments by giving the model multiple aligned self-generated events instead of one fragile token.
 
 ## M1b: Babbling-Driven Room Model Learning
 
@@ -317,6 +318,11 @@ Handle self-only, world-only, and overlapping sound sources.
 4. **Playback-of-self negative-control**
    - replay a prior self sound without issuing a current motor command
    - ensure the system does **not** treat it as current self merely because it sounds similar
+
+5. **Repeated-babble redundancy test**
+   - compare isolated single babble tokens against short repeated trains, for example one `ba` versus `ba ba ba ba`
+   - run first in a quiet setup, then under a tightened moderate interference setup
+   - test whether repetition preserves self/world attribution better than isolated tokens by providing temporal redundancy and stronger self-consistency cues
 
 ## Proposed Metrics
 

@@ -99,6 +99,8 @@ Current Mac mini + Fifine observation:
 - these phone-music runs also reveal an important control-policy lesson: re-adaptation under severe ongoing interference can make held-out performance worse rather than better, so extreme media-on contamination should be treated as a mixed-source / contaminated-learning condition, not as an ordinary room-transfer benchmark
 - follow-up `babble_ba_var` replications in `data/stress_test/` sharpened that interpretation: the moderate `phone_music_moderate` setup is still too variable to support a stable family-robustness claim, with immediate drops ranging from about `0.21 dB` up to `7.57 dB` across runs, and room-B re-adaptation under contamination remaining inconsistent or harmful
 - current practical policy is therefore tightening: ordinary room transfer can stay trust-gated, but media-contaminated conditions should be evaluated first and should generally avoid adaptation until the contamination is removed or the condition is explicitly being studied as a mixed-source failure mode
+- a new developmental hypothesis now follows from the contamination work: repeated self-generated babble trains, for example `ba ba ba ba ba`, may be more robust than isolated single tokens in chaotic environments because repetition provides temporal redundancy, stronger self-consistency cues, and better averaging against irregular world noise
+- the next useful test of that idea is not a broad family promotion claim but a focused comparison between single-token `babble_ba_var` probes and short repeated `babababa`-style trains under a tightened moderate interference protocol
 
 | Phase | Description | Status |
 |-------|-------------|--------|

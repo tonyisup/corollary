@@ -414,10 +414,12 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - calibrate on vowels, test on babble syllables
 - calibrate on babble, test on clicks
 - compare within the new early babble class, for example `ba` vs `da` vs `ma`
+- compare isolated babble tokens against short repeated trains, for example a single `ba` versus `babababa`
 
 **Metrics**
 - post-adaptation attribution by unseen stimulus type
 - whether trust-gated stopping still behaves sensibly across different syllabic babble families
+- whether repeated self-generated sequences preserve attribution better than isolated tokens under controlled interference
 
 **Current repo lesson**
 - the same trust-gated bridge logic now survives a first small syllabic repertoire (`ba`, `da`, `ma`) in the quiet benchmark room, which is the first evidence that the M1 bridge generalizes beyond sustained vowels into a real early babble class
@@ -430,6 +432,8 @@ Answer: **If I make this sound here, what should I expect to hear back?**
 - Follow-up `babble_ba_var` replications showed that even the moderate `phone_music_moderate` setup is not yet reproducible enough for clean cross-family promotion decisions. Across recent runs, immediate drops ranged from about `0.21 dB` to `7.57 dB`, so the setup itself is still wobbling too much to support a stable claim that `ba` is more robust than the vowel family under phone-music interference.
 - Under that same moderate phone-music condition, room-B re-adaptation remained unreliable for `babble_ba_var`: some runs degraded further after readaptation, one recovered only modestly, and none supported blind rebabbling as a safe default under contamination.
 - Current operational policy should therefore split more sharply by regime: ordinary room transfer remains trust-gated M1b work, while media-contaminated conditions should be evaluate-first and generally no-learn unless the explicit purpose is to study mixed-source attribution failure or contaminated-learning safety.
+- A new developmental hypothesis now emerges from the contamination results: repeated babble trains may be a more natural and more robust self-attribution strategy than isolated single tokens in noisy environments. The motivation is temporal redundancy, stronger self-consistency, and better averaging against irregular world audio.
+- Immediate next experiment for that hypothesis: compare single-token `babble_ba_var` probes against short repeated `babababa`-style trains under a tightened `phone_music_moderate` protocol before making broader claims about babble-family robustness.
 
 ## Stage 3, M1c Mixed-Source Attribution
 
