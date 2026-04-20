@@ -595,6 +595,13 @@ That set gives us:
 - convergence is reproducible
 - room changes cause understandable, measurable degradation
 
+### Current babble-family conclusion from the 2026-04-20 branch
+- `babble_ba_var` remains the promoted M1b babble baseline on the current Mac mini + Fifine + Mac mini speaker setup.
+- repeated babble is still scientifically useful, but not yet baseline-grade. The best current repeated candidate is `babble_ba_repeat_short_tight_var`.
+- That tightened repeated family recovered much better quiet held-out performance than the looser repeated-short family, but controlled-noise retries still showed the same basic tradeoff: lower mean transfer drop than single `ba`, paired with weaker room-A baseline and much higher seed instability.
+- Practical interpretation: repeated babble currently behaves more like a secondary challenge family for robustness-versus-stability analysis than like a replacement for the single-syllable baseline.
+- Device lesson that materially affected this branch: the correct Mac mini speaker output index was `3`, and earlier runs using output device `0` should be treated as suspect or invalid for promotion decisions.
+
 ### Exit criteria for M1c
 - self/world/overlap labeling is usable under structured interference
 - false self claims are acceptably low
