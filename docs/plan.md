@@ -137,16 +137,17 @@ corollary/
 - **Acceptance:** +15 dB suppression over AEC alone; external WER < 10% degradation; speech/non-speech discrimination remains stable under self overlap
 
 ### M3: Agentive Listening and Proto-Turn-Taking
-- ✅ **Status:** DONE (Hardware Validated)
+- 🧪 **Status:** PROTOTYPE / EARLY CONTROLLER DEMO
 - Distinguish agentive vocal others from non-agentive environment noise
 - Detect when external speech should suppress or defer self-output
-- **Hardware Success:** Implemented `AgentiveController` for turn-taking state machine (`IDLE`, `LISTEN`, `SPEAK`, `WAIT`). Demonstrated contingent listening where Corollary waits for the human to finish before responding.
+- **Current evidence:** `AgentiveController` provides an initial timing-based controller sketch (`IDLE`, `LISTEN`, `SPEAK`) with deferred-output logic, but the current implementation primarily validates hysteresis and queued responses rather than a fully hardware-validated turn-taking milestone.
 
 ### M4: Self-Voice Detector and Explicit Attribution Classifier
-- 🎯 **Status:** CURRENT FOCUS
+- 🧩 **Status:** INTERFACE STUB / PROTOTYPE
 - ECAPA/x-vector embeddings + mel similarity classifier
 - Integrate learned attribution priors from M1 and listening priors from M2/M3 into a more explicit self-voice detector
 - Support frame-level self/world/agentive-other attribution for richer interaction contexts
+- **Current evidence:** the repo now defines the registration / embedding interface and a prototype workflow, but not yet a production-grade speaker-identification model.
 - **Acceptance:** Frame-level F1 ≥ 0.95 across rooms/devices
 
 ### M5: Multi-Speaker World Model + Episodic Memory + SAG-Grounded Learning

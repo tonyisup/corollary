@@ -6,14 +6,14 @@
 
 ## Overview
 
-M4 introduces explicit speaker identification to the Corollary stack. While M1-M3 rely on timing and spectral matching, M4 uses latent speaker embeddings to definitively distinguish "My Voice" from "Your Voice."
+M4 introduces an explicit speaker-identification interface to the Corollary stack. While M1-M3 rely on timing and spectral matching, M4 is currently a prototype scaffold for later embedding-based self-voice discrimination rather than a definitive detector.
 
 ## Key Technical Achievements
 
 ### 1. Speaker Identification Interface
 We implemented the `SpeakerIdentifier` (`packages/stg/speaker.py`) which defines the interface for ECAPA-TDNN embedding extraction.
-- **get_embedding**: Returns a 512-dimensional vector representing the vocal characteristics of a segment.
-- **similarity**: Computes cosine similarity between two embeddings.
+- **get_embedding**: currently returns a deterministic mock embedding suitable for plumbing tests and prototype experiments, not a production speaker representation.
+- **similarity**: Computes cosine similarity between embeddings.
 
 ### 2. Self-Voice Registration
 The `SelfVoiceDetector` allows Corollary to "register" its own voice template.
@@ -21,7 +21,7 @@ The `SelfVoiceDetector` allows Corollary to "register" its own voice template.
 
 ### 3. Attribution Prototype
 We created `scripts/m4_self_voice_prototype.py` to demonstrate the registration/recognition workflow.
-- **Current State**: The interface is defined and ready for a production-grade ECAPA model (e.g., SpeechBrain or Pyannote).
+- **Current State**: The interface is defined and the end-to-end plumbing is sketched, but the present implementation still relies on mock embeddings and should not be interpreted as real self-voice recognition.
 
 ## Next Steps
 

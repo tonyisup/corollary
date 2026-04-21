@@ -114,18 +114,18 @@ Current Mac mini + Fifine observation:
 | M1a | Pre-linguistic self-sound attribution | ✅ Done |
 | M1b | Babbling-driven room model learning | ✅ Done |
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
-| M2 | Speech-aware self/world separation | ✅ Done |
-| M3 | Agentive listening and proto-turn-taking | ✅ Done |
-| M4 | Self-voice detector / explicit attribution classifier | ✅ Prototyped |
-| M5 | Multi-speaker world model + memory | 🎯 Current focus |
+| M2 | Speech-aware self/world separation | 🧪 Prototype / early hardware harness |
+| M3 | Agentive listening and proto-turn-taking | 🧪 Prototype / early controller demo |
+| M4 | Self-voice detector / explicit attribution classifier | 🧩 Interface stub / prototype |
+| M5 | Multi-speaker world model + memory | ⏳ Planned |
 | M6 | Self-model and introspection | ⏳ Planned |
 
 ### 2026-04-20 debrief lessons
 
-- **Motor-Aware Attribution Success:** The `ThalamicAttributor` successfully uses motor-command gating to distinguish "me" from "not-me" in real-time hardware tests.
-- **Speech-Aware Separation:** By integrating VAD, we successfully preserved external human speech while self-babbling was occurring, maintaining high ASR accuracy.
-- **Social Contingency:** The `AgentiveController` now manages turn-taking, allowing Corollary to "wait its turn" and only respond once a human agent has finished talking.
-- **Self-Voice Detection:** We've defined the latent speaker embedding pipeline (M4) to eventually allow Corollary to recognize its own voice even in the absence of motor commands (e.g. hearing a recording of itself).
+- **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` now exposes a speech-aware path and remains the main M1c attribution primitive.
+- **Speech-aware separation is in prototype stage:** VAD integration plus a preservation harness now exist, but the repo should treat M2 as an early hardware experiment until results are rerun and measured more rigorously.
+- **Social contingency has a first controller sketch:** The `AgentiveController` introduces deferred-output logic and timing hysteresis, but the implementation is still an early prototype rather than a fully validated turn-taking system.
+- **Self-voice detection is currently an interface stub:** The M4 path defines the embedding and registration interfaces, but does not yet ship a production-grade speaker model.
 
 ### Developmental framing
 

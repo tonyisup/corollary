@@ -110,11 +110,11 @@ async def run_m3_demo(device: int):
                 print("[PFC] Deferred! World-agent is still talking...")
                 has_requested_output = True # We already requested, now waiting for trigger
 
-        # If we have a deferred utterance, wait for IDLE state
-        if has_requested_output and ctrl.deferred_utterance and ctrl.state == AgentState.IDLE:
+        # If we have queued output, wait for IDLE state
+        if has_requested_output and ctrl.has_deferred_output and ctrl.state == AgentState.IDLE:
             print("\n[PFC] World-agent finished! Executing deferred response...")
             sd.play(response_pcm, samplerate=SR, blocking=True)
-            ctrl.deferred_utterance = None
+            ctrl.pop_deferred_output()
             print("[IDLE] Listening again...")
 
     stream.stop()

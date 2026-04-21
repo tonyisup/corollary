@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from enum import Enum
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 from thalamus.attributor import SourceVerdict, AttributionResult
 
@@ -17,7 +17,6 @@ class AgentState(Enum):
     IDLE = 0
     LISTEN = 1  # Hearing world-speech
     SPEAK = 2   # Emitting self-audio
-    WAIT = 3    # Deferring output due to world-speech
 
 @dataclass
 class ControllerDecision:
@@ -30,6 +29,8 @@ class AgentiveController:
     """The PFC controller responsible for social Contingency.
     
     Decides when to speak and when to listen based on M3 goals.
+    Deferred output is represented explicitly as queued text, not as a
+    separate controller state.
     """
 
     def __init__(
@@ -44,6 +45,17 @@ class AgentiveController:
         self.last_speech_time: float = 0.0
         self.speech_start_time: float = 0.0
         self.deferred_utterance: Optional[str] = None
+
+    @property
+    def has_deferred_output(self) -> bool:
+        """Whether the controller currently has queued output."""
+        return self.deferred_utterance is not None
+
+    def pop_deferred_output(self) -> Optional[str]:
+        """Return and clear queued output, if any."""
+        text = self.deferred_utterance
+        self.deferred_utterance = None
+        return text
 
     def process_attribution(
         self, 
@@ -82,7 +94,7 @@ class AgentiveController:
         if is_hearing_agent:
             self.state = AgentState.LISTEN
         elif self.state == AgentState.LISTEN:
-            # We were listening, now it's quiet. Go to IDLE (or WAIT if we have something to say)
+            # We were listening, now it's quiet. Return to IDLE.
             self.state = AgentState.IDLE
             
         # 3. Decision Making

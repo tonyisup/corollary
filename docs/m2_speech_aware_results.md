@@ -18,23 +18,23 @@ The `ThalamicAttributor` was updated to accept `is_speech` as an input.
 - During overlap, if speech is detected, the system defaults to a **BOTH** verdict rather than a hard **SELF** verdict.
 - This conservative policy ensures that world speech segments are not accidentally zeroed out by self-voice suppression.
 
-### 3. Speech Preservation Harness (Hardware Verified)
+### 3. Speech Preservation Harness (Early Hardware Prototype)
 We created `scripts/m2_speech_preservation_harness.py` to evaluate lexical preservation under overlap.
 - **Setup**: Self-Babble (Internal Speaker) vs. World-Speech (External Speaker).
 - **Metric**: Comparison of Whisper ASR results on Raw vs. Gated audio.
-- **Result**: Successfully preserved "This is a test of World Speech Preservation" in the gated signal even while self-babbling was occurring.
+- **Current evidence**: the harness and gating path exist, but any lexical-preservation claim should be treated as preliminary until rerun with saved outputs and clearer quantitative reporting.
 
-## Hardware Performance Matrix (M2)
+## Prototype Observation Matrix (M2)
 
-| Self Stimulus | World Stimulus | Gating Policy | Raw ASR Result | Gated ASR Result | Verdict |
+| Self Stimulus | World Stimulus | Gating Policy | Raw ASR Result | Gated ASR Result | Interpretation |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `ba` strings | Human Speech | Keep `BOTH` | Intelligible | Intelligible | ✅ SUCCESS |
-| `ma` (loud) | Human Speech | Keep `BOTH` | Intelligible | Intelligible | ✅ SUCCESS |
+| `ba` strings | Human Speech | Keep `BOTH` | Preliminary / not independently rechecked here | Preliminary / not independently rechecked here | promising but not yet promotion-grade |
+| `ma` (loud) | Human Speech | Keep `BOTH` | Preliminary / not independently rechecked here | Preliminary / not independently rechecked here | promising but not yet promotion-grade |
 
 ## Key Findings
 
 1.  **Timing Conservatism**: Onset-based timing checks naturally push overlapping frames into the `BOTH` category once the initial transient is passed. This behavior, while intended as a safety measure for M1, is perfectly suited for M2 speech preservation.
-2.  **Lexical Robustness**: Whisper ASR is robust enough to handle the rhythmic masking of babble, and our gating logic (preserving `BOTH` frames) ensures that no critical speech information is lost.
+2.  **Lexical robustness is still a hypothesis under test**: the current gating logic preserves `BOTH` frames, which is a sensible conservative prototype policy, but the repo still needs rerun evidence before claiming reliable speech preservation.
 
 ## Next Steps
 

@@ -14,8 +14,8 @@ M3 transitions Corollary from a passive listener to an active participant in voc
 We implemented the `AgentiveController` (`packages/pfc/agentive_controller.py`) to manage social state:
 - **IDLE**: Ambient monitoring.
 - **LISTEN**: Actively hearing a world-agent. Triggered after 300ms of sustained world-speech.
-- **SPEAK**: Actively emitting self-audio.
-- **WAIT**: Deferring a pending motor command because the world-agent is still talking.
+- **SPEAK**: Actively emitting self-audio when output is accepted.
+- **Deferred output**: currently represented as `LISTEN` state plus a queued utterance, not as a separate explicit controller state.
 
 ### 2. Turn-Taking Policy
 The controller enforces a "Contingent Listening" policy:
@@ -24,21 +24,21 @@ The controller enforces a "Contingent Listening" policy:
 
 ### 3. Hardware Demo (M3-A)
 We created `scripts/m3_agentive_listening_demo.py` to showcase these behaviors on real hardware.
-- **Result**: Corollary successfully monitors the room and correctly transitions between listening and speaking states. It demonstrates the ability to "hold its breath" until the room is quiet.
+- **Current result**: the demo exercises the controller sketch and deferred-output path, but should be treated as an early prototype demonstration rather than a completed hardware validation of turn-taking.
 
 ## Hardware State Transitions (M3)
 
 | Event | Previous State | New State | Action |
 | :--- | :--- | :--- | :--- |
 | sustained world-speech | `IDLE` | `LISTEN` | Suppress self-output |
-| silence > 800ms | `LISTEN` | `IDLE` | Trigger deferred output |
+| silence > 800ms | `LISTEN` | `IDLE` | Deferred output may run once the controller returns idle |
 | PFC speech request | `IDLE` | `SPEAK` | Play audio immediately |
-| PFC speech request | `LISTEN` | `WAIT` | Queue utterance for later |
+| PFC speech request | `LISTEN` | `LISTEN` + deferred utterance | Queue utterance for later |
 
 ## Key Findings
 
-1.  **Hysteresis is Essential**: Raw VAD is too jittery for social state. The `AgentiveController`'s 300ms/800ms timing windows provide the necessary stability for human-like turn-taking.
-2.  **Motor-Aware Gating**: By combining the `ThalamicAttributor` (which knows if *we* are talking) with the `VAD` (which knows if *someone* is talking), we can definitively identify external human agents.
+1.  **Hysteresis is Essential**: Raw VAD is too jittery for social state. The `AgentiveController`'s 300ms/800ms timing windows provide the necessary stability for a first deferred-response prototype.
+2.  **Motor-Aware Gating remains preliminary**: by combining the `ThalamicAttributor` (which knows if *we* are talking) with the `VAD` (which knows if *someone* is talking), the repo has a plausible starting point for external-agent detection, but not yet a fully validated agentive classifier.
 
 ## Next Steps
 

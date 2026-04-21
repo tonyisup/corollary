@@ -1,6 +1,11 @@
 import pytest
-from packages.pfc.agentive_controller import AgentiveController, AgentState
-from packages.thalamus.attributor import AttributionResult, SourceVerdict
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages"))
+
+from pfc.agentive_controller import AgentiveController, AgentState
+from thalamus.attributor import AttributionResult, SourceVerdict
 
 def test_controller_debug():
     ctrl = AgentiveController(listen_threshold_ms=100)

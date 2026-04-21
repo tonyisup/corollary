@@ -1,5 +1,10 @@
 import pytest
-from packages.thalamus.attributor import ThalamicAttributor, SourceVerdict
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages"))
+
+from thalamus.attributor import ThalamicAttributor, SourceVerdict
 
 def test_attributor_silence():
     attributor = ThalamicAttributor()

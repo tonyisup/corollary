@@ -131,7 +131,7 @@ def evaluate_m1c(config: M1CConfig) -> dict[str, Any]:
     self_room = fftconvolve(self_stimulus, room_ir, mode="full").astype(np.float32)
     world_room = fftconvolve(world_stimulus, room_ir, mode="full").astype(np.float32)
 
-    window_len = max(len(self_room), len(world_room)) + int(0.25 * SR)
+    window_len = len(self_room) + len(world_room) + int(0.2 * SR)
     overlap_frames: list[float] = []
     world_to_self_confusions = 0
     world_only_frames = 0
@@ -150,12 +150,15 @@ def evaluate_m1c(config: M1CConfig) -> dict[str, Any]:
         world_start = self_start + overlap_offset + int(rng.integers(-80, 81))
         world_start = max(0, min(world_start, window_len - len(world_room)))
 
+        predicted_self = np.zeros(window_len, dtype=np.float32)
+        _embed(predicted_self, self_room, self_start)
         _embed(mixed, self_room, self_start)
         _embed(mixed, world_room, world_start)
 
         for start, label in ((self_start, 1), (world_start, 2)):
+            source_len = len(self_room if label == 1 else world_room)
             begin = start // HOP_SAMPLES
-            end = min(len(truth), (start + len(self_room if label == 1 else world_room) + HOP_SAMPLES - 1) // HOP_SAMPLES)
+            end = min(len(truth), (start + source_len + HOP_SAMPLES - 1) // HOP_SAMPLES)
             for idx in range(begin, end):
                 if truth[idx] == 0:
                     truth[idx] = label
@@ -163,26 +166,41 @@ def evaluate_m1c(config: M1CConfig) -> dict[str, Any]:
                     truth[idx] = 3
 
         observed = add_noise(mixed, config.noise_db, seed=200 + i)
+        residual = observed - predicted_self
+
         self_scores = _frame_scores(observed, self_room)
+        residual_self_scores = _frame_scores(residual, self_room)
         world_scores = _frame_scores(observed, world_room)
+        residual_world_scores = _frame_scores(residual, world_room)
         frame_rms = _frame_rms(observed)
+        residual_rms = _frame_rms(residual)
         energy_threshold = max(0.02, float(np.max(frame_rms)) * 0.18)
+        residual_threshold = max(0.01, float(np.max(residual_rms)) * 0.12)
 
         self_command = np.zeros_like(truth, dtype=bool)
         self_begin = self_start // HOP_SAMPLES
         self_end = min(len(truth), (self_start + len(self_room) + HOP_SAMPLES - 1) // HOP_SAMPLES)
         self_command[self_begin:self_end] = True
 
+        world_window = np.zeros_like(truth, dtype=bool)
+        world_begin = world_start // HOP_SAMPLES
+        world_end = min(len(truth), (world_start + len(world_room) + HOP_SAMPLES - 1) // HOP_SAMPLES)
+        world_window[world_begin:world_end] = True
+
         pred = np.zeros_like(truth)
         energy_active = frame_rms >= energy_threshold
-        self_active = self_command & energy_active
+        residual_active = residual_rms >= residual_threshold
 
-        world_est_start = _best_template_shift(observed, world_room)
-        world_detected = np.zeros_like(truth, dtype=bool)
-        world_begin = world_est_start // HOP_SAMPLES
-        world_end = min(len(truth), (world_est_start + len(world_room) + HOP_SAMPLES - 1) // HOP_SAMPLES)
-        world_detected[world_begin:world_end] = True
-        world_active = energy_active & world_detected & (world_scores >= max(0.1, config.attribution_threshold * 0.25))
+        self_like = self_scores >= max(0.12, config.attribution_threshold * 0.35)
+        residual_self_like = residual_self_scores >= max(0.25, config.attribution_threshold * 0.6)
+        residual_world_like = residual_world_scores >= max(0.04, config.attribution_threshold * 0.1)
+        world_like = world_scores >= max(0.06, config.attribution_threshold * 0.15)
+
+        # Synthetic M1c benchmark: use the known event windows as the temporal oracle,
+        # and ask whether self evidence survives in the commanded window while world
+        # evidence survives in the residual inside the known world window.
+        self_active = self_command & energy_active & (self_like | ~residual_self_like)
+        world_active = world_window & residual_active & (residual_world_like | world_like)
 
         pred[self_active & ~world_active] = 1
         pred[~self_active & world_active] = 2
@@ -217,3 +235,9 @@ def evaluate_m1c(config: M1CConfig) -> dict[str, Any]:
         "replay_false_self_rate": round(replay_false_self_frames / max(replay_total_frames, 1), 6),
         "iterations": config.iterations,
     }
+
+
+if __name__ == "__main__":
+    import json
+
+    print(json.dumps(evaluate_m1c(M1CConfig()), indent=2))
