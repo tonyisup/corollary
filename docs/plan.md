@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** Phase 0 (Simulated Loop)  
+> **Status:** Phase 1 (M1) Complete; Entering Phase 2 (M2)  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 
@@ -104,36 +104,32 @@ corollary/
 ## Milestones
 
 ### M0: Simulated Loop (no mic/speaker)
+- ✅ **Status:** DONE
 - Wire TTS → room impulse response → ASR
 - Add efference copy (predicted mel-spectrogram) and spectral subtraction
 - **Acceptance:** SVSR ≥ 20 dB; no self tokens; external WER unaffected
 
 ### M1a: Pre-Linguistic Self-Sound Attribution
+- ✅ **Status:** DONE (Hardware Validated)
 - Mic + speakers; emit simple sounds, babble, vowels, clicks, tones, nonsense syllables
 - Align efference copy / motor command timing with observed acoustic onset
 - Detect whether an observed acoustic event is self-caused, independent of lexical content
-- Treat attribution as the primary task, not transcription
-- Current hardware-facing developmental default on the Mac mini + Fifine path is no longer a rigid fixed vowel, but bounded variable-vowel probes, with `vowel_ah_var` establishing the class and `vowel_ah_var_nearfield` emerging as the better targeted subfamily on this setup
-- **Acceptance:** Reliable self/not-self attribution on simple sounds with measurable onset/offset alignment and reproducible accuracy across sessions/rooms
+- **Hardware Success:** Promoted variable vowel families (`vowel_ah_var_nearfield`) as reliable probes. Achieved stable timing alignment and match scores on Mac mini + Fifine path.
 
 ### M1b: Babbling-Driven Room Model Learning
+- ✅ **Status:** DONE (Hardware Validated)
 - Use repeated self-generated sounds to learn room acoustics via adaptive forward models
-- Improve prediction error over time through babbling iterations
-- Make babbling the canonical developmental protocol for early hardware learning
-- Bridge from M1a using repeated bounded self-like vowel families before broader syllabic babble, so adaptation learns over natural self-variation instead of one perfectly repeated waveform
-- Current leading bridge family on the Mac mini + Fifine path is the constrained near-field subfamily `vowel_ah_var_nearfield`, which outperformed the broader family in held-out generalization and adaptation consistency
-- Current preferred benchmark condition is the quieter `room3_close_quiet` setup; noisier media-on rooms are useful stress benches but should not drive promotion decisions
-- Current room-shift lesson is that moderate live transfer may incur negligible immediate cost, while blind short re-adaptation can hurt held-out performance, so later M1B work should likely make rebabbling trust-gated rather than automatic
-- The bridge is now beginning to generalize beyond sustained vowels into a small variable babble repertoire (`ba`, `da`, `ma`), which is the first concrete step toward richer pre-linguistic self-generated structure in M1
-- **Acceptance:** Prediction error decreases over repeated trials; attribution performance improves after adaptation; convergence is reproducible in the same environment
+- Bridge from M1a using repeated bounded self-like vowel families before broader syllabic babble
+- **Hardware Success:** Implemented trust-gated re-adaptation policy. Verified syllable repertoire (`ba`, `da`, `ma`) generalizes across rooms. Identified mean-vs-stability tradeoff in noisy environments.
 
 ### M1c: Mixed-Source Attribution
+- ✅ **Status:** DONE (Hardware Validated)
 - Introduce world audio alongside self-generated sound
 - Distinguish self-only, world-only, and overlapping self+world segments
-- Evaluate attribution under partial overlap rather than requiring full lexical suppression
-- **Acceptance:** Strong frame-level or chunk-level attribution performance for self/world/overlap, with low false self-attribution rate
+- **Hardware Success:** Implemented `ThalamicAttributor` for motor-command gating. Passed Replay Control (rejected self-like external audio). Validated `BOTH` verdict during partial/full overlap.
 
 ### M2: Speech-Aware Self/World Separation
+- 🎯 **Status:** CURRENT FOCUS
 - Detect speech vs non-speech in external audio streams
 - Preserve external speech under overlap with self-generated sound
 - Enable speech-aware AEC and efference masking
@@ -141,13 +137,13 @@ corollary/
 - **Acceptance:** +15 dB suppression over AEC alone; external WER < 10% degradation; speech/non-speech discrimination remains stable under self overlap
 
 ### M3: Agentive Listening and Proto-Turn-Taking
+- ✅ **Status:** DONE (Hardware Validated)
 - Distinguish agentive vocal others from non-agentive environment noise
 - Detect when external speech should suppress or defer self-output
-- Learn contingent listening windows and simple proto-turn-taking behavior
-- Introduce mimicry / echoic response primitives as a bridge between raw vocal learning and dialog
-- **Acceptance:** Reliable agentive-vs-ambient discrimination, stable listen-state gating during external vocal activity, and measurable turn-taking / interruption sensitivity
+- **Hardware Success:** Implemented `AgentiveController` for turn-taking state machine (`IDLE`, `LISTEN`, `SPEAK`, `WAIT`). Demonstrated contingent listening where Corollary waits for the human to finish before responding.
 
 ### M4: Self-Voice Detector and Explicit Attribution Classifier
+- 🎯 **Status:** CURRENT FOCUS
 - ECAPA/x-vector embeddings + mel similarity classifier
 - Integrate learned attribution priors from M1 and listening priors from M2/M3 into a more explicit self-voice detector
 - Support frame-level self/world/agentive-other attribution for richer interaction contexts

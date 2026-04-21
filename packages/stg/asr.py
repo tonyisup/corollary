@@ -73,6 +73,7 @@ def transcribe(
     beam_size: int = 5,
     word_timestamps: bool = False,
     initial_prompt: Optional[str] = None,
+    mask: Optional[np.ndarray] = None,
 ) -> TranscriptionResult:
     """Transcribe audio using faster-whisper.
 
@@ -95,6 +96,9 @@ def transcribe(
         Whether to return per-word timestamps.
     initial_prompt : str, optional
         Optional prompt to bias the model.
+    mask : np.ndarray, optional
+        Boolean mask of the same length as audio. 
+        False = mask out (zero), True = keep.
 
     Returns
     -------
@@ -106,10 +110,28 @@ def transcribe(
             "Run: pip install faster-whisper"
         )
 
+    processed_audio = audio.astype(np.float32)
+    if mask is not None:
+        if len(mask) != len(audio):
+            # Try to resample or pad mask if it's frame-level
+            if len(mask) < len(audio) and len(audio) % len(mask) == 0:
+                # Up-sample frame mask to sample level
+                ratio = len(audio) // len(mask)
+                mask = np.repeat(mask, ratio)
+            
+            # Clip to match
+            min_len = min(len(mask), len(audio))
+            mask = mask[:min_len]
+            # Pad mask if shorter
+            if len(mask) < len(audio):
+                mask = np.pad(mask, (0, len(audio) - len(mask)), constant_values=True)
+        
+        processed_audio = processed_audio * mask.astype(np.float32)
+
     model = WhisperModel(model_size, device=device, compute_type=compute_type)
 
     segments_gen, info = model.transcribe(
-        audio.astype(np.float32),
+        processed_audio,
         beam_size=beam_size,
         word_timestamps=word_timestamps,
         initial_prompt=initial_prompt,

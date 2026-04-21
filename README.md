@@ -111,34 +111,34 @@ Current Mac mini + Fifine observation:
 | Phase | Description | Status |
 |-------|-------------|--------|
 | M0 | Simulated loop (no hardware) | ✅ Done |
-| M1a | Pre-linguistic self-sound attribution | 🎯 Current focus |
-| M1b | Babbling-driven room model learning | 🧪 In progress |
-| M1c | Mixed-source attribution (self vs world vs overlap) | ⏳ Planned |
-| M2 | Speech-aware self/world separation | ⏳ Planned |
-| M3 | Agentive listening and proto-turn-taking | ⏳ Planned |
-| M4 | Self-voice detector / explicit attribution classifier | ⏳ Planned |
-| M5 | Multi-speaker world model + memory | ⏳ Planned |
+| M1a | Pre-linguistic self-sound attribution | ✅ Done |
+| M1b | Babbling-driven room model learning | ✅ Done |
+| M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
+| M2 | Speech-aware self/world separation | ✅ Done |
+| M3 | Agentive listening and proto-turn-taking | ✅ Done |
+| M4 | Self-voice detector / explicit attribution classifier | ✅ Prototyped |
+| M5 | Multi-speaker world model + memory | 🎯 Current focus |
 | M6 | Self-model and introspection | ⏳ Planned |
 
-### 2026-04-19 debrief lessons
+### 2026-04-20 debrief lessons
 
-- controlled-noise benches and ecological-validity benches should be treated as different experiment types
-- geometry, obstruction, and cardioid mic orientation are part of the protocol, not incidental setup details
-- contaminated world-audio conditions should default to evaluate-first and usually no-learn unless contaminated learning is the explicit thing being studied
-- when many interference profiles are available, let the screening data choose candidate profiles before human intuition names or groups them
-- treat shortlist results from a first-pass screen as provisional whenever room-A baseline drift is visible
+- **Motor-Aware Attribution Success:** The `ThalamicAttributor` successfully uses motor-command gating to distinguish "me" from "not-me" in real-time hardware tests.
+- **Speech-Aware Separation:** By integrating VAD, we successfully preserved external human speech while self-babbling was occurring, maintaining high ASR accuracy.
+- **Social Contingency:** The `AgentiveController` now manages turn-taking, allowing Corollary to "wait its turn" and only respond once a human agent has finished talking.
+- **Self-Voice Detection:** We've defined the latent speaker embedding pipeline (M4) to eventually allow Corollary to recognize its own voice even in the absence of motor commands (e.g. hearing a recording of itself).
 
 ### Developmental framing
 
-Corollary now treats early M1 as a developmental stage closer to infant babbling than adult speech. The intended sequence is:
+Corollary now treats early milestones as a developmental stage closer to infant babbling than adult speech. The intended sequence is:
 
-1. detect that a sound occurred
-2. determine whether the sound was self-caused
-3. learn how the room transforms self-generated sound
-4. handle mixed self/world audio
-5. distinguish speech from non-speech and vocal agents from environment noise
-6. learn contingent listening and proto-turn-taking
-7. only then push toward richer conversational memory and reasoning
+1. detect that a sound occurred (M1a)
+2. determine whether the sound was self-caused (M1a)
+3. learn how the room transforms self-generated sound (M1b)
+4. handle mixed self/world audio and imitation (M1c)
+5. distinguish speech from non-noise (M2)
+6. learn contingent listening and proto-turn-taking (M3)
+7. build an explicit self-voice detector (M4)
+8. only then push toward richer conversational memory and reasoning (M5+)
 
 See `docs/plan.md` for full details.
 

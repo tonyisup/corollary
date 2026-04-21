@@ -25,6 +25,7 @@ class AttributionResult:
     is_in_motor_window: bool
     causal_score: float
     energy_db: float
+    is_speech: bool = False
     onset_error_ms: Optional[float] = None
     metadata: Optional[Dict[str, Any]] = None
 
@@ -32,6 +33,7 @@ class ThalamicAttributor:
     """The source attribution unit of the Thalamus.
     
     Decides whether an acoustic event was self-caused or world-caused.
+    Now with speech-awareness (M2).
     """
 
     def __init__(
@@ -53,6 +55,7 @@ class ThalamicAttributor:
         expected_onset_samples: Optional[int],
         rms_db: float,
         is_playing: bool,
+        is_speech: bool = False,
     ) -> AttributionResult:
         """Assign source attribution to an acoustic event.
 
@@ -68,6 +71,8 @@ class ThalamicAttributor:
             Energy of the observed signal in dB.
         is_playing : bool
             True if Corollary was actively emitting sound during the window.
+        is_speech : bool
+            True if VAD detects speech in this window (M2).
 
         Returns
         -------
@@ -82,7 +87,8 @@ class ThalamicAttributor:
                 self_match_score=match_score,
                 is_in_motor_window=is_playing,
                 causal_score=0.0,
-                energy_db=rms_db
+                energy_db=rms_db,
+                is_speech=is_speech
             )
 
         # 2. Compute causal score (timing alignment)
@@ -101,6 +107,10 @@ class ThalamicAttributor:
         if is_playing and is_self_like and is_timely:
             # High similarity + motor command + correct timing = SELF
             confidence = (match_score + causal_score) / 2.0
+            
+            # M2 refinement: if it's speech but also sounds like ME,
+            # we check if the match is "too good".
+            # For now, if we are playing and it's self-like, it's SELF.
             return AttributionResult(
                 verdict=SourceVerdict.SELF,
                 confidence=confidence,
@@ -108,28 +118,20 @@ class ThalamicAttributor:
                 is_in_motor_window=is_playing,
                 causal_score=causal_score,
                 energy_db=rms_db,
+                is_speech=is_speech,
                 onset_error_ms=onset_error_ms
             )
         
         if is_playing and (not is_self_like or not is_timely):
             # Energy exists during playback, but it doesn't match our prediction
-            # or it arrived at the wrong time. This is BOTH (likely world-noise masking self).
-            return AttributionResult(
-                verdict=SourceVerdict.BOTH,
-                confidence=0.7,  # Masking confidence
-                self_match_score=match_score,
-                is_in_motor_window=is_playing,
-                causal_score=causal_score,
-                energy_db=rms_db,
-                onset_error_ms=onset_error_ms
-            )
-
-        if not is_playing:
-            # Energy exists when we ARE NOT playing.
-            # Even if it sounds exactly like us (match_score high), it's WORLD.
-            # This handles the Replay/Confounding control case.
-            verdict = SourceVerdict.WORLD
-            confidence = 0.9 # High energy while silent is definitely world
+            # or it arrived at the wrong time.
+            verdict = SourceVerdict.BOTH
+            if is_speech:
+                # If it's speech and doesn't match ME, it's likely WORLD speech.
+                confidence = 0.8
+            else:
+                confidence = 0.7
+                
             return AttributionResult(
                 verdict=verdict,
                 confidence=confidence,
@@ -137,6 +139,22 @@ class ThalamicAttributor:
                 is_in_motor_window=is_playing,
                 causal_score=causal_score,
                 energy_db=rms_db,
+                is_speech=is_speech,
+                onset_error_ms=onset_error_ms
+            )
+
+        if not is_playing:
+            # Energy exists when we ARE NOT playing.
+            verdict = SourceVerdict.WORLD
+            confidence = 0.9 if is_speech else 0.8
+            return AttributionResult(
+                verdict=verdict,
+                confidence=confidence,
+                self_match_score=match_score,
+                is_in_motor_window=is_playing,
+                causal_score=causal_score,
+                energy_db=rms_db,
+                is_speech=is_speech,
                 onset_error_ms=onset_error_ms
             )
 
@@ -147,5 +165,6 @@ class ThalamicAttributor:
             self_match_score=match_score,
             is_in_motor_window=is_playing,
             causal_score=causal_score,
-            energy_db=rms_db
+            energy_db=rms_db,
+            is_speech=is_speech
         )
