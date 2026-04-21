@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Corollary M1c scratch run: narrow world-before-self sanity check
+# Corollary M1c scratch run: narrow sequential sanity checks
 #
 # Purpose:
-# - start M1c with the cleanest hardware-facing question first
-# - run sequential world-before-self cases before broader overlap work
+# - start M1c with the cleanest hardware-facing questions first
+# - support both world-before-self and self-before-world batches
 # - compare a few distinct world stimuli against one stable self stimulus
 #
 # Current recommendation:
 # - self stimulus: babble_ba_var
-# - first question: can we get meaningful world evidence before self starts,
-#   without breaking replay-style self safety later?
+# - first questions: can we get meaningful separation between
+#   world-before-self and self-before-world under the same geometry?
 #
 # Output directory:
 # - data/m1c_world_first_sanity/
@@ -40,21 +40,50 @@ set -euo pipefail
 REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
 HARNESS="$REPO_DIR/scripts/m1c_hardware_harness.py"
-OUT_DIR="$REPO_DIR/data/m1c_world_first_sanity"
-LOG_FILE="$OUT_DIR/run-20260421-2.log"
+MODE_SET="${MODE_SET:-world_first}"
+case "$MODE_SET" in
+  world_first)
+    HARNESS_MODE="sequential_world_first"
+    EXPECTED_LABEL="world_before_self"
+    BATCH_LABEL="world-first"
+    OUT_DIR="$REPO_DIR/data/m1c_world_first_sanity"
+    ;;
+  self_first)
+    HARNESS_MODE="sequential_self_first"
+    EXPECTED_LABEL="self_before_world"
+    BATCH_LABEL="self-first"
+    OUT_DIR="$REPO_DIR/data/m1c_self_first_sanity"
+    ;;
+  *)
+    echo "Unsupported MODE_SET: $MODE_SET" >&2
+    echo "Use MODE_SET=world_first or MODE_SET=self_first" >&2
+    exit 1
+    ;;
+esac
 
-mkdir -p "$OUT_DIR"
+CAL_DIR="$REPO_DIR/data/m1c_calibration"
+RUN_STAMP="$(date +%Y%m%d-%H%M%S)"
+SESSION_LABEL="${SESSION_LABEL:-m1c-${BATCH_LABEL}-${RUN_STAMP}}"
+CAL_SPLIT="${CAL_SPLIT:-train}"
+LOG_FILE="${LOG_FILE:-$OUT_DIR/run-${RUN_STAMP}.log}"
+JSONL_FILE="${JSONL_FILE:-$CAL_DIR/runs.jsonl}"
+
+mkdir -p "$OUT_DIR" "$CAL_DIR"
 cd "$REPO_DIR"
 
 common_args=(
-  --mode sequential_world_first
+  --mode "$HARNESS_MODE"
   --self-stim babble_ba_var
   --input-device 2
   --output-device 4
   --noise-device 3
   --duration-ms 350
   --amplitude 0.7
-  --setup-label m1c_world_first_sanity
+  --setup-label m1c_${MODE_SET}_sanity
+  --expected-label "$EXPECTED_LABEL"
+  --calibration-split "$CAL_SPLIT"
+  --session-label "$SESSION_LABEL"
+  --jsonl-out "$JSONL_FILE"
 )
 
 pause_between_cases() {
@@ -80,12 +109,18 @@ run_case() {
 }
 
 cat <<EOF
-Starting narrow M1c world-before-self sanity check.
+Starting narrow M1c ${BATCH_LABEL} sanity check.
 
 Run order:
   1. world = chirp
   2. world = vowel_ah
   3. world = tone
+
+Harness mode:
+  $HARNESS_MODE
+
+Expected label:
+  $EXPECTED_LABEL
 
 Hardware assumptions:
   - input device 2
@@ -94,6 +129,12 @@ Hardware assumptions:
 
 Log file:
   $LOG_FILE
+
+Calibration rows:
+  $JSONL_FILE
+
+Session label:
+  $SESSION_LABEL
 EOF
 
 run_case "chirp" "sequential world-before-self / chirp vs babble_ba_var"
@@ -107,3 +148,5 @@ run_case "tone" "sequential world-before-self / tone vs babble_ba_var"
 
 echo ""
 echo "Done. Review log at: $LOG_FILE"
+echo "Calibration rows appended to: $JSONL_FILE"
+echo "Session label: $SESSION_LABEL"

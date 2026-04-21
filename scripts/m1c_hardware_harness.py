@@ -13,11 +13,12 @@ Supports dual-output: self on one device, world on another.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
 import threading
-from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 import numpy as np
@@ -36,6 +37,22 @@ from thalamus.attributor import ThalamicAttributor, SourceVerdict
 
 sys.path.insert(0, os.path.dirname(__file__))
 from m1_tone_attribution import generate_stimulus_with_metadata, WORLD_VARIANTS
+
+
+def append_jsonl_record(path: str, record: dict[str, Any]) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, sort_keys=True) + "\n")
+
+
+def infer_expected_label(mode: str) -> str:
+    if mode == "sequential_world_first":
+        return "world_before_self"
+    if mode == "sequential_self_first":
+        return "self_before_world"
+    if mode in {"partial_overlap_self_first", "partial_overlap_world_first", "full_overlap"}:
+        return "overlap"
+    return "unknown"
 
 def resample_audio(audio: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
     if orig_sr == target_sr:
@@ -107,6 +124,9 @@ def run_mixed_trial(
     tail_s: float = 1.0,
     seed: int = 0,
     setup_label: str | None = None,
+    expected_label: str | None = None,
+    calibration_split: str = "train",
+    session_label: str | None = None,
 ) -> dict[str, Any]:
     self_meta = generate_stimulus_with_metadata(self_stim, duration_ms, amplitude, seed=seed)
     self_pcm = self_meta["pcm"]
@@ -244,13 +264,31 @@ def run_mixed_trial(
         is_playing=expected_self_rms_db >= attributor.energy_threshold_db,
     )
 
-    return {
+    self_evidence_db = expected_self_rms_db - baseline_rms_db
+    result = {
+        "timestamp": datetime.now().astimezone().isoformat(),
+        "session_label": session_label,
+        "calibration_split": calibration_split,
+        "expected_label": expected_label or infer_expected_label(mode),
         "mode": mode,
         "self_stim": self_stim,
         "world_stim": world_stim,
+        "duration_ms": int(duration_ms),
+        "amplitude": float(amplitude),
+        "sample_rate": int(SR),
+        "input_device": input_device,
+        "output_device": output_device,
+        "noise_device": noise_device,
+        "setup_label": setup_label,
+        "gap_s": float(gap_s),
+        "lead_in_s": float(lead_in_s),
+        "tail_s": float(tail_s),
+        "overlap_ratio": float(overlap_ratio),
+        "self_start_s": round(self_start_s, 6),
+        "world_start_s": round(world_start_s, 6),
         "self_score": round(self_score, 6),
-        "self_error_ms": round(verdict_res.onset_error_ms if verdict_res.onset_error_ms is not None else 0.0, 4),
         "world_score": round(world_score, 6),
+        "self_error_ms": round(verdict_res.onset_error_ms if verdict_res.onset_error_ms is not None else 0.0, 4),
         "verdict": verdict_res.verdict.name,
         "confidence": round(verdict_res.confidence, 4),
         "rms_db": round(whole_rms_db, 2),
@@ -259,14 +297,17 @@ def run_mixed_trial(
         "world_rms_db": round(world_rms_db, 2),
         "expected_self_rms_db": round(expected_self_rms_db, 2),
         "expected_world_rms_db": round(expected_world_rms_db, 2),
+        "self_evidence_db": round(self_evidence_db, 2),
         "world_evidence_db": round(world_evidence_db, 2),
-        "world_first_detected": world_first_detected,
+        "world_first_detected": bool(world_first_detected),
         "self_shift_samples": int(self_shift),
         "world_shift_samples": int(world_shift),
         "self_expected_shift_samples": int(self_expected_shift),
         "world_expected_shift_samples": int(world_expected_shift),
-        "setup_label": setup_label,
+        "self_shift_error_samples": int(self_shift - self_expected_shift),
+        "world_shift_error_samples": int(world_shift - world_expected_shift),
     }
+    return result
 
 def main():
     parser = argparse.ArgumentParser(description="M1C Hardware Mixed-Source Harness")
@@ -279,6 +320,10 @@ def main():
     parser.add_argument("--duration-ms", type=int, default=350)
     parser.add_argument("--amplitude", type=float, default=0.7)
     parser.add_argument("--setup-label", default="m1c_initial")
+    parser.add_argument("--expected-label", default=None, help="Optional explicit ground-truth label for calibration rows")
+    parser.add_argument("--calibration-split", default="train", choices=["train", "validation", "test"])
+    parser.add_argument("--session-label", default=None, help="Optional label to group related runs into one calibration session")
+    parser.add_argument("--jsonl-out", default=None, help="Optional JSONL path for calibration-ready per-run records")
     args = parser.parse_args()
 
     modes = [args.mode] if args.mode != "all" else [
@@ -301,9 +346,14 @@ def main():
             output_device=args.output_device,
             noise_device=args.noise_device,
             setup_label=args.setup_label,
+            expected_label=args.expected_label,
+            calibration_split=args.calibration_split,
+            session_label=args.session_label,
         )
         results.append(res)
         print(res)
+        if args.jsonl_out:
+            append_jsonl_record(args.jsonl_out, res)
         time.sleep(1)
 
     print("\nSummary Results:")
