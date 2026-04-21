@@ -132,7 +132,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--noise-device", type=int, default=3)
     parser.add_argument("--lead-in-s", type=float, default=0.5)
     parser.add_argument("--tail-s", type=float, default=1.0)
-    parser.add_argument("--countdown-s", type=float, default=0.5)
+    parser.add_argument("--countdown-s", type=float, default=0.5, help="Reserved for future pacing control; currently informational only")
     parser.add_argument("--inter-trial-s", type=float, default=1.0)
     parser.add_argument("--setup-label", default="m1c_order_rule_grid")
     parser.add_argument("--session-label", default=None)
@@ -162,6 +162,9 @@ def main() -> None:
         if args.dry_run:
             continue
 
+        if args.countdown_s > 0:
+            time.sleep(args.countdown_s)
+
         result = run_mixed_trial(
             mode=spec.mode,
             self_stim=spec.self_stim,
@@ -179,9 +182,9 @@ def main() -> None:
             expected_label=spec.expected_label,
             calibration_split=spec.calibration_split,
             session_label=session_label,
-            countdown_s=args.countdown_s,
         )
         result["experiment_block"] = spec.block
+        result["seed"] = spec.seed
         result["trial_index"] = spec.trial_index
         append_jsonl_record(str(args.jsonl_out), result)
         print(json.dumps(result, sort_keys=True))

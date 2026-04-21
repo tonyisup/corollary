@@ -10,7 +10,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from m1c_hardware_harness import PROVISIONAL_ORDER_SELF_EVIDENCE_THRESHOLD_DB
+PROVISIONAL_ORDER_SELF_EVIDENCE_THRESHOLD_DB = 2.62
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -77,6 +77,112 @@ def paired_margins(rows: list[dict[str, Any]]) -> list[float]:
     return margins
 
 
+def search_best_single_threshold(
+    rows: list[dict[str, Any]],
+    feature_key: str,
+    positive_when_leq: bool | None = None,
+) -> dict[str, Any]:
+    values = sorted({float(row[feature_key]) for row in rows})
+    if not values:
+        return {"feature": feature_key, "accuracy": 0.0, "threshold": None, "direction": None}
+
+    candidates = [values[0] - 1e-6]
+    candidates.extend((a + b) / 2.0 for a, b in zip(values, values[1:]))
+    candidates.append(values[-1] + 1e-6)
+
+    directions = ["<=", ">="] if positive_when_leq is None else (["<="] if positive_when_leq else [">="])
+    best: dict[str, Any] | None = None
+    for threshold in candidates:
+        for direction in directions:
+            correct = 0
+            for row in rows:
+                value = float(row[feature_key])
+                pred = "world_before_self" if (value <= threshold if direction == "<=" else value >= threshold) else "self_before_world"
+                correct += pred == row.get("expected_label")
+            acc = correct / len(rows) if rows else 0.0
+            candidate = {
+                "feature": feature_key,
+                "accuracy": acc,
+                "threshold": threshold,
+                "direction": direction,
+                "correct": correct,
+                "total": len(rows),
+            }
+            if best is None or candidate["accuracy"] > best["accuracy"]:
+                best = candidate
+    return best or {"feature": feature_key, "accuracy": 0.0, "threshold": None, "direction": None}
+
+
+def search_best_two_feature_rule(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    feature_configs = [
+        ("self_evidence_db", "<=", True),
+        ("world_evidence_db", "<=", True),
+        ("world_score", ">=", False),
+    ]
+
+    def candidate_thresholds(feature_key: str) -> list[float]:
+        values = sorted({float(row[feature_key]) for row in rows})
+        if not values:
+            return []
+        thresholds = [values[0] - 1e-6]
+        thresholds.extend((a + b) / 2.0 for a, b in zip(values, values[1:]))
+        thresholds.append(values[-1] + 1e-6)
+        return thresholds
+
+    best: dict[str, Any] | None = None
+    for feature_a, dir_a, _ in feature_configs:
+        for feature_b, dir_b, _ in feature_configs:
+            thresholds_a = candidate_thresholds(feature_a)
+            thresholds_b = candidate_thresholds(feature_b)
+            for threshold_a in thresholds_a:
+                for threshold_b in thresholds_b:
+                    correct = 0
+                    for row in rows:
+                        val_a = float(row[feature_a])
+                        val_b = float(row[feature_b])
+                        cond_a = val_a <= threshold_a if dir_a == "<=" else val_a >= threshold_a
+                        cond_b = val_b <= threshold_b if dir_b == "<=" else val_b >= threshold_b
+                        pred = "world_before_self" if (cond_a and cond_b) else "self_before_world"
+                        correct += pred == row.get("expected_label")
+                    acc = correct / len(rows) if rows else 0.0
+                    candidate = {
+                        "accuracy": acc,
+                        "correct": correct,
+                        "total": len(rows),
+                        "feature_a": feature_a,
+                        "direction_a": dir_a,
+                        "threshold_a": threshold_a,
+                        "feature_b": feature_b,
+                        "direction_b": dir_b,
+                        "threshold_b": threshold_b,
+                    }
+                    if best is None or candidate["accuracy"] > best["accuracy"]:
+                        best = candidate
+    return best or {"accuracy": 0.0, "correct": 0, "total": len(rows)}
+
+
+def search_best_stimulus_aware_single_feature(rows: list[dict[str, Any]], feature_key: str) -> dict[str, Any]:
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        groups[str(row.get("world_stim", "unknown"))].append(row)
+
+    thresholds: dict[str, dict[str, Any]] = {}
+    correct = 0
+    total = len(rows)
+    for stim, stim_rows in sorted(groups.items()):
+        best = search_best_single_threshold(stim_rows, feature_key)
+        thresholds[stim] = best
+        correct += best.get("correct", 0)
+
+    return {
+        "feature": feature_key,
+        "accuracy": correct / total if total else 0.0,
+        "correct": correct,
+        "total": total,
+        "thresholds": thresholds,
+    }
+
+
 def print_group_metrics(rows: list[dict[str, Any]], threshold: float, group_key: str) -> None:
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
@@ -129,6 +235,33 @@ def main() -> None:
 
     print_group_metrics(rows, args.threshold, "calibration_split")
     print_group_metrics(rows, args.threshold, "experiment_block")
+
+    print("\nBest single-feature threshold rules:")
+    for feature in ("self_evidence_db", "world_evidence_db", "world_score"):
+        best = search_best_single_threshold(rows, feature)
+        print(
+            f"  {feature:<18} acc={best['accuracy']:.3f} "
+            f"rule: world_before_self if {feature} {best['direction']} {best['threshold']:.3f}"
+        )
+
+    best_two = search_best_two_feature_rule(rows)
+    print("\nBest two-feature AND rule:")
+    print(
+        "  "
+        f"acc={best_two['accuracy']:.3f} "
+        f"rule: world_before_self if {best_two['feature_a']} {best_two['direction_a']} {best_two['threshold_a']:.3f} "
+        f"AND {best_two['feature_b']} {best_two['direction_b']} {best_two['threshold_b']:.3f}"
+    )
+
+    print("\nBest stimulus-aware single-feature rules:")
+    for feature in ("self_evidence_db", "world_evidence_db", "world_score"):
+        best = search_best_stimulus_aware_single_feature(rows, feature)
+        print(f"  {feature:<18} acc={best['accuracy']:.3f}")
+        for stim, rule in best["thresholds"].items():
+            print(
+                f"    {stim:<8} world_before_self if {feature} {rule['direction']} {rule['threshold']:.3f} "
+                f"(acc={rule['accuracy']:.3f})"
+            )
 
 
 if __name__ == "__main__":
