@@ -38,6 +38,8 @@ from thalamus.attributor import ThalamicAttributor, SourceVerdict
 sys.path.insert(0, os.path.dirname(__file__))
 from m1_tone_attribution import generate_stimulus_with_metadata, WORLD_VARIANTS
 
+PROVISIONAL_ORDER_SELF_EVIDENCE_THRESHOLD_DB = 2.62
+
 
 def append_jsonl_record(path: str, record: dict[str, Any]) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -53,6 +55,15 @@ def infer_expected_label(mode: str) -> str:
     if mode in {"partial_overlap_self_first", "partial_overlap_world_first", "full_overlap"}:
         return "overlap"
     return "unknown"
+
+
+def provisional_order_prediction(self_evidence_db: float) -> str:
+    return (
+        "world_before_self"
+        if self_evidence_db <= PROVISIONAL_ORDER_SELF_EVIDENCE_THRESHOLD_DB
+        else "self_before_world"
+    )
+
 
 def resample_audio(audio: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
     if orig_sr == target_sr:
@@ -265,6 +276,7 @@ def run_mixed_trial(
     )
 
     self_evidence_db = expected_self_rms_db - baseline_rms_db
+    order_prediction = provisional_order_prediction(self_evidence_db)
     result = {
         "timestamp": datetime.now().astimezone().isoformat(),
         "session_label": session_label,
@@ -299,6 +311,8 @@ def run_mixed_trial(
         "expected_world_rms_db": round(expected_world_rms_db, 2),
         "self_evidence_db": round(self_evidence_db, 2),
         "world_evidence_db": round(world_evidence_db, 2),
+        "provisional_order_threshold_db": PROVISIONAL_ORDER_SELF_EVIDENCE_THRESHOLD_DB,
+        "provisional_order_prediction": order_prediction,
         "world_first_detected": bool(world_first_detected),
         "self_shift_samples": int(self_shift),
         "world_shift_samples": int(world_shift),
@@ -357,9 +371,9 @@ def main():
         time.sleep(1)
 
     print("\nSummary Results:")
-    print(f"{'Mode':<30} {'SelfScore':<10} {'WorldScore':<10} {'Verdict':<10} {'WorldΔdB':<10} {'WF?':<6}")
+    print(f"{'Mode':<30} {'SelfEv':<8} {'WorldEv':<8} {'PredictedOrder':<20} {'Verdict':<10}")
     for r in results:
-        print(f"{r['mode']:<30} {r['self_score']:<10.4f} {r['world_score']:<10.4f} {r['verdict']:<10} {r['world_evidence_db']:<10.2f} {str(r['world_first_detected']):<6}")
+        print(f"{r['mode']:<30} {r['self_evidence_db']:<8.2f} {r['world_evidence_db']:<8.2f} {r['provisional_order_prediction']:<20} {r['verdict']:<10}")
 
 if __name__ == "__main__":
     main()
