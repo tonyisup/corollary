@@ -1,77 +1,87 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Corollary M1 noise retry: single ba vs tight repeated-short ba
+# Corollary M1c scratch run: narrow world-before-self sanity check
 #
 # Purpose:
-# - test the tightened repeated-short family under the two most informative
-#   controlled-noise profiles after quiet validation showed a real family-level gain
-# - compare against single ba on the same profiles
+# - start M1c with the cleanest hardware-facing question first
+# - run sequential world-before-self cases before broader overlap work
+# - compare a few distinct world stimuli against one stable self stimulus
 #
-# Profiles:
-# - 01 white noise
-# - 08 fan 4
-#
-# Stimuli:
-# - babble_ba_var
-# - babble_ba_repeat_short_tight_var
+# Current recommendation:
+# - self stimulus: babble_ba_var
+# - first question: can we get meaningful world evidence before self starts,
+#   without breaking replay-style self safety later?
 #
 # Output directory:
-# - data/noise_machine_ba_repeat_short_tight_retry/
+# - data/m1c_world_first_sanity/
 
 REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
-HARNESS="$REPO_DIR/scripts/m1_room_shift_recovery.py"
-OUT_DIR="$REPO_DIR/data/noise_machine_ba_repeat_short_tight_retry"
+HARNESS="$REPO_DIR/scripts/m1c_hardware_harness.py"
+OUT_DIR="$REPO_DIR/data/m1c_world_first_sanity"
+LOG_FILE="$OUT_DIR/run.log"
 
 mkdir -p "$OUT_DIR"
 cd "$REPO_DIR"
 
 common_args=(
+  --mode sequential_world_first
+  --self-stim babble_ba_var
   --input-device 2
   --output-device 3
-  --train-seeds 0,7,19
-  --heldout-seeds 23,29
-  --room-a-cycles 2
-  --room-b-cycles 2
-  --readapt-threshold-db 999
-  --room-a-label room1_quiet_baseline
+  --noise-device 4
+  --duration-ms 350
+  --amplitude 0.7
+  --setup-label m1c_world_first_sanity
 )
 
-pause_between_profiles() {
+pause_between_cases() {
   local done_label="$1"
   local next_label="$2"
   read -r -p "Done with ${done_label}. Set up ${next_label}, then press Enter to continue..."
 }
 
 run_case() {
-  local stimulus_kind="$1"
-  local profile="$2"
-  local duration_ms="$3"
-  local outfile="$4"
+  local world_stim="$1"
+  local case_label="$2"
+
+  echo "" | tee -a "$LOG_FILE"
+  echo "================================================================" | tee -a "$LOG_FILE"
+  echo "CASE: $case_label" | tee -a "$LOG_FILE"
+  echo "WORLD STIM: $world_stim" | tee -a "$LOG_FILE"
+  echo "TIME: $(date -Iseconds)" | tee -a "$LOG_FILE"
+  echo "================================================================" | tee -a "$LOG_FILE"
+
   "$PY" "$HARNESS" \
     "${common_args[@]}" \
-    --stimulus-kind "$stimulus_kind" \
-    --duration-ms "$duration_ms" \
-    --room-b-label "room1_noise_profile_${profile}" \
-    --output "$OUT_DIR/$outfile"
+    --world-stim "$world_stim" | tee -a "$LOG_FILE"
 }
 
-# -----------------------------------------------------------------------------
-# Profile 01 / white noise
-# -----------------------------------------------------------------------------
-run_case "babble_ba_var" "01" 300 "profile_01_white_noise_single_ba.json"
-pause_between_profiles "profile 01 / white noise / single ba" "profile 01 / white noise / tight repeated-short ba"
+cat <<EOF
+Starting narrow M1c world-before-self sanity check.
 
-run_case "babble_ba_repeat_short_tight_var" "01" 420 "profile_01_white_noise_tight_repeated_ba.json"
-pause_between_profiles "profile 01 / white noise / tight repeated-short ba" "profile 08 / fan 4 / single ba"
+Run order:
+  1. world = chirp
+  2. world = vowel_ah
+  3. world = tone
 
-# -----------------------------------------------------------------------------
-# Profile 08 / fan 4
-# -----------------------------------------------------------------------------
-run_case "babble_ba_var" "08" 300 "profile_08_fan_4_single_ba.json"
-pause_between_profiles "profile 08 / fan 4 / single ba" "profile 08 / fan 4 / tight repeated-short ba"
+Hardware assumptions:
+  - input device 2
+  - self output device 3
+  - world output device 4
 
-run_case "babble_ba_repeat_short_tight_var" "08" 420 "profile_08_fan_4_tight_repeated_ba.json"
+Log file:
+  $LOG_FILE
+EOF
 
-# End of single-vs-tight-repeated ba noise retry.
+run_case "chirp" "sequential world-before-self / chirp vs babble_ba_var"
+pause_between_cases "chirp world-first case" "vowel_ah world-first case"
+
+run_case "vowel_ah" "sequential world-before-self / vowel_ah vs babble_ba_var"
+pause_between_cases "vowel_ah world-first case" "tone world-first case"
+
+run_case "tone" "sequential world-before-self / tone vs babble_ba_var"
+
+echo ""
+echo "Done. Review log at: $LOG_FILE"
