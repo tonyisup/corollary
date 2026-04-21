@@ -14,7 +14,6 @@ import argparse
 import os
 import sys
 import threading
-import time
 from collections import deque
 from typing import Any
 
@@ -169,11 +168,44 @@ def compute_metrics(observed: np.ndarray, template: np.ndarray) -> dict[str, Any
     }
 
 
-def playback_loop(pcm: np.ndarray, output_device: int | None, stop_event: threading.Event, gap_s: float) -> None:
-    while not stop_event.is_set():
-        sd.play(pcm, samplerate=SR, device=output_device, blocking=True)
-        if stop_event.wait(gap_s):
-            break
+class LoopingOutput:
+    def __init__(self, pcm: np.ndarray, gap_s: float) -> None:
+        self.pcm = pcm.astype(np.float32)
+        self.gap_samples = max(0, int(gap_s * SR))
+        self.pos = 0
+        self.in_gap = False
+        self.gap_pos = 0
+        self.lock = threading.Lock()
+
+    def callback(self, outdata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
+        if status:
+            print(status, file=sys.stderr)
+        out = np.zeros(frames, dtype=np.float32)
+        with self.lock:
+            i = 0
+            while i < frames:
+                if self.in_gap:
+                    remaining_gap = self.gap_samples - self.gap_pos
+                    n = min(frames - i, remaining_gap)
+                    i += n
+                    self.gap_pos += n
+                    if self.gap_pos >= self.gap_samples:
+                        self.in_gap = False
+                        self.gap_pos = 0
+                        self.pos = 0
+                else:
+                    remaining_pcm = len(self.pcm) - self.pos
+                    n = min(frames - i, remaining_pcm)
+                    out[i:i + n] = self.pcm[self.pos:self.pos + n]
+                    i += n
+                    self.pos += n
+                    if self.pos >= len(self.pcm):
+                        if self.gap_samples > 0:
+                            self.in_gap = True
+                            self.gap_pos = 0
+                        else:
+                            self.pos = 0
+        outdata[:, 0] = out
 
 
 def main() -> None:
@@ -183,7 +215,7 @@ def main() -> None:
     parser.add_argument("--amplitude", type=float, default=0.7)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--input-device", type=int, default=2)
-    parser.add_argument("--output-device", type=int, default=4)
+    parser.add_argument("--output-device", type=int, default=3)
     parser.add_argument("--loop-gap-s", type=float, default=0.35)
     parser.add_argument("--window-seconds", type=float, default=2.0)
     args = parser.parse_args()
@@ -204,11 +236,7 @@ def main() -> None:
             mono = resample_audio(mono, input_sr, SR)
         shared.append(mono)
 
-    playback_thread = threading.Thread(
-        target=playback_loop,
-        args=(pcm, args.output_device, stop_event, args.loop_gap_s),
-        daemon=True,
-    )
+    looper = LoopingOutput(pcm, args.loop_gap_s)
 
     stream = sd.InputStream(
         device=args.input_device,
@@ -216,6 +244,15 @@ def main() -> None:
         samplerate=input_sr,
         dtype="float32",
         callback=audio_callback,
+        blocksize=1024,
+    )
+
+    output_stream = sd.OutputStream(
+        device=args.output_device,
+        channels=1,
+        samplerate=SR,
+        dtype="float32",
+        callback=looper.callback,
         blocksize=1024,
     )
 
@@ -234,7 +271,7 @@ def main() -> None:
 
     try:
         stream.start()
-        playback_thread.start()
+        output_stream.start()
 
         while plt.fignum_exists(fig.number):
             observed = shared.latest(max(window_samples, len(pcm) * 2))
@@ -287,11 +324,12 @@ def main() -> None:
             fig.text(0.02, 0.02, metrics_text, fontsize=10)
 
             plt.tight_layout(rect=(0, 0.05, 1, 0.95))
-            plt.pause(0.08)
+            plt.pause(0.15)
     finally:
         stop_event.set()
         try:
-            sd.stop()
+            output_stream.stop()
+            output_stream.close()
         except Exception:
             pass
         try:
