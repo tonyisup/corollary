@@ -80,6 +80,18 @@ def normalized_xcorr(observed: np.ndarray, template: np.ndarray) -> tuple[float,
             best_shift = shift
     return max(0.0, best_score), best_shift
 
+def local_rms_db(audio: np.ndarray, start: int, length: int) -> float:
+    if len(audio) == 0 or length <= 0:
+        return -120.0
+    start = max(0, min(start, len(audio)))
+    end = max(start, min(start + length, len(audio)))
+    window = audio[start:end]
+    if len(window) == 0:
+        return -120.0
+    rms = float(np.sqrt(np.mean(window ** 2)))
+    return db(rms)
+
+
 def run_mixed_trial(
     mode: str,
     self_stim: str,
@@ -201,25 +213,37 @@ def run_mixed_trial(
     # Analysis
     attributor = ThalamicAttributor(sr=SR)
 
-    # 1. Match score for self
     self_score, self_shift = normalized_xcorr(observed, self_pcm)
     self_expected_shift = int(self_start_s * SR)
-    
-    # 2. Match score for world
-    world_score, world_shift = normalized_xcorr(observed, world_pcm)
-    
-    rms = float(np.sqrt(np.mean(observed**2)))
-    rms_db = db(rms)
 
-    # Run the attribution decision
+    world_score, world_shift = normalized_xcorr(observed, world_pcm)
+    world_expected_shift = int(world_start_s * SR)
+
+    whole_rms = float(np.sqrt(np.mean(observed**2))) if len(observed) else 0.0
+    whole_rms_db = db(whole_rms)
+
+    baseline_len = int(min(0.25 * SR, max(world_expected_shift, 1)))
+    baseline_rms_db = local_rms_db(observed, 0, baseline_len)
+    self_rms_db = local_rms_db(observed, self_shift, len(self_pcm))
+    world_rms_db = local_rms_db(observed, world_shift, len(world_pcm))
+    expected_self_rms_db = local_rms_db(observed, self_expected_shift, len(self_pcm))
+    expected_world_rms_db = local_rms_db(observed, world_expected_shift, len(world_pcm))
+
+    if mode == "sequential_world_first":
+        world_evidence_db = expected_world_rms_db - baseline_rms_db
+        world_first_detected = (world_score >= 0.15) and (world_evidence_db >= 6.0)
+    else:
+        world_evidence_db = world_rms_db - baseline_rms_db
+        world_first_detected = False
+
     verdict_res = attributor.attribute(
         match_score=self_score,
         observed_onset_samples=self_shift,
         expected_onset_samples=self_expected_shift,
-        rms_db=rms_db,
-        is_playing=True
+        rms_db=expected_self_rms_db,
+        is_playing=expected_self_rms_db >= attributor.energy_threshold_db,
     )
-    
+
     return {
         "mode": mode,
         "self_stim": self_stim,
@@ -229,7 +253,18 @@ def run_mixed_trial(
         "world_score": round(world_score, 6),
         "verdict": verdict_res.verdict.name,
         "confidence": round(verdict_res.confidence, 4),
-        "rms_db": round(rms_db, 2),
+        "rms_db": round(whole_rms_db, 2),
+        "baseline_rms_db": round(baseline_rms_db, 2),
+        "self_rms_db": round(self_rms_db, 2),
+        "world_rms_db": round(world_rms_db, 2),
+        "expected_self_rms_db": round(expected_self_rms_db, 2),
+        "expected_world_rms_db": round(expected_world_rms_db, 2),
+        "world_evidence_db": round(world_evidence_db, 2),
+        "world_first_detected": world_first_detected,
+        "self_shift_samples": int(self_shift),
+        "world_shift_samples": int(world_shift),
+        "self_expected_shift_samples": int(self_expected_shift),
+        "world_expected_shift_samples": int(world_expected_shift),
         "setup_label": setup_label,
     }
 
@@ -272,9 +307,9 @@ def main():
         time.sleep(1)
 
     print("\nSummary Results:")
-    print(f"{'Mode':<30} {'SelfScore':<10} {'Verdict':<10} {'Conf':<10} {'SelfErr':<10}")
+    print(f"{'Mode':<30} {'SelfScore':<10} {'WorldScore':<10} {'Verdict':<10} {'WorldΔdB':<10} {'WF?':<6}")
     for r in results:
-        print(f"{r['mode']:<30} {r['self_score']:<10.4f} {r['verdict']:<10} {r['confidence']:<10.2f} {r['self_error_ms']:<10.2f}")
+        print(f"{r['mode']:<30} {r['self_score']:<10.4f} {r['world_score']:<10.4f} {r['verdict']:<10} {r['world_evidence_db']:<10.2f} {str(r['world_first_detected']):<6}")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,57 @@
+
+================================================================
+CASE: sequential world-before-self / chirp vs babble_ba_var
+WORLD STIM: chirp
+TIME: 2026-04-21T11:08:01-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: chirp (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3...
+Starting in 2...
+Starting in 1...
+{'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'self_score': 0.571882, 'self_error_ms': 0.0, 'world_score': 0.150186, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-92.2), 'setup_label': 'm1c_world_first_sanity'}
+
+Summary Results:
+Mode                           SelfScore  Verdict    Conf       SelfErr   
+sequential_world_first         0.5719     SILENCE    1.00       0.00      
+
+================================================================
+CASE: sequential world-before-self / vowel_ah vs babble_ba_var
+WORLD STIM: vowel_ah
+TIME: 2026-04-21T11:08:10-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: vowel_ah (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3...
+Starting in 2...
+Starting in 1...
+{'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'vowel_ah', 'self_score': 0.567891, 'self_error_ms': 0.0, 'world_score': 0.415564, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-93.46), 'setup_label': 'm1c_world_first_sanity'}
+
+Summary Results:
+Mode                           SelfScore  Verdict    Conf       SelfErr   
+sequential_world_first         0.5679     SILENCE    1.00       0.00      
+
+================================================================
+CASE: sequential world-before-self / tone vs babble_ba_var
+WORLD STIM: tone
+TIME: 2026-04-21T11:08:20-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: tone (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3...
+Starting in 2...
+Starting in 1...
+{'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'self_score': 0.513568, 'self_error_ms': 0.0, 'world_score': 0.812087, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-92.74), 'setup_label': 'm1c_world_first_sanity'}
+
+Summary Results:
+Mode                           SelfScore  Verdict    Conf       SelfErr   
+sequential_world_first         0.5136     SILENCE    1.00       0.00      

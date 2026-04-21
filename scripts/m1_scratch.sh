@@ -16,6 +16,27 @@ set -euo pipefail
 # Output directory:
 # - data/m1c_world_first_sanity/
 
+# scripts/m1_mic_capture.py --list-only  ============================================================
+#   COROLLARY — M1 Microphone Capture Verification
+# ============================================================
+
+# Available audio INPUT devices:
+
+# Index    Name                                               Ch   SR         Default
+# --------------------------------------------------------------------------------
+# 2        fifine Microphone                                  2    48000      ← DEFAULT
+
+
+# Available audio OUTPUT devices:
+
+# Index    Name                                               Ch   SR         Default
+# --------------------------------------------------------------------------------
+# 0        ASUS PB287Q                                        2    48000     
+# 1        fifine Microphone                                  2    48000     
+# 3        External Headphones                                2    48000      ← DEFAULT
+# 4        Mac mini Speakers                                  2    48000     
+
+
 REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
 HARNESS="$REPO_DIR/scripts/m1c_hardware_harness.py"
@@ -29,8 +50,8 @@ common_args=(
   --mode sequential_world_first
   --self-stim babble_ba_var
   --input-device 2
-  --output-device 3
-  --noise-device 4
+  --output-device 4
+  --noise-device 3
   --duration-ms 350
   --amplitude 0.7
   --setup-label m1c_world_first_sanity
@@ -68,8 +89,8 @@ Run order:
 
 Hardware assumptions:
   - input device 2
-  - self output device 3
-  - world output device 4
+  - self output device 4
+  - world output device 3
 
 Log file:
   $LOG_FILE
