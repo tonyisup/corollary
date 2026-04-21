@@ -41,7 +41,7 @@ REPO_DIR="/Users/juicebox/Projects/corollary"
 PY="$REPO_DIR/.venv/bin/python"
 HARNESS="$REPO_DIR/scripts/m1c_hardware_harness.py"
 OUT_DIR="$REPO_DIR/data/m1c_world_first_sanity"
-LOG_FILE="$OUT_DIR/run.log"
+LOG_FILE="$OUT_DIR/run-20260421-2.log"
 
 mkdir -p "$OUT_DIR"
 cd "$REPO_DIR"
@@ -97,10 +97,11 @@ Log file:
 EOF
 
 run_case "chirp" "sequential world-before-self / chirp vs babble_ba_var"
-pause_between_cases "chirp world-first case" "vowel_ah world-first case"
+# only need to pause if I need to manually change the setup
+# pause_between_cases "chirp world-first case" "vowel_ah world-first case"
 
 run_case "vowel_ah" "sequential world-before-self / vowel_ah vs babble_ba_var"
-pause_between_cases "vowel_ah world-first case" "tone world-first case"
+# pause_between_cases "vowel_ah world-first case" "tone world-first case"
 
 run_case "tone" "sequential world-before-self / tone vs babble_ba_var"
 
