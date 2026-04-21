@@ -138,6 +138,7 @@ def run_mixed_trial(
     expected_label: str | None = None,
     calibration_split: str = "train",
     session_label: str | None = None,
+    countdown_s: float = 3.0,
 ) -> dict[str, Any]:
     self_meta = generate_stimulus_with_metadata(self_stim, duration_ms, amplitude, seed=seed)
     self_pcm = self_meta["pcm"]
@@ -207,9 +208,9 @@ def run_mixed_trial(
     self_padded = get_padded_pcm(self_pcm, self_start_s, total_duration, output_sr)
     world_padded = get_padded_pcm(world_pcm, world_start_s, total_duration, noise_sr)
 
-    for i in range(3, 0, -1):
-        print(f"Starting in {i}...")
-        time.sleep(1)
+    if countdown_s > 0:
+        print(f"Starting in {countdown_s:.1f}s...")
+        time.sleep(countdown_s)
 
     # Start capture
     stream = sd.InputStream(device=input_device, channels=1, samplerate=input_sr, dtype="float32", blocksize=1024)
@@ -287,6 +288,7 @@ def run_mixed_trial(
         "world_stim": world_stim,
         "duration_ms": int(duration_ms),
         "amplitude": float(amplitude),
+        "seed": int(seed),
         "sample_rate": int(SR),
         "input_device": input_device,
         "output_device": output_device,
@@ -333,6 +335,12 @@ def main():
     parser.add_argument("--noise-device", type=int, default=4)
     parser.add_argument("--duration-ms", type=int, default=350)
     parser.add_argument("--amplitude", type=float, default=0.7)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--gap-s", type=float, default=0.5)
+    parser.add_argument("--lead-in-s", type=float, default=0.5)
+    parser.add_argument("--tail-s", type=float, default=1.0)
+    parser.add_argument("--overlap-ratio", type=float, default=0.5)
+    parser.add_argument("--countdown-s", type=float, default=3.0)
     parser.add_argument("--setup-label", default="m1c_initial")
     parser.add_argument("--expected-label", default=None, help="Optional explicit ground-truth label for calibration rows")
     parser.add_argument("--calibration-split", default="train", choices=["train", "validation", "test"])
@@ -359,10 +367,16 @@ def main():
             input_device=args.input_device,
             output_device=args.output_device,
             noise_device=args.noise_device,
+            overlap_ratio=args.overlap_ratio,
+            gap_s=args.gap_s,
+            lead_in_s=args.lead_in_s,
+            tail_s=args.tail_s,
+            seed=args.seed,
             setup_label=args.setup_label,
             expected_label=args.expected_label,
             calibration_split=args.calibration_split,
             session_label=args.session_label,
+            countdown_s=args.countdown_s,
         )
         results.append(res)
         print(res)
