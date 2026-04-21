@@ -534,6 +534,34 @@ Answer: **Which parts of the acoustic scene are self, world, or overlap?**
 
 This is one of the most important controls in the matrix.
 
+## M1c-G: Directional binaural asymmetry probe
+
+**Purpose**
+- Test whether two directional channels add useful geometric evidence for self vs world attribution.
+
+**Setup**
+- fixed dual-cardioid geometry
+- self-only stimulus
+- external-only stimulus from left / center / right
+- optionally repeat with partial overlap once the simple cases are stable
+
+**Expected pattern**
+- self-only should produce a more stable and repeatable inter-channel relationship
+- external-only should produce larger or more position-sensitive asymmetry
+- overlap should distort the symmetry pattern rather than looking like a clean self-only case
+
+**Log at minimum**
+- left/right RMS
+- left/right onset time
+- left/right self-template match score
+- left/right residual energy after predicted-self subtraction
+- inter-channel deltas for each measurement
+- whether asymmetry remained stable across repeated self-only trials
+
+**Critical caution**
+- do not treat channel equality as a rule for selfhood
+- treat symmetry and asymmetry as features that must be combined with motor-command presence, timing, and residual evidence
+
 ## Suggested Execution Order
 
 Run experiments in this order unless a blocker appears:
@@ -556,6 +584,7 @@ Run experiments in this order unless a blocker appears:
 14. M1c-D full overlap, distinct spectra
 15. M1c-E confounding-source challenge
 16. M1c-F replayed-self negative control
+17. M1c-G directional binaural asymmetry probe
 
 ## Minimal First Benchmark Set
 

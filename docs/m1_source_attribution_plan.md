@@ -307,6 +307,44 @@ Minimal feasibility question allowed before M1c:
 
 If yes, promote dual-mic fusion from architectural note to planned M1c experiment family.
 
+### Directional binaural branch for M1c consideration
+
+A stronger version of the dual-mic idea emerged later: two directional or cardioid channels may provide the missing geometric cue for mixed-source attribution.
+
+Working hypothesis:
+- self-caused sound should produce a more stable and repeatable inter-channel relationship under fixed geometry
+- external sound should produce larger or more variable channel asymmetry
+- overlap should distort that symmetry in ways that help separate self from world residuals
+
+Important caution:
+- do **not** hard-code `equal on both channels = self` or `unequal = world`
+- room reflections, mic orientation, and source placement can produce false symmetry
+- inter-channel symmetry should be treated as one feature among several, not as a standalone rule
+
+Most promising directional features:
+- per-channel RMS / level difference
+- per-channel onset difference
+- per-channel self-template match difference
+- residual-energy asymmetry after subtracting predicted self
+- stability of those features across repeated self emissions in fixed geometry
+
+Cheap first experiment:
+1. fixed dual-cardioid geometry
+2. self-only stimulus
+3. external-only stimulus from left / center / right
+4. compare left/right channel:
+   - RMS
+   - onset
+   - template match
+   - residual energy
+
+Recommended interpretation:
+- high bilateral symmetry is evidence for self-origin or centrally projected source
+- strong asymmetry is evidence for externalized world source
+- changing asymmetry over time is evidence for motion, reflection, or overlap
+
+If this branch separates self-only from external-only cleanly, promote it from architectural note to a first-class M1c experiment family.
+
 ## M1c: Mixed-Source Attribution
 
 ### Goal
