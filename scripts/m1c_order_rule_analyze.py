@@ -183,6 +183,27 @@ def search_best_stimulus_aware_single_feature(rows: list[dict[str, Any]], featur
     }
 
 
+def search_best_stimulus_aware_two_feature_rule(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        groups[str(row.get("world_stim", "unknown"))].append(row)
+
+    per_stim_rules: dict[str, dict[str, Any]] = {}
+    correct = 0
+    total = len(rows)
+    for stim, stim_rows in sorted(groups.items()):
+        best = search_best_two_feature_rule(stim_rows)
+        per_stim_rules[stim] = best
+        correct += best.get("correct", 0)
+
+    return {
+        "accuracy": correct / total if total else 0.0,
+        "correct": correct,
+        "total": total,
+        "per_stim_rules": per_stim_rules,
+    }
+
+
 def print_group_metrics(rows: list[dict[str, Any]], threshold: float, group_key: str) -> None:
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
@@ -254,14 +275,26 @@ def main() -> None:
     )
 
     print("\nBest stimulus-aware single-feature rules:")
+    best_stim_single: dict[str, dict[str, Any]] = {}
     for feature in ("self_evidence_db", "world_evidence_db", "world_score"):
         best = search_best_stimulus_aware_single_feature(rows, feature)
+        best_stim_single[feature] = best
         print(f"  {feature:<18} acc={best['accuracy']:.3f}")
         for stim, rule in best["thresholds"].items():
             print(
                 f"    {stim:<8} world_before_self if {feature} {rule['direction']} {rule['threshold']:.3f} "
                 f"(acc={rule['accuracy']:.3f})"
             )
+
+    best_stim_two = search_best_stimulus_aware_two_feature_rule(rows)
+    print("\nBest stimulus-aware two-feature AND rules:")
+    print(f"  overall_acc={best_stim_two['accuracy']:.3f}")
+    for stim, rule in best_stim_two["per_stim_rules"].items():
+        print(
+            f"    {stim:<8} world_before_self if {rule['feature_a']} {rule['direction_a']} {rule['threshold_a']:.3f} "
+            f"AND {rule['feature_b']} {rule['direction_b']} {rule['threshold_b']:.3f} "
+            f"(acc={rule['accuracy']:.3f})"
+        )
 
 
 if __name__ == "__main__":
