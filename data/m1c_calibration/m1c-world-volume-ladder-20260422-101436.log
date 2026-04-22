@@ -1,0 +1,288 @@
+
+================================================================
+VOLUME: V1
+MODE:   sequential_world_first
+WORLD:  chirp
+TIME:   2026-04-22T10:14:56-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: chirp (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:15:03.625260-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'world_before_self', 'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V1', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 1.35, 'world_start_s': 0.5, 'self_score': 0.639322, 'world_score': 0.069684, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-65.8), 'baseline_rms_db': np.float64(-67.08), 'self_rms_db': np.float64(-57.82), 'world_rms_db': np.float64(-60.63), 'expected_self_rms_db': np.float64(-60.39), 'expected_world_rms_db': np.float64(-78.14), 'self_evidence_db': np.float64(6.69), 'world_evidence_db': np.float64(-11.06), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'self_before_world', 'world_first_detected': False, 'self_shift_samples': 23790, 'world_shift_samples': 27860, 'self_expected_shift_samples': 21600, 'world_expected_shift_samples': 8000, 'self_shift_error_samples': 2190, 'world_shift_error_samples': 19860}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_world_first         6.69     -11.06   self_before_world    SILENCE   
+
+================================================================
+VOLUME: V1
+MODE:   sequential_world_first
+WORLD:  tone
+TIME:   2026-04-22T10:15:05-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: tone (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:15:12.859379-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'world_before_self', 'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V1', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 1.35, 'world_start_s': 0.5, 'self_score': 0.779435, 'world_score': 0.924566, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-65.3), 'baseline_rms_db': np.float64(-62.48), 'self_rms_db': np.float64(-58.45), 'world_rms_db': np.float64(-78.08), 'expected_self_rms_db': np.float64(-60.39), 'expected_world_rms_db': np.float64(-79.79), 'self_evidence_db': np.float64(2.09), 'world_evidence_db': np.float64(-17.31), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 23088, 'world_shift_samples': 10640, 'self_expected_shift_samples': 21600, 'world_expected_shift_samples': 8000, 'self_shift_error_samples': 1488, 'world_shift_error_samples': 2640}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_world_first         2.09     -17.31   world_before_self    SILENCE   
+
+================================================================
+VOLUME: V1
+MODE:   sequential_self_first
+WORLD:  chirp
+TIME:   2026-04-22T10:15:15-07:00
+================================================================
+
+Mode: sequential_self_first
+Self: babble_ba_var (dev 4) at 0.500s
+World: chirp (dev 3) at 1.392s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:15:22.091753-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'self_before_world', 'mode': 'sequential_self_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V1', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 0.5, 'world_start_s': 1.392, 'self_score': 0.587563, 'world_score': 0.100357, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-64.62), 'baseline_rms_db': np.float64(-59.0), 'self_rms_db': np.float64(-59.15), 'world_rms_db': np.float64(-75.02), 'expected_self_rms_db': np.float64(-60.98), 'expected_world_rms_db': np.float64(-78.48), 'self_evidence_db': np.float64(-1.99), 'world_evidence_db': np.float64(-16.03), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 9204, 'world_shift_samples': 24570, 'self_expected_shift_samples': 8000, 'world_expected_shift_samples': 22272, 'self_shift_error_samples': 1204, 'world_shift_error_samples': 2298}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_self_first          -1.99    -16.03   world_before_self    SILENCE   
+
+================================================================
+VOLUME: V1
+MODE:   sequential_self_first
+WORLD:  tone
+TIME:   2026-04-22T10:15:24-07:00
+================================================================
+
+Mode: sequential_self_first
+Self: babble_ba_var (dev 4) at 0.500s
+World: tone (dev 3) at 1.392s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:15:31.304304-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'self_before_world', 'mode': 'sequential_self_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V1', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 0.5, 'world_start_s': 1.392, 'self_score': 0.648601, 'world_score': 0.949737, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-64.34), 'baseline_rms_db': np.float64(-58.75), 'self_rms_db': np.float64(-57.92), 'world_rms_db': np.float64(-77.85), 'expected_self_rms_db': np.float64(-60.32), 'expected_world_rms_db': np.float64(-79.74), 'self_evidence_db': np.float64(-1.57), 'world_evidence_db': np.float64(-19.1), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 9984, 'world_shift_samples': 24780, 'self_expected_shift_samples': 8000, 'world_expected_shift_samples': 22272, 'self_shift_error_samples': 1984, 'world_shift_error_samples': 2508}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_self_first          -1.57    -19.10   world_before_self    SILENCE   
+
+================================================================
+VOLUME: V2
+MODE:   sequential_world_first
+WORLD:  chirp
+TIME:   2026-04-22T10:15:54-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: chirp (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:16:01.866404-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'world_before_self', 'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V2', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 1.35, 'world_start_s': 0.5, 'self_score': 0.608042, 'world_score': 0.486404, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-62.93), 'baseline_rms_db': np.float64(-61.36), 'self_rms_db': np.float64(-58.21), 'world_rms_db': np.float64(-57.6), 'expected_self_rms_db': np.float64(-60.77), 'expected_world_rms_db': np.float64(-61.02), 'self_evidence_db': np.float64(0.59), 'world_evidence_db': np.float64(0.34), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 23790, 'world_shift_samples': 10290, 'self_expected_shift_samples': 21600, 'world_expected_shift_samples': 8000, 'self_shift_error_samples': 2190, 'world_shift_error_samples': 2290}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_world_first         0.59     0.34     world_before_self    SILENCE   
+
+================================================================
+VOLUME: V2
+MODE:   sequential_world_first
+WORLD:  tone
+TIME:   2026-04-22T10:16:04-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: tone (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:16:10.992052-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'world_before_self', 'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V2', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 1.35, 'world_start_s': 0.5, 'self_score': 0.537285, 'world_score': 0.9609, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-63.67), 'baseline_rms_db': np.float64(-61.0), 'self_rms_db': np.float64(-59.33), 'world_rms_db': np.float64(-60.51), 'expected_self_rms_db': np.float64(-60.42), 'expected_world_rms_db': np.float64(-62.4), 'self_evidence_db': np.float64(0.58), 'world_evidence_db': np.float64(-1.4), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 22386, 'world_shift_samples': 9870, 'self_expected_shift_samples': 21600, 'world_expected_shift_samples': 8000, 'self_shift_error_samples': 786, 'world_shift_error_samples': 1870}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_world_first         0.58     -1.40    world_before_self    SILENCE   
+
+================================================================
+VOLUME: V2
+MODE:   sequential_self_first
+WORLD:  chirp
+TIME:   2026-04-22T10:16:13-07:00
+================================================================
+
+Mode: sequential_self_first
+Self: babble_ba_var (dev 4) at 0.500s
+World: chirp (dev 3) at 1.392s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:16:20.144529-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'self_before_world', 'mode': 'sequential_self_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V2', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 0.5, 'world_start_s': 1.392, 'self_score': 0.626747, 'world_score': 0.079066, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-62.83), 'baseline_rms_db': np.float64(-60.7), 'self_rms_db': np.float64(-58.08), 'world_rms_db': np.float64(-59.84), 'expected_self_rms_db': np.float64(-60.93), 'expected_world_rms_db': np.float64(-60.93), 'self_evidence_db': np.float64(-0.23), 'world_evidence_db': np.float64(0.86), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 10374, 'world_shift_samples': 13650, 'self_expected_shift_samples': 8000, 'world_expected_shift_samples': 22272, 'self_shift_error_samples': 2374, 'world_shift_error_samples': -8622}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_self_first          -0.23    0.86     world_before_self    SILENCE   
+
+================================================================
+VOLUME: V2
+MODE:   sequential_self_first
+WORLD:  tone
+TIME:   2026-04-22T10:16:22-07:00
+================================================================
+
+Mode: sequential_self_first
+Self: babble_ba_var (dev 4) at 0.500s
+World: tone (dev 3) at 1.392s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:16:29.336272-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'self_before_world', 'mode': 'sequential_self_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V2', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 0.5, 'world_start_s': 1.392, 'self_score': 0.600272, 'world_score': 0.984488, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-63.27), 'baseline_rms_db': np.float64(-59.09), 'self_rms_db': np.float64(-57.89), 'world_rms_db': np.float64(-60.26), 'expected_self_rms_db': np.float64(-59.51), 'expected_world_rms_db': np.float64(-62.91), 'self_evidence_db': np.float64(-0.42), 'world_evidence_db': np.float64(-1.17), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 9516, 'world_shift_samples': 24850, 'self_expected_shift_samples': 8000, 'world_expected_shift_samples': 22272, 'self_shift_error_samples': 1516, 'world_shift_error_samples': 2578}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_self_first          -0.42    -1.17    world_before_self    SILENCE   
+
+================================================================
+VOLUME: V3
+MODE:   sequential_world_first
+WORLD:  chirp
+TIME:   2026-04-22T10:16:42-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: chirp (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:16:49.938021-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'world_before_self', 'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V3', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 1.35, 'world_start_s': 0.5, 'self_score': 0.734588, 'world_score': 0.357678, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-60.9), 'baseline_rms_db': np.float64(-62.86), 'self_rms_db': np.float64(-58.12), 'world_rms_db': np.float64(-53.79), 'expected_self_rms_db': np.float64(-60.54), 'expected_world_rms_db': np.float64(-57.2), 'self_evidence_db': np.float64(2.32), 'world_evidence_db': np.float64(5.65), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 24492, 'world_shift_samples': 10290, 'self_expected_shift_samples': 21600, 'world_expected_shift_samples': 8000, 'self_shift_error_samples': 2892, 'world_shift_error_samples': 2290}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_world_first         2.32     5.65     world_before_self    SILENCE   
+
+================================================================
+VOLUME: V3
+MODE:   sequential_world_first
+WORLD:  tone
+TIME:   2026-04-22T10:16:52-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: tone (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:16:59.084362-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'world_before_self', 'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V3', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 1.35, 'world_start_s': 0.5, 'self_score': 0.636683, 'world_score': 0.955532, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-62.03), 'baseline_rms_db': np.float64(-58.8), 'self_rms_db': np.float64(-58.28), 'world_rms_db': np.float64(-56.91), 'expected_self_rms_db': np.float64(-60.51), 'expected_world_rms_db': np.float64(-58.84), 'self_evidence_db': np.float64(-1.7), 'world_evidence_db': np.float64(-0.04), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 23400, 'world_shift_samples': 9940, 'self_expected_shift_samples': 21600, 'world_expected_shift_samples': 8000, 'self_shift_error_samples': 1800, 'world_shift_error_samples': 1940}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_world_first         -1.70    -0.04    world_before_self    SILENCE   
+
+================================================================
+VOLUME: V3
+MODE:   sequential_self_first
+WORLD:  chirp
+TIME:   2026-04-22T10:17:01-07:00
+================================================================
+
+Mode: sequential_self_first
+Self: babble_ba_var (dev 4) at 0.500s
+World: chirp (dev 3) at 1.392s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:17:08.231987-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'self_before_world', 'mode': 'sequential_self_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V3', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 0.5, 'world_start_s': 1.392, 'self_score': 0.776904, 'world_score': 0.081115, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-60.75), 'baseline_rms_db': np.float64(-60.03), 'self_rms_db': np.float64(-59.2), 'world_rms_db': np.float64(-59.58), 'expected_self_rms_db': np.float64(-61.1), 'expected_world_rms_db': np.float64(-57.16), 'self_evidence_db': np.float64(-1.08), 'world_evidence_db': np.float64(0.45), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 9282, 'world_shift_samples': 13370, 'self_expected_shift_samples': 8000, 'world_expected_shift_samples': 22272, 'self_shift_error_samples': 1282, 'world_shift_error_samples': -8902}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_self_first          -1.08    0.45     world_before_self    SILENCE   
+
+================================================================
+VOLUME: V3
+MODE:   sequential_self_first
+WORLD:  tone
+TIME:   2026-04-22T10:17:10-07:00
+================================================================
+
+Mode: sequential_self_first
+Self: babble_ba_var (dev 4) at 0.500s
+World: tone (dev 3) at 1.392s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:17:17.373328-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'self_before_world', 'mode': 'sequential_self_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V3', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 0.5, 'world_start_s': 1.392, 'self_score': 0.71815, 'world_score': 0.94882, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-62.19), 'baseline_rms_db': np.float64(-59.72), 'self_rms_db': np.float64(-58.01), 'world_rms_db': np.float64(-56.86), 'expected_self_rms_db': np.float64(-60.52), 'expected_world_rms_db': np.float64(-58.84), 'self_evidence_db': np.float64(-0.79), 'world_evidence_db': np.float64(2.86), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 10686, 'world_shift_samples': 24290, 'self_expected_shift_samples': 8000, 'world_expected_shift_samples': 22272, 'self_shift_error_samples': 2686, 'world_shift_error_samples': 2018}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_self_first          -0.79    2.86     world_before_self    SILENCE   
+
+================================================================
+VOLUME: V4
+MODE:   sequential_world_first
+WORLD:  chirp
+TIME:   2026-04-22T10:17:29-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: chirp (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:17:36.239658-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'world_before_self', 'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V4', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 1.35, 'world_start_s': 0.5, 'self_score': 0.548935, 'world_score': 0.080933, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-59.26), 'baseline_rms_db': np.float64(-60.15), 'self_rms_db': np.float64(-57.93), 'world_rms_db': np.float64(-60.76), 'expected_self_rms_db': np.float64(-60.46), 'expected_world_rms_db': np.float64(-55.14), 'self_evidence_db': np.float64(-0.31), 'world_evidence_db': np.float64(5.01), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 23790, 'world_shift_samples': 27860, 'self_expected_shift_samples': 21600, 'world_expected_shift_samples': 8000, 'self_shift_error_samples': 2190, 'world_shift_error_samples': 19860}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_world_first         -0.31    5.01     world_before_self    SILENCE   
+
+================================================================
+VOLUME: V4
+MODE:   sequential_world_first
+WORLD:  tone
+TIME:   2026-04-22T10:17:38-07:00
+================================================================
+
+Mode: sequential_world_first
+Self: babble_ba_var (dev 4) at 1.350s
+World: tone (dev 3) at 0.500s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:17:45.385219-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'world_before_self', 'mode': 'sequential_world_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V4', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 1.35, 'world_start_s': 0.5, 'self_score': 0.777459, 'world_score': 0.958569, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-61.02), 'baseline_rms_db': np.float64(-59.04), 'self_rms_db': np.float64(-58.53), 'world_rms_db': np.float64(-54.87), 'expected_self_rms_db': np.float64(-60.46), 'expected_world_rms_db': np.float64(-56.73), 'self_evidence_db': np.float64(-1.42), 'world_evidence_db': np.float64(2.32), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 23088, 'world_shift_samples': 9870, 'self_expected_shift_samples': 21600, 'world_expected_shift_samples': 8000, 'self_shift_error_samples': 1488, 'world_shift_error_samples': 1870}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_world_first         -1.42    2.32     world_before_self    SILENCE   
+
+================================================================
+VOLUME: V4
+MODE:   sequential_self_first
+WORLD:  chirp
+TIME:   2026-04-22T10:17:47-07:00
+================================================================
+
+Mode: sequential_self_first
+Self: babble_ba_var (dev 4) at 0.500s
+World: chirp (dev 3) at 1.392s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:17:54.542475-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'self_before_world', 'mode': 'sequential_self_first', 'self_stim': 'babble_ba_var', 'world_stim': 'chirp', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V4', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 0.5, 'world_start_s': 1.392, 'self_score': 0.636338, 'world_score': 0.073193, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-59.37), 'baseline_rms_db': np.float64(-60.87), 'self_rms_db': np.float64(-58.68), 'world_rms_db': np.float64(-59.04), 'expected_self_rms_db': np.float64(-61.0), 'expected_world_rms_db': np.float64(-55.07), 'self_evidence_db': np.float64(-0.13), 'world_evidence_db': np.float64(1.83), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 9672, 'world_shift_samples': 12950, 'self_expected_shift_samples': 8000, 'world_expected_shift_samples': 22272, 'self_shift_error_samples': 1672, 'world_shift_error_samples': -9322}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_self_first          -0.13    1.83     world_before_self    SILENCE   
+
+================================================================
+VOLUME: V4
+MODE:   sequential_self_first
+WORLD:  tone
+TIME:   2026-04-22T10:17:56-07:00
+================================================================
+
+Mode: sequential_self_first
+Self: babble_ba_var (dev 4) at 0.500s
+World: tone (dev 3) at 1.392s
+Total Duration: 2.742s
+Starting in 3.0s...
+{'timestamp': '2026-04-22T10:18:03.695692-07:00', 'session_label': 'm1c-world-volume-ladder-20260422-101436', 'calibration_split': 'test', 'expected_label': 'self_before_world', 'mode': 'sequential_self_first', 'self_stim': 'babble_ba_var', 'world_stim': 'tone', 'duration_ms': 350, 'amplitude': 0.7, 'seed': 0, 'sample_rate': 16000, 'input_device': 2, 'output_device': 4, 'noise_device': 3, 'setup_label': 'm1c_world_volume_ladder_V4', 'gap_s': 0.5, 'lead_in_s': 0.5, 'tail_s': 1.0, 'overlap_ratio': 0.5, 'self_start_s': 0.5, 'world_start_s': 1.392, 'self_score': 0.668642, 'world_score': 0.96718, 'self_error_ms': 0.0, 'verdict': 'SILENCE', 'confidence': 1.0, 'rms_db': np.float64(-61.23), 'baseline_rms_db': np.float64(-60.92), 'self_rms_db': np.float64(-58.04), 'world_rms_db': np.float64(-54.79), 'expected_self_rms_db': np.float64(-60.44), 'expected_world_rms_db': np.float64(-56.71), 'self_evidence_db': np.float64(0.49), 'world_evidence_db': np.float64(6.13), 'provisional_order_threshold_db': 2.62, 'provisional_order_prediction': 'world_before_self', 'world_first_detected': False, 'self_shift_samples': 9984, 'world_shift_samples': 24220, 'self_expected_shift_samples': 8000, 'world_expected_shift_samples': 22272, 'self_shift_error_samples': 1984, 'world_shift_error_samples': 1948}
+
+Summary Results:
+Mode                           SelfEv   WorldEv  PredictedOrder       Verdict   
+sequential_self_first          0.49     6.13     world_before_self    SILENCE   
