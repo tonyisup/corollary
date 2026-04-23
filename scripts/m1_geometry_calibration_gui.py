@@ -14,6 +14,7 @@ import argparse
 import os
 import sys
 import threading
+import time
 from collections import deque
 from typing import Any
 
@@ -36,6 +37,23 @@ from cochlea.capture import SR
 
 sys.path.insert(0, os.path.dirname(__file__))
 from m1_tone_attribution import generate_stimulus_with_metadata
+
+
+def parse_device_pair(raw: str) -> tuple[int, int]:
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("Expected exactly two device IDs, comma-separated (e.g. 2,5)")
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Device IDs must be integers") from exc
+
+
+def parse_label_pair(raw: str) -> tuple[str, str]:
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("Expected exactly two labels, comma-separated (e.g. self,world)")
+    return parts[0], parts[1]
 
 
 class SharedCapture:
@@ -161,6 +179,7 @@ def compute_metrics(observed: np.ndarray, template: np.ndarray) -> dict[str, Any
         "residual_rms_db": db(residual_rms),
         "residual_ratio_db": residual_ratio_db,
         "onset_error_ms": onset_error_ms,
+        "onset_error_samples": abs(observed_onset - template_onset),
         "stability_score": stability_score,
         "shift": shift,
         "aligned": aligned,
@@ -175,13 +194,25 @@ class LoopingOutput:
         self.pos = 0
         self.in_gap = False
         self.gap_pos = 0
+        self.enabled = True
         self.lock = threading.Lock()
+
+    def set_enabled(self, enabled: bool) -> None:
+        with self.lock:
+            self.enabled = enabled
+            if not enabled:
+                self.pos = 0
+                self.in_gap = False
+                self.gap_pos = 0
 
     def callback(self, outdata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
         if status:
             print(status, file=sys.stderr)
         out = np.zeros(frames, dtype=np.float32)
         with self.lock:
+            if not self.enabled:
+                outdata[:, 0] = out
+                return
             i = 0
             while i < frames:
                 if self.in_gap:
@@ -211,132 +242,247 @@ class LoopingOutput:
 def main() -> None:
     parser = argparse.ArgumentParser(description="M1 geometry calibration GUI")
     parser.add_argument("--stimulus", default="babble_ba_var")
+    parser.add_argument("--stimulus-a", default=None, help="Stimulus for output-device-a (defaults to --stimulus)")
+    parser.add_argument("--stimulus-b", default=None, help="Stimulus for output-device-b (defaults to --stimulus)")
     parser.add_argument("--duration-ms", type=int, default=350)
     parser.add_argument("--amplitude", type=float, default=0.7)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--input-device", type=int, default=2)
     parser.add_argument("--output-device", type=int, default=3)
+    parser.add_argument("--input-devices", type=parse_device_pair, default=None, help="Two input devices, comma-separated (e.g. 2,5)")
+    parser.add_argument("--output-devices", type=parse_device_pair, default=None, help="Two output devices, comma-separated (e.g. 3,6)")
     parser.add_argument("--loop-gap-s", type=float, default=0.35)
     parser.add_argument("--window-seconds", type=float, default=2.0)
+    parser.add_argument("--labels", type=parse_label_pair, default=("self", "world"), help="Semantic labels for the two paths, comma-separated")
+    parser.add_argument("--mode", choices=["simultaneous", "alternate"], default="simultaneous", help="Simultaneous loops or one-source-at-a-time alternation")
+    parser.add_argument("--alternate-period-s", type=float, default=2.0, help="How long each source stays active in alternate mode")
     args = parser.parse_args()
 
-    stimulus_meta = generate_stimulus_with_metadata(args.stimulus, args.duration_ms, args.amplitude, seed=args.seed)
-    pcm = stimulus_meta["pcm"].astype(np.float32)
+    input_devices = args.input_devices if args.input_devices is not None else (args.input_device, args.input_device)
+    output_devices = args.output_devices if args.output_devices is not None else (args.output_device, args.output_device)
+    stimuli = (args.stimulus_a or args.stimulus, args.stimulus_b or args.stimulus)
+    labels = args.labels
 
-    input_sr = int(sd.query_devices(args.input_device)["default_samplerate"] or SR)
-    max_samples = int(max(SR * args.window_seconds * 2.5, len(pcm) * 4))
-    shared = SharedCapture(max_samples=max_samples)
-    stop_event = threading.Event()
+    stream_configs: list[dict[str, Any]] = []
+    for idx in range(2):
+        stimulus_meta = generate_stimulus_with_metadata(stimuli[idx], args.duration_ms, args.amplitude, seed=args.seed + idx)
+        pcm = stimulus_meta["pcm"].astype(np.float32)
+        input_sr = int(sd.query_devices(input_devices[idx])["default_samplerate"] or SR)
+        max_samples = int(max(SR * args.window_seconds * 2.5, len(pcm) * 4))
+        shared = SharedCapture(max_samples=max_samples)
+        looper = LoopingOutput(pcm, args.loop_gap_s)
 
-    def audio_callback(indata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
-        if status:
-            print(status, file=sys.stderr)
-        mono = indata[:, 0]
-        if input_sr != SR:
-            mono = resample_audio(mono, input_sr, SR)
-        shared.append(mono)
+        def make_audio_callback(target_shared: SharedCapture, target_input_sr: int):
+            def audio_callback(indata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
+                if status:
+                    print(status, file=sys.stderr)
+                mono = indata[:, 0]
+                if target_input_sr != SR:
+                    mono = resample_audio(mono, target_input_sr, SR)
+                target_shared.append(mono)
 
-    looper = LoopingOutput(pcm, args.loop_gap_s)
+            return audio_callback
 
-    stream = sd.InputStream(
-        device=args.input_device,
-        channels=1,
-        samplerate=input_sr,
-        dtype="float32",
-        callback=audio_callback,
-        blocksize=1024,
-    )
-
-    output_stream = sd.OutputStream(
-        device=args.output_device,
-        channels=1,
-        samplerate=SR,
-        dtype="float32",
-        callback=looper.callback,
-        blocksize=1024,
-    )
+        input_stream = sd.InputStream(
+            device=input_devices[idx],
+            channels=1,
+            samplerate=input_sr,
+            dtype="float32",
+            callback=make_audio_callback(shared, input_sr),
+            blocksize=1024,
+        )
+        output_stream = sd.OutputStream(
+            device=output_devices[idx],
+            channels=1,
+            samplerate=SR,
+            dtype="float32",
+            callback=looper.callback,
+            blocksize=1024,
+        )
+        stream_configs.append(
+            {
+                "label": labels[idx],
+                "input_device_id": input_devices[idx],
+                "output_device_id": output_devices[idx],
+                "stimulus": stimuli[idx],
+                "pcm": pcm,
+                "shared": shared,
+                "input_stream": input_stream,
+                "output_stream": output_stream,
+                "looper": looper,
+            }
+        )
 
     window_samples = int(SR * args.window_seconds)
-    history_len = 60
-    history = {
-        "match": deque(maxlen=history_len),
-        "onset": deque(maxlen=history_len),
-        "residual": deque(maxlen=history_len),
-        "stability": deque(maxlen=history_len),
+    history_len = 120
+    permutation_history: dict[tuple[int, int], deque[float]] = {
+        (in_idx, out_idx): deque(maxlen=history_len)
+        for in_idx in range(2)
+        for out_idx in range(2)
     }
 
-    fig, axes = plt.subplots(3, 1, figsize=(12, 8))
+    fig = plt.figure(figsize=(15, 10))
+    gs = fig.add_gridspec(4, 3, height_ratios=[1.1, 1.1, 0.9, 0.9])
     fig.suptitle("Corollary M1 Geometry Calibration Monitor")
-    wave_ax, residual_ax, trend_ax = axes
+    wave_axes = [fig.add_subplot(gs[0, i]) for i in range(2)]
+    residual_axes = [fig.add_subplot(gs[1, i]) for i in range(2)]
+    matrix_ax = fig.add_subplot(gs[0:2, 2])
+    margin_axes = [fig.add_subplot(gs[2, i]) for i in range(2)]
+    summary_ax = fig.add_subplot(gs[3, :])
+
+    margin_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
+    own_match_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
+    cross_match_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
 
     try:
-        stream.start()
-        output_stream.start()
+        for cfg in stream_configs:
+            cfg["input_stream"].start()
+            cfg["output_stream"].start()
 
         while plt.fignum_exists(fig.number):
-            observed = shared.latest(max(window_samples, len(pcm) * 2))
-            metrics = compute_metrics(observed, pcm)
+            if args.mode == "alternate":
+                phase = int((time.monotonic() / max(args.alternate_period_s, 0.1))) % 2
+                for idx, cfg in enumerate(stream_configs):
+                    cfg["looper"].set_enabled(idx == phase)
+                active_label = stream_configs[phase]["label"]
+            else:
+                for cfg in stream_configs:
+                    cfg["looper"].set_enabled(True)
+                active_label = "both"
+            pair_metrics: dict[tuple[int, int], dict[str, Any]] = {}
+            latest_observed: list[np.ndarray] = []
 
-            history["match"].append(metrics["match_score"])
-            history["onset"].append(metrics["onset_error_ms"])
-            history["residual"].append(metrics["residual_ratio_db"])
-            history["stability"].append(metrics["stability_score"])
+            for idx, cfg in enumerate(stream_configs):
+                input_observed = cfg["shared"].latest(max(window_samples, len(cfg["pcm"]) * 2))
+                latest_observed.append(input_observed)
+                for out_idx, out_cfg in enumerate(stream_configs):
+                    perm_metrics = compute_metrics(input_observed, out_cfg["pcm"])
+                    pair_metrics[(idx, out_idx)] = perm_metrics
+                    permutation_history[(idx, out_idx)].append(perm_metrics["stability_score"])
 
-            aligned = metrics["aligned"]
-            residual = metrics["residual"]
-            x = np.arange(len(aligned)) / SR if len(aligned) else np.arange(len(pcm)) / SR
-
-            wave_ax.clear()
-            wave_ax.plot(x, pcm[: len(x)], label="template", alpha=0.8)
-            if len(aligned):
-                wave_ax.plot(x, aligned[: len(x)], label="observed", alpha=0.7)
-            wave_ax.set_ylabel("amp")
-            wave_ax.set_title("Template vs observed aligned window")
-            wave_ax.legend(loc="upper right")
-
-            residual_ax.clear()
-            if len(residual):
-                residual_ax.plot(x, residual[: len(x)], color="tab:red")
-            residual_ax.axhline(0.0, color="black", linewidth=0.8)
-            residual_ax.set_ylabel("amp")
-            residual_ax.set_title("Residual (observed - template)")
-
-            trend_ax.clear()
-            steps = np.arange(len(history["match"]))
-            trend_ax.plot(steps, list(history["match"]), label="match")
-            trend_ax.plot(steps, list(history["stability"]), label="stability")
-            trend_ax.plot(steps, [max(0.0, 1.0 - v / 120.0) for v in history["onset"]], label="onset quality")
-            trend_ax.set_ylim(-0.05, 1.05)
-            trend_ax.set_title("Rolling quality traces")
-            trend_ax.legend(loc="upper right")
-            trend_ax.set_xlabel("update")
-
-            fig.texts = [fig.texts[0]] if fig.texts else []
-            metrics_text = (
-                f"stim={args.stimulus} seed={args.seed}   "
-                f"match={metrics['match_score']:.3f}   "
-                f"capture={metrics['capture_rms_db']:.1f} dB   "
-                f"residual={metrics['residual_rms_db']:.1f} dB   "
-                f"residual_ratio={metrics['residual_ratio_db']:.1f} dB   "
-                f"onset_err={metrics['onset_error_ms']:.1f} ms   "
-                f"stability={metrics['stability_score']:.2f}"
+            matrix_ax.clear()
+            score_matrix = np.array(
+                [[pair_metrics[(in_idx, out_idx)]["match_score"] for out_idx in range(2)] for in_idx in range(2)],
+                dtype=np.float32,
             )
-            fig.text(0.02, 0.02, metrics_text, fontsize=10)
+            im = matrix_ax.imshow(score_matrix, cmap="viridis", vmin=0.0, vmax=1.0)
+            matrix_ax.set_xticks([0, 1], labels=[f"out:{cfg['label']}" for cfg in stream_configs])
+            matrix_ax.set_yticks([0, 1], labels=[f"in:{cfg['label']}" for cfg in stream_configs])
+            matrix_ax.set_title("Cross-path match matrix")
+            for in_idx in range(2):
+                for out_idx in range(2):
+                    pm = pair_metrics[(in_idx, out_idx)]
+                    matrix_ax.text(
+                        out_idx,
+                        in_idx,
+                        f"m={pm['match_score']:.2f}\nst={pm['stability_score']:.2f}",
+                        ha="center",
+                        va="center",
+                        color="white" if pm["match_score"] < 0.55 else "black",
+                        fontsize=10,
+                    )
 
-            plt.tight_layout(rect=(0, 0.05, 1, 0.95))
+            summary_lines: list[str] = []
+            for idx, cfg in enumerate(stream_configs):
+                intended = pair_metrics[(idx, idx)]
+                cross = pair_metrics[(idx, 1 - idx)]
+                margin = intended["match_score"] - cross["match_score"]
+                rms_margin = intended["capture_rms_db"] - cross["capture_rms_db"]
+                observed = latest_observed[idx]
+                aligned = intended["aligned"]
+                residual = intended["residual"]
+                x = np.arange(len(aligned)) / SR if len(aligned) else np.arange(len(cfg["pcm"])) / SR
+
+                wave_ax = wave_axes[idx]
+                residual_ax = residual_axes[idx]
+
+                wave_ax.clear()
+                wave_ax.plot(x, cfg["pcm"][: len(x)], label=f"template:{cfg['label']}", alpha=0.8)
+                if len(aligned):
+                    wave_ax.plot(x, aligned[: len(x)], label="captured", alpha=0.7)
+                wave_ax.set_ylabel("amp")
+                wave_ax.set_title(
+                    f"{cfg['label']} path  in:{cfg['input_device_id']}  out:{cfg['output_device_id']}\n"
+                    f"match={intended['match_score']:.3f}  cross={cross['match_score']:.3f}  margin={margin:+.3f}"
+                )
+                wave_ax.legend(loc="upper right")
+
+                residual_ax.clear()
+                if len(residual):
+                    residual_ax.plot(x, residual[: len(x)], color="tab:red", label="residual")
+                residual_ax.axhline(0.0, color="black", linewidth=0.8)
+                residual_ax.set_ylabel("amp")
+                residual_ax.set_title(
+                    f"{cfg['label']} residual / alignment  onset={intended['onset_error_ms']:.1f}ms  "
+                    f"resid={intended['residual_ratio_db']:.1f}dB"
+                )
+                residual_ax.legend(loc="upper right")
+
+                verdict = "good" if margin >= 0.15 else ("mixed" if margin >= 0.05 else "poor")
+                margin_history[idx].append(margin)
+                own_match_history[idx].append(intended["match_score"])
+                cross_match_history[idx].append(cross["match_score"])
+
+                margin_ax = margin_axes[idx]
+                margin_ax.clear()
+                steps = np.arange(len(margin_history[idx]))
+                margin_ax.plot(steps, list(margin_history[idx]), label="match margin", color="tab:green", linewidth=2)
+                margin_ax.plot(steps, list(own_match_history[idx]), label="own match", color="tab:blue", alpha=0.7)
+                margin_ax.plot(steps, list(cross_match_history[idx]), label="cross match", color="tab:orange", alpha=0.7)
+                margin_ax.axhline(0.0, color="black", linewidth=0.8)
+                margin_ax.axhline(0.15, color="tab:green", linestyle="--", linewidth=0.8)
+                margin_ax.axhline(0.05, color="tab:gray", linestyle=":", linewidth=0.8)
+                margin_ax.set_ylim(-1.0, 1.0)
+                margin_ax.set_title(f"{cfg['label']} rolling separation")
+                margin_ax.set_xlabel("update")
+                margin_ax.legend(loc="upper right", fontsize=8)
+
+                trend_mean = float(np.mean(margin_history[idx])) if margin_history[idx] else 0.0
+                trend_min = float(np.min(margin_history[idx])) if margin_history[idx] else 0.0
+                summary_lines.append(
+                    f"{cfg['label']}: own={intended['match_score']:.3f} cross={cross['match_score']:.3f} "
+                    f"margin={margin:+.3f} mean_margin={trend_mean:+.3f} min_margin={trend_min:+.3f} "
+                    f"own_rms={intended['capture_rms_db']:.1f}dB cross_rms={cross['capture_rms_db']:.1f}dB "
+                    f"rms_margin={rms_margin:+.1f}dB verdict={verdict}"
+                )
+
+            separation_a = pair_metrics[(0, 0)]["match_score"] - pair_metrics[(0, 1)]["match_score"]
+            separation_b = pair_metrics[(1, 1)]["match_score"] - pair_metrics[(1, 0)]["match_score"]
+            global_score = (separation_a + separation_b) / 2.0
+            summary_ax.clear()
+            summary_ax.axis("off")
+            summary_ax.text(
+                0.01,
+                0.95,
+                "\n".join([
+                    f"Active source mode: {args.mode}  active={active_label}",
+                    f"Global separation score: {global_score:+.3f}  "
+                    f"(target: both paths clearly positive; > +0.15 is a good early sign)",
+                    *summary_lines,
+                    "Interpret the top-row numbers as instantaneous; use the rolling separation plots to judge stable geometry.",
+                    "If margins keep crossing zero, the loops are interacting too much or the placement is still ambiguous.",
+                    "Calibration goal: maximize own-path match/stability while minimizing cross-path leakage.",
+                    "For dual-mic setup, prefer stable positive margins on both paths over chasing one extreme score.",
+                ]),
+                va="top",
+                fontsize=11,
+                family="monospace",
+            )
+
+            plt.tight_layout(rect=(0, 0.03, 1, 0.95))
             plt.pause(0.15)
     finally:
-        stop_event.set()
-        try:
-            output_stream.stop()
-            output_stream.close()
-        except Exception:
-            pass
-        try:
-            stream.stop()
-            stream.close()
-        except Exception:
-            pass
+        for cfg in stream_configs:
+            try:
+                cfg["output_stream"].stop()
+                cfg["output_stream"].close()
+            except Exception:
+                pass
+            try:
+                cfg["input_stream"].stop()
+                cfg["input_stream"].close()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
