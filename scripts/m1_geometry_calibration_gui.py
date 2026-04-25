@@ -238,6 +238,27 @@ class LoopingOutput:
                             self.pos = 0
         outdata[:, 0] = out
 
+# ============================================================
+#   COROLLARY — M1 Microphone Capture Verification
+# ============================================================
+
+# Available audio INPUT devices:
+
+# Index    Name                                               Ch   SR         Default
+# --------------------------------------------------------------------------------
+# 1        BL-2021USB                                         1    48000     
+# 3        fifine Microphone                                  2    48000      ← DEFAULT
+
+
+# Available audio OUTPUT devices:
+
+# Index    Name                                               Ch   SR         Default
+# --------------------------------------------------------------------------------
+# 0        ASUS PB287Q                                        2    48000     
+# 2        fifine Microphone                                  2    48000     
+# 4        External Headphones                                2    48000      ← DEFAULT
+# 5        Mac mini Speakers                                  2    48000     
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="M1 geometry calibration GUI")
