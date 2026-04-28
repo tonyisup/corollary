@@ -394,9 +394,14 @@ def main() -> None:
     margin_axes = [fig.add_subplot(gs[2, i]) for i in range(2)]
     summary_ax = fig.add_subplot(gs[3, :])
 
+    # Rolling template-discrimination histories are source-active histories.
+    # In alternate mode, only update a source's history while that source is
+    # actively playing; otherwise the inactive source's instantaneous row is
+    # just a silence/crosstalk snapshot and should not affect the verdict.
     margin_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
     own_match_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
     cross_match_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
+    active_global_history: deque[float] = deque(maxlen=history_len * 2)
     geometry_history: list[deque[np.ndarray]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
     geometry_score_history: deque[float] = deque(maxlen=history_len)
     same_stimulus_mode = stimuli[0] == stimuli[1]
@@ -492,9 +497,12 @@ def main() -> None:
                 residual_ax.legend(loc="upper right")
 
                 verdict = "good" if margin >= 0.15 else ("mixed" if margin >= 0.05 else "poor")
-                margin_history[idx].append(margin)
-                own_match_history[idx].append(intended["match_score"])
-                cross_match_history[idx].append(cross["match_score"])
+                source_is_active = args.mode != "alternate" or idx == phase
+                if source_is_active:
+                    margin_history[idx].append(margin)
+                    own_match_history[idx].append(intended["match_score"])
+                    cross_match_history[idx].append(cross["match_score"])
+                    active_global_history.append(margin)
 
                 margin_ax = margin_axes[idx]
                 margin_ax.clear()
@@ -512,16 +520,28 @@ def main() -> None:
 
                 trend_mean = float(np.mean(margin_history[idx])) if margin_history[idx] else 0.0
                 trend_min = float(np.min(margin_history[idx])) if margin_history[idx] else 0.0
-                summary_lines.append(
-                    f"{cfg['label']}: own={intended['match_score']:.3f} cross={cross['match_score']:.3f} "
-                    f"margin={margin:+.3f} mean_margin={trend_mean:+.3f} min_margin={trend_min:+.3f} "
-                    f"own_rms={intended['capture_rms_db']:.1f}dB cross_rms={cross['capture_rms_db']:.1f}dB "
-                    f"rms_margin={rms_margin:+.1f}dB verdict={verdict}"
-                )
+                if source_is_active:
+                    summary_lines.append(
+                        f"{cfg['label']}: ACTIVE own={intended['match_score']:.3f} cross={cross['match_score']:.3f} "
+                        f"margin={margin:+.3f} mean_margin={trend_mean:+.3f} min_margin={trend_min:+.3f} "
+                        f"own_rms={intended['capture_rms_db']:.1f}dB cross_rms={cross['capture_rms_db']:.1f}dB "
+                        f"rms_margin={rms_margin:+.1f}dB verdict={verdict}"
+                    )
+                else:
+                    summary_lines.append(
+                        f"{cfg['label']}: inactive snapshot own={intended['match_score']:.3f} cross={cross['match_score']:.3f} "
+                        f"margin={margin:+.3f} own_rms={intended['capture_rms_db']:.1f}dB "
+                        f"cross_rms={cross['capture_rms_db']:.1f}dB (ignored for rolling verdict)"
+                    )
 
             separation_a = pair_metrics[(0, 0)]["match_score"] - pair_metrics[(0, 1)]["match_score"]
             separation_b = pair_metrics[(1, 1)]["match_score"] - pair_metrics[(1, 0)]["match_score"]
-            global_score = (separation_a + separation_b) / 2.0
+            instantaneous_global_score = (separation_a + separation_b) / 2.0
+            global_score = (
+                float(np.mean(active_global_history))
+                if args.mode == "alternate" and active_global_history
+                else instantaneous_global_score
+            )
             geometry_verdict = "good" if geometry_score >= 0.25 else ("mixed" if geometry_score >= 0.12 else "poor")
             geometry_summary = (
                 f"Same-stimulus geometry score: {geometry_score:.3f} verdict={geometry_verdict} "
@@ -536,10 +556,11 @@ def main() -> None:
                 "\n".join([
                     f"Active source mode: {args.mode}  active={active_label}",
                     f"Global template separation score: {global_score:+.3f}  "
-                    f"(different-stimulus smoke test; > +0.15 is a good early sign)",
+                    f"({'active-source rolling mean' if args.mode == 'alternate' else 'instantaneous mean'}; > +0.15 is a good early sign)",
                     geometry_summary,
                     *summary_lines,
-                    "Interpret template margins as stimulus discrimination, not pure source geometry.",
+                    "Interpret ACTIVE template margins as stimulus discrimination, not pure source geometry.",
+                    "In alternate mode, inactive snapshots are shown for crosstalk context but ignored for rolling verdicts.",
                     "In same-stimulus + alternate mode, use the geometry score / fingerprints as the real gate.",
                     "Geometry score compares two-mic transfer fingerprints: relative RMS, onset shift, and match balance.",
                     "For dual-mic setup, prefer stable positive template margins for routing sanity plus stable geometry separation for M1c.",
