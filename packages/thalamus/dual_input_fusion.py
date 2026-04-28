@@ -32,7 +32,7 @@ class DualInputFusionConfig:
     world_evidence_threshold_db: float = 3.0
     world_score_threshold: float = 0.12
     world_score_evidence_floor_db: float = 1.5
-    world_favored_score_threshold: float = 0.65
+    world_favored_score_threshold: float = 0.44
 
 
 @dataclass(frozen=True)
