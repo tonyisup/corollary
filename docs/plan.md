@@ -126,7 +126,7 @@ corollary/
 - ✅ **Status:** DONE (Hardware Validated)
 - Introduce world audio alongside self-generated sound
 - Distinguish self-only, world-only, and overlapping self+world segments
-- **Hardware Success:** Implemented `ThalamicAttributor` for motor-command gating. Passed Replay Control (rejected self-like external audio). Validated `BOTH` verdict during partial/full overlap.
+- **Hardware Success:** Implemented `ThalamicAttributor` for motor-command gating and `dual_input_fusion` for geometry-aware two-mic evidence fusion. Passed Replay Control (rejected self-like external audio). Validated SELF/WORLD/BOTH across seed `0,1,2` self-only, world-only, sequential, partial-overlap, and full-overlap hardware cases using Fifine + BL-2021 dual input.
 
 ### M2: Speech-Aware Self/World Separation
 - 🎯 **Status:** CURRENT FOCUS

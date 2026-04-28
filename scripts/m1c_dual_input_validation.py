@@ -34,6 +34,7 @@ except ImportError:
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 from cochlea.capture import SR
 from thalamus.attributor import SourceVerdict
+from thalamus.dual_input_fusion import ChannelEvidence, DualInputFusionConfig, fuse_dual_input_evidence
 
 sys.path.insert(0, os.path.dirname(__file__))
 from m1_tone_attribution import generate_stimulus_with_metadata
@@ -155,39 +156,28 @@ def analyze_channel(observed: np.ndarray, self_pcm: np.ndarray, world_pcm: np.nd
 
 
 def fuse_verdict(mode: str, channels: list[dict[str, Any]], self_score_threshold: float, world_evidence_threshold_db: float) -> tuple[str, dict[str, Any]]:
-    self_channel = channels[0]
-    world_channel = channels[1]
-    self_present = bool(self_channel["self_score"] >= self_score_threshold and self_channel["self_evidence_db"] >= 6.0)
-    # World can show up as energy on either mic, but the second channel is the
-    # geometry-calibrated world-favoring mic, so keep it first-class.
-    world_evidence_max = max(float(ch["world_evidence_db"]) for ch in channels)
-    world_score_max = max(float(ch["world_score"]) for ch in channels)
-    world_favored_score = float(world_channel["world_score"])
-    # BL/world mic can have a high baseline, so pure RMS evidence may undercount
-    # world presence. Strong world-template match on the world-favored mic is a
-    # geometry-aware detection cue even when evidence_db is small.
-    world_present = bool(
-        world_evidence_max >= world_evidence_threshold_db
-        or (world_score_max >= 0.12 and world_evidence_max >= 1.5)
-        or world_favored_score >= 0.65
+    result = fuse_dual_input_evidence(
+        [
+            ChannelEvidence(
+                self_score=float(ch["self_score"]),
+                world_score=float(ch["world_score"]),
+                self_evidence_db=float(ch["self_evidence_db"]),
+                world_evidence_db=float(ch["world_evidence_db"]),
+            )
+            for ch in channels
+        ],
+        mode=mode,
+        config=DualInputFusionConfig(
+            self_score_threshold=self_score_threshold,
+            world_evidence_threshold_db=world_evidence_threshold_db,
+        ),
     )
-
-    if mode == "replay_control":
-        self_present = False
-    if self_present and world_present:
-        verdict = SourceVerdict.BOTH.name
-    elif self_present:
-        verdict = SourceVerdict.SELF.name
-    elif world_present:
-        verdict = SourceVerdict.WORLD.name
-    else:
-        verdict = SourceVerdict.SILENCE.name
-    return verdict, {
-        "self_present": self_present,
-        "world_present": world_present,
-        "world_evidence_max_db": round(world_evidence_max, 2),
-        "world_score_max": round(world_score_max, 6),
-        "world_favored_score": round(world_favored_score, 6),
+    return result.verdict.name, {
+        "self_present": result.self_present,
+        "world_present": result.world_present,
+        "world_evidence_max_db": round(result.world_evidence_max_db, 2),
+        "world_score_max": round(result.world_score_max, 6),
+        "world_favored_score": round(result.world_favored_score, 6),
     }
 
 

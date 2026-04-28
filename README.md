@@ -107,6 +107,7 @@ Current Mac mini + Fifine observation:
 - the final main-bench pass sharpened that again by adding consistency as a first-class selection criterion: `01` white noise, `08` fan 4, `06` fan 2, and `14` stream 3 are now the clearest core noise-machine bench, while `18` birds remains useful as a more variable naturalistic add-on and `04` static stays only as a weak / unstable control
 - the first `babble_ba_var` pass on that bench then exposed a meaningful tradeoff: on several profiles, `ba` showed a smaller average immediate drop than the vowel family, but it also showed much larger held-out seed variance. Current interpretation is not that `ba` is simply better under noise, but that it may be more mean-robust while less stable / predictable
 - follow-up work on repeated babble refined that further. A looser repeated-short family was too unstable to promote, but a tighter family (`babble_ba_repeat_short_tight_var`) recovered much better quiet performance and then showed a durable controlled-noise pattern: lower mean transfer drop than single `ba`, but clearly worse baseline strength and seed stability. Current babble-family position is therefore: `babble_ba_var` remains the promoted M1b babble baseline, while `babble_ba_repeat_short_tight_var` is worth keeping as an informative secondary challenge family rather than a replacement baseline
+- M1c dual-input validation now confirms the central hardware lesson: single-input mixed-source attribution was underpowered, but calibrated two-mic evidence fusion passes the current seed `0,1,2` matrix across self-only, world-only, replay-control, sequential, partial-overlap, and full-overlap cases. The reusable fusion rule lives in `packages/thalamus/dual_input_fusion.py`, with hardware validation in `scripts/m1c_dual_input_validation.py`; see `docs/m1c_dual_input_results_2026-04-28.md`.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -122,7 +123,7 @@ Current Mac mini + Fifine observation:
 
 ### 2026-04-20 debrief lessons
 
-- **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` now exposes a speech-aware path and remains the main M1c attribution primitive.
+- **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` exposes the single-channel speech-aware attribution primitive, and M1c now adds `dual_input_fusion` for geometry-aware two-mic SELF/WORLD/BOTH evidence fusion.
 - **Speech-aware separation is in prototype stage:** VAD integration plus a preservation harness now exist, but the repo should treat M2 as an early hardware experiment until results are rerun and measured more rigorously.
 - **Social contingency has a first controller sketch:** The `AgentiveController` introduces deferred-output logic and timing hysteresis, but the implementation is still an early prototype rather than a fully validated turn-taking system.
 - **Self-voice detection is currently an interface stub:** The M4 path defines the embedding and registration interfaces, but does not yet ship a production-grade speaker model.
