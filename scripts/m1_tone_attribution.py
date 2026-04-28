@@ -76,6 +76,7 @@ def generate_stimulus_with_metadata(
     f0_hz = None
     envelope_lfo_hz = None
     formants: list[tuple[float, float]] | None = None
+    chirp_band_hz: tuple[float, float] | None = None
 
     if kind == "vowel_ah_var":
         actual_duration_ms = int(rng.integers(max(80, duration_ms - 80), duration_ms + 121))
@@ -186,8 +187,18 @@ def generate_stimulus_with_metadata(
         click_positions = [0, n // 3, (2 * n) // 3]
         for pos in click_positions:
             pcm[pos:min(n, pos + 4)] = 1.0
-    elif kind == "chirp":
-        f0, f1 = 300.0, 1800.0
+    elif kind in {"chirp", "speech_band_chirp", "low_chirp"}:
+        # Cardioid mic rejection is frequency-dependent and high-frequency
+        # geometry can be dominated by reflections/body diffraction. Keep the
+        # existing chirp unchanged for backwards compatibility, and add M1
+        # calibration probes biased toward the lower/mid speech bands.
+        if kind == "speech_band_chirp":
+            f0, f1 = 150.0, 2500.0
+        elif kind == "low_chirp":
+            f0, f1 = 150.0, 1200.0
+        else:
+            f0, f1 = 300.0, 1800.0
+        chirp_band_hz = (f0, f1)
         phase = 2 * np.pi * (f0 * t + 0.5 * (f1 - f0) * t * t / max(t[-1], 1e-6))
         pcm = np.sin(phase).astype(np.float32)
     elif kind in {"vowel_ah", "vowel_ah_var", "vowel_ah_var_nearfield", "vowel_ah_var_nearfield_room2", "babble_ba_var", "babble_ba_repeat_var", "babble_ba_repeat_short_var", "babble_ba_repeat_few_var", "babble_ba_repeat_wide_var", "babble_ba_repeat_short_tight_var", "babble_da_var", "babble_ma_var"}:
@@ -306,6 +317,7 @@ def generate_stimulus_with_metadata(
         "formants": None if formants is None else [
             {"hz": round(freq, 4), "amp": round(formant_amp, 4)} for freq, formant_amp in formants
         ],
+        "chirp_band_hz": None if chirp_band_hz is None else [round(chirp_band_hz[0], 4), round(chirp_band_hz[1], 4)],
         "pcm": pcm,
     }
 
@@ -313,6 +325,8 @@ def generate_stimulus_with_metadata(
 WORLD_VARIANTS = {
     "tone": "chirp",
     "chirp": "click",
+    "speech_band_chirp": "low_chirp",
+    "low_chirp": "speech_band_chirp",
     "click": "tone",
     "vowel_ah": "chirp",
     "vowel_ah_var": "chirp",

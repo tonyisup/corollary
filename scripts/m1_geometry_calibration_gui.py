@@ -187,6 +187,46 @@ def compute_metrics(observed: np.ndarray, template: np.ndarray) -> dict[str, Any
     }
 
 
+def geometry_fingerprint(metrics_by_input: list[dict[str, Any]]) -> np.ndarray:
+    """Build a stimulus-independent two-mic transfer fingerprint.
+
+    The normal match margin compares one captured channel against two stimulus
+    templates. That is intentionally blind when both outputs play the same
+    waveform. This fingerprint instead asks how one active output is heard by
+    the two input paths: relative level, relative onset, and relative match
+    strength. Those ratios/deltas are the useful geometry cues.
+    """
+    if len(metrics_by_input) != 2:
+        return np.zeros(3, dtype=np.float32)
+
+    a, b = metrics_by_input
+    rms_delta_db = float(a["capture_rms_db"] - b["capture_rms_db"])
+    onset_delta_ms = float(a["shift"] - b["shift"]) * 1000.0 / SR
+    match_delta = float(a["match_score"] - b["match_score"])
+
+    # Normalize to roughly comparable ranges while preserving sign.
+    return np.array(
+        [
+            np.clip(rms_delta_db / 24.0, -1.0, 1.0),
+            np.clip(onset_delta_ms / 40.0, -1.0, 1.0),
+            np.clip(match_delta, -1.0, 1.0),
+        ],
+        dtype=np.float32,
+    )
+
+
+def fingerprint_separation(history_a: deque[np.ndarray], history_b: deque[np.ndarray]) -> tuple[float, np.ndarray, np.ndarray]:
+    """Return centroid distance between two output transfer fingerprints."""
+    if not history_a or not history_b:
+        return 0.0, np.zeros(3, dtype=np.float32), np.zeros(3, dtype=np.float32)
+    centroid_a = np.mean(np.stack(list(history_a)), axis=0)
+    centroid_b = np.mean(np.stack(list(history_b)), axis=0)
+    distance = float(np.linalg.norm(centroid_a - centroid_b))
+    # Max possible distance is sqrt(12) because each of 3 dims spans [-1, 1].
+    score = float(np.clip(distance / np.sqrt(12.0), 0.0, 1.0))
+    return score, centroid_a.astype(np.float32), centroid_b.astype(np.float32)
+
+
 class LoopingOutput:
     def __init__(self, pcm: np.ndarray, gap_s: float) -> None:
         self.pcm = pcm.astype(np.float32)
@@ -354,6 +394,9 @@ def main() -> None:
     margin_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
     own_match_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
     cross_match_history: list[deque[float]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
+    geometry_history: list[deque[np.ndarray]] = [deque(maxlen=history_len), deque(maxlen=history_len)]
+    geometry_score_history: deque[float] = deque(maxlen=history_len)
+    same_stimulus_mode = stimuli[0] == stimuli[1]
 
     try:
         for cfg in stream_configs:
@@ -381,6 +424,12 @@ def main() -> None:
                     pair_metrics[(idx, out_idx)] = perm_metrics
                     permutation_history[(idx, out_idx)].append(perm_metrics["stability_score"])
 
+            if args.mode == "alternate":
+                active_metrics = [pair_metrics[(in_idx, phase)] for in_idx in range(2)]
+                geometry_history[phase].append(geometry_fingerprint(active_metrics))
+            geometry_score, geometry_a, geometry_b = fingerprint_separation(geometry_history[0], geometry_history[1])
+            geometry_score_history.append(geometry_score)
+
             matrix_ax.clear()
             score_matrix = np.array(
                 [[pair_metrics[(in_idx, out_idx)]["match_score"] for out_idx in range(2)] for in_idx in range(2)],
@@ -389,7 +438,7 @@ def main() -> None:
             im = matrix_ax.imshow(score_matrix, cmap="viridis", vmin=0.0, vmax=1.0)
             matrix_ax.set_xticks([0, 1], labels=[f"out:{cfg['label']}" for cfg in stream_configs])
             matrix_ax.set_yticks([0, 1], labels=[f"in:{cfg['label']}" for cfg in stream_configs])
-            matrix_ax.set_title("Cross-path match matrix")
+            matrix_ax.set_title("Cross-path match matrix" + (" (templates identical in same-stimulus mode)" if same_stimulus_mode else ""))
             for in_idx in range(2):
                 for out_idx in range(2):
                     pm = pair_metrics[(in_idx, out_idx)]
@@ -470,6 +519,12 @@ def main() -> None:
             separation_a = pair_metrics[(0, 0)]["match_score"] - pair_metrics[(0, 1)]["match_score"]
             separation_b = pair_metrics[(1, 1)]["match_score"] - pair_metrics[(1, 0)]["match_score"]
             global_score = (separation_a + separation_b) / 2.0
+            geometry_verdict = "good" if geometry_score >= 0.25 else ("mixed" if geometry_score >= 0.12 else "poor")
+            geometry_summary = (
+                f"Same-stimulus geometry score: {geometry_score:.3f} verdict={geometry_verdict} "
+                f"{stream_configs[0]['label']}=[rmsΔ={geometry_a[0]:+.2f}, onsetΔ={geometry_a[1]:+.2f}, matchΔ={geometry_a[2]:+.2f}] "
+                f"{stream_configs[1]['label']}=[rmsΔ={geometry_b[0]:+.2f}, onsetΔ={geometry_b[1]:+.2f}, matchΔ={geometry_b[2]:+.2f}]"
+            )
             summary_ax.clear()
             summary_ax.axis("off")
             summary_ax.text(
@@ -477,13 +532,14 @@ def main() -> None:
                 0.95,
                 "\n".join([
                     f"Active source mode: {args.mode}  active={active_label}",
-                    f"Global separation score: {global_score:+.3f}  "
-                    f"(target: both paths clearly positive; > +0.15 is a good early sign)",
+                    f"Global template separation score: {global_score:+.3f}  "
+                    f"(different-stimulus smoke test; > +0.15 is a good early sign)",
+                    geometry_summary,
                     *summary_lines,
-                    "Interpret the top-row numbers as instantaneous; use the rolling separation plots to judge stable geometry.",
-                    "If margins keep crossing zero, the loops are interacting too much or the placement is still ambiguous.",
-                    "Calibration goal: maximize own-path match/stability while minimizing cross-path leakage.",
-                    "For dual-mic setup, prefer stable positive margins on both paths over chasing one extreme score.",
+                    "Interpret template margins as stimulus discrimination, not pure source geometry.",
+                    "In same-stimulus + alternate mode, use the geometry score / fingerprints as the real gate.",
+                    "Geometry score compares two-mic transfer fingerprints: relative RMS, onset shift, and match balance.",
+                    "For dual-mic setup, prefer stable positive template margins for routing sanity plus stable geometry separation for M1c.",
                 ]),
                 va="top",
                 fontsize=11,
