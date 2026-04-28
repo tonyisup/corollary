@@ -171,7 +171,10 @@ def compute_metrics(observed: np.ndarray, template: np.ndarray) -> dict[str, Any
     onset_error_ms = abs(observed_onset - template_onset) * 1000.0 / SR
 
     residual_ratio_db = db(residual_rms / max(capture_rms, 1e-10))
-    stability_score = float(np.clip(score * 0.5 + max(0.0, 1.0 - onset_error_ms / 120.0) * 0.3 + max(0.0, 1.0 + residual_ratio_db / 24.0) * 0.2, 0.0, 1.0))
+    # residual_ratio_db is 20*log10(residual/capture) and is always negative.
+    # More negative = better match = higher stability. Map [-40, 0] dB → [1.0, 0.0].
+    residual_term = float(np.clip(abs(residual_ratio_db) / 40.0, 0.0, 1.0))
+    stability_score = float(np.clip(score * 0.5 + max(0.0, 1.0 - onset_error_ms / 120.0) * 0.3 + residual_term * 0.2, 0.0, 1.0))
 
     return {
         "match_score": score,
