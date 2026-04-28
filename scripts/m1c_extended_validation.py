@@ -44,7 +44,11 @@ def verdict_ok(case: str, verdict: str) -> bool:
     if case in {"world_only", "replay_control"}:
         return verdict == SourceVerdict.WORLD.name
     if case in {"partial_overlap_self_first", "partial_overlap_world_first", "full_overlap"}:
-        return verdict in {SourceVerdict.BOTH.name, SourceVerdict.SELF.name}
+        return verdict == SourceVerdict.BOTH.name
+    if case == "sequential_self_first":
+        return verdict == SourceVerdict.SELF.name
+    if case == "sequential_world_first":
+        return verdict in {SourceVerdict.SELF.name, SourceVerdict.BOTH.name}
     return True
 
 
@@ -64,6 +68,9 @@ def capture_single_source(
     countdown_s: float,
     setup_label: str,
     session_label: str,
+    expected_offset_samples: int = 0,
+    similarity_threshold: float = 0.45,
+    causal_tolerance_ms: float = 25.0,
 ) -> dict[str, Any]:
     stim_meta = generate_stimulus_with_metadata(stim, duration_ms, amplitude, seed=seed)
     playback_pcm = stim_meta["pcm"].astype(np.float32)
@@ -106,14 +113,18 @@ def capture_single_source(
 
     observed = resample_audio(captured, input_sr, SR) if input_sr != SR else captured
     match_score, observed_shift = normalized_xcorr(observed, template_pcm)
-    expected_shift = int(lead_in_s * SR) if is_playing else None
+    expected_shift = int(lead_in_s * SR) + int(expected_offset_samples) if is_playing else None
     expected_start = int(lead_in_s * SR)
     expected_end = min(len(observed), expected_start + len(template_pcm))
     expected_window = observed[expected_start:expected_end]
     rms = float(np.sqrt(np.mean(expected_window ** 2))) if len(expected_window) else 0.0
     rms_db = db(rms)
 
-    attributor = ThalamicAttributor(sr=SR)
+    attributor = ThalamicAttributor(
+        sr=SR,
+        similarity_threshold=similarity_threshold,
+        causal_tolerance_ms=causal_tolerance_ms,
+    )
     res = attributor.attribute(
         match_score=match_score,
         observed_onset_samples=observed_shift,
@@ -139,7 +150,10 @@ def capture_single_source(
         "match_score": round(match_score, 6),
         "observed_shift_samples": int(observed_shift),
         "expected_shift_samples": int(expected_shift) if expected_shift is not None else None,
+        "expected_offset_samples": int(expected_offset_samples),
         "onset_error_ms": round(res.onset_error_ms if res.onset_error_ms is not None else 0.0, 4),
+        "similarity_threshold": round(float(similarity_threshold), 6),
+        "causal_tolerance_ms": round(float(causal_tolerance_ms), 4),
         "rms_db": round(rms_db, 2),
         "verdict": res.verdict.name,
         "confidence": round(res.confidence, 4),
@@ -167,6 +181,8 @@ def main() -> None:
     parser.add_argument("--setup-label", default="m1c_geometry_locked")
     parser.add_argument("--session-label", default=None)
     parser.add_argument("--jsonl-out", default=None)
+    parser.add_argument("--calibration-trials", type=int, default=3, help="Self-only trials used to estimate onset offset and threshold")
+    parser.add_argument("--no-calibrate", action="store_true", help="Disable self-onset/similarity calibration")
     args = parser.parse_args()
 
     seeds = [int(s.strip()) for s in args.seeds.split(",") if s.strip()]
@@ -182,6 +198,61 @@ def main() -> None:
     ]
 
     records: list[dict[str, Any]] = []
+    expected_base_shift = int(args.lead_in_s * SR)
+    expected_offset_samples = 0
+    similarity_threshold = 0.45
+    causal_tolerance_ms = 25.0
+
+    if not args.no_calibrate and args.calibration_trials > 0:
+        print("\nCalibrating self onset/similarity baseline...")
+        calibration_records = []
+        for i in range(args.calibration_trials):
+            record = capture_single_source(
+                case="self_calibration",
+                stim=args.self_stim,
+                template_stim=args.self_stim,
+                duration_ms=args.duration_ms,
+                amplitude=args.amplitude,
+                input_device=args.input_device,
+                playback_device=args.self_output_device,
+                is_playing=True,
+                seed=seeds[i % len(seeds)] if seeds else i,
+                lead_in_s=args.lead_in_s,
+                tail_s=args.tail_s,
+                countdown_s=args.countdown_s,
+                setup_label=args.setup_label,
+                session_label=session_label,
+            )
+            calibration_records.append(record)
+            records.append(record)
+            append_jsonl_record(jsonl_out, record)
+            time.sleep(0.5)
+
+        observed_offsets = np.array(
+            [int(r["observed_shift_samples"]) - expected_base_shift for r in calibration_records],
+            dtype=np.int64,
+        )
+        self_scores = np.array([float(r["match_score"]) for r in calibration_records], dtype=np.float32)
+        expected_offset_samples = int(np.median(observed_offsets))
+        calibrated_errors_ms = np.abs(observed_offsets - expected_offset_samples) * 1000.0 / SR
+        causal_tolerance_ms = float(max(25.0, np.percentile(calibrated_errors_ms, 95) + 15.0))
+        similarity_threshold = float(np.clip(np.percentile(self_scores, 20) * 0.75, 0.08, 0.45))
+        calibration_summary = {
+            "timestamp": datetime.now().astimezone().isoformat(),
+            "session_label": session_label,
+            "setup_label": args.setup_label,
+            "case": "calibration_summary",
+            "expected_offset_samples": expected_offset_samples,
+            "expected_offset_ms": round(expected_offset_samples * 1000.0 / SR, 4),
+            "similarity_threshold": round(similarity_threshold, 6),
+            "causal_tolerance_ms": round(causal_tolerance_ms, 4),
+            "self_match_scores": [round(float(x), 6) for x in self_scores],
+            "observed_offsets_samples": [int(x) for x in observed_offsets],
+        }
+        print(calibration_summary)
+        records.append(calibration_summary)
+        append_jsonl_record(jsonl_out, calibration_summary)
+
     for seed in seeds:
         for record in [
             capture_single_source(
@@ -199,6 +270,9 @@ def main() -> None:
                 countdown_s=args.countdown_s,
                 setup_label=args.setup_label,
                 session_label=session_label,
+                expected_offset_samples=expected_offset_samples,
+                similarity_threshold=similarity_threshold,
+                causal_tolerance_ms=causal_tolerance_ms,
             ),
             capture_single_source(
                 case="world_only",
@@ -215,6 +289,9 @@ def main() -> None:
                 countdown_s=args.countdown_s,
                 setup_label=args.setup_label,
                 session_label=session_label,
+                expected_offset_samples=expected_offset_samples,
+                similarity_threshold=similarity_threshold,
+                causal_tolerance_ms=causal_tolerance_ms,
             ),
             capture_single_source(
                 case="replay_control",
@@ -231,6 +308,9 @@ def main() -> None:
                 countdown_s=args.countdown_s,
                 setup_label=args.setup_label,
                 session_label=session_label,
+                expected_offset_samples=expected_offset_samples,
+                similarity_threshold=similarity_threshold,
+                causal_tolerance_ms=causal_tolerance_ms,
             ),
         ]:
             records.append(record)
@@ -257,10 +337,14 @@ def main() -> None:
                 calibration_split="validation",
                 session_label=session_label,
                 countdown_s=args.countdown_s,
+                self_expected_offset_samples=expected_offset_samples,
+                similarity_threshold=similarity_threshold,
+                causal_tolerance_ms=causal_tolerance_ms,
             )
             record["case"] = mode
-            if mode in {"partial_overlap_self_first", "partial_overlap_world_first", "full_overlap"}:
-                record["mixed_condition_pass"] = record["verdict"] in {SourceVerdict.BOTH.name, SourceVerdict.SELF.name}
+            record["pass"] = verdict_ok(mode, record["verdict"])
+            if mode == "sequential_world_first":
+                record["pass"] = bool(record.get("world_first_detected")) and record["pass"]
             records.append(record)
             append_jsonl_record(jsonl_out, record)
             print(record)
@@ -276,7 +360,7 @@ def main() -> None:
         for r in case_records:
             verdict = str(r.get("verdict", "n/a"))
             verdicts[verdict] = verdicts.get(verdict, 0) + 1
-            if r.get("pass") is True or r.get("mixed_condition_pass") is True:
+            if r.get("pass") is True:
                 pass_count += 1
         print(f"{case:<30} n={len(case_records):<3} pass={pass_count:<3} verdicts={verdicts}")
 

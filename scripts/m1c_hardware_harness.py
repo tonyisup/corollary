@@ -139,6 +139,9 @@ def run_mixed_trial(
     calibration_split: str = "train",
     session_label: str | None = None,
     countdown_s: float = 3.0,
+    self_expected_offset_samples: int = 0,
+    similarity_threshold: float = 0.45,
+    causal_tolerance_ms: float = 25.0,
 ) -> dict[str, Any]:
     self_meta = generate_stimulus_with_metadata(self_stim, duration_ms, amplitude, seed=seed)
     self_pcm = self_meta["pcm"]
@@ -243,10 +246,14 @@ def run_mixed_trial(
         observed = captured_audio
 
     # Analysis
-    attributor = ThalamicAttributor(sr=SR)
+    attributor = ThalamicAttributor(
+        sr=SR,
+        similarity_threshold=similarity_threshold,
+        causal_tolerance_ms=causal_tolerance_ms,
+    )
 
     self_score, self_shift = normalized_xcorr(observed, self_pcm)
-    self_expected_shift = int(self_start_s * SR)
+    self_expected_shift = int(self_start_s * SR) + int(self_expected_offset_samples)
 
     world_score, world_shift = normalized_xcorr(observed, world_pcm)
     world_expected_shift = int(world_start_s * SR)
@@ -277,6 +284,10 @@ def run_mixed_trial(
     )
 
     self_evidence_db = expected_self_rms_db - baseline_rms_db
+    overlap_mode = mode in {"partial_overlap_self_first", "partial_overlap_world_first", "full_overlap"}
+    mixed_source_detected = overlap_mode and self_evidence_db >= 6.0 and world_evidence_db >= 3.0
+    final_verdict = SourceVerdict.BOTH.name if mixed_source_detected else verdict_res.verdict.name
+    final_confidence = 0.75 if mixed_source_detected else verdict_res.confidence
     order_prediction = provisional_order_prediction(self_evidence_db)
     result = {
         "timestamp": datetime.now().astimezone().isoformat(),
@@ -303,8 +314,9 @@ def run_mixed_trial(
         "self_score": round(self_score, 6),
         "world_score": round(world_score, 6),
         "self_error_ms": round(verdict_res.onset_error_ms if verdict_res.onset_error_ms is not None else 0.0, 4),
-        "verdict": verdict_res.verdict.name,
-        "confidence": round(verdict_res.confidence, 4),
+        "verdict": final_verdict,
+        "raw_attributor_verdict": verdict_res.verdict.name,
+        "confidence": round(final_confidence, 4),
         "rms_db": round(whole_rms_db, 2),
         "baseline_rms_db": round(baseline_rms_db, 2),
         "self_rms_db": round(self_rms_db, 2),
@@ -316,10 +328,14 @@ def run_mixed_trial(
         "provisional_order_threshold_db": PROVISIONAL_ORDER_SELF_EVIDENCE_THRESHOLD_DB,
         "provisional_order_prediction": order_prediction,
         "world_first_detected": bool(world_first_detected),
+        "mixed_source_detected": bool(mixed_source_detected),
         "self_shift_samples": int(self_shift),
         "world_shift_samples": int(world_shift),
         "self_expected_shift_samples": int(self_expected_shift),
         "world_expected_shift_samples": int(world_expected_shift),
+        "self_expected_offset_samples": int(self_expected_offset_samples),
+        "similarity_threshold": round(float(similarity_threshold), 6),
+        "causal_tolerance_ms": round(float(causal_tolerance_ms), 4),
         "self_shift_error_samples": int(self_shift - self_expected_shift),
         "world_shift_error_samples": int(world_shift - world_expected_shift),
     }
@@ -346,6 +362,9 @@ def main():
     parser.add_argument("--calibration-split", default="train", choices=["train", "validation", "test"])
     parser.add_argument("--session-label", default=None, help="Optional label to group related runs into one calibration session")
     parser.add_argument("--jsonl-out", default=None, help="Optional JSONL path for calibration-ready per-run records")
+    parser.add_argument("--self-expected-offset-samples", type=int, default=0, help="Calibrated self onset offset added to scheduled self start")
+    parser.add_argument("--similarity-threshold", type=float, default=0.45, help="ThalamicAttributor similarity threshold")
+    parser.add_argument("--causal-tolerance-ms", type=float, default=25.0, help="ThalamicAttributor causal timing tolerance")
     args = parser.parse_args()
 
     modes = [args.mode] if args.mode != "all" else [
@@ -377,6 +396,9 @@ def main():
             calibration_split=args.calibration_split,
             session_label=args.session_label,
             countdown_s=args.countdown_s,
+            self_expected_offset_samples=args.self_expected_offset_samples,
+            similarity_threshold=args.similarity_threshold,
+            causal_tolerance_ms=args.causal_tolerance_ms,
         )
         results.append(res)
         print(res)
