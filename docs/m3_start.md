@@ -54,3 +54,67 @@ Expected behavior:
 This is an early controller integration, not a full social model. It validates
 turn-taking mechanics using M2 attribution events. Later M3 work should add
 richer agentive-other detection, timing policy, and live hardware demos.
+
+## M2 artifact replay
+
+The next bridge from synthetic M3 frames to hardware-facing behavior is replaying
+saved M2 artifacts:
+
+- `packages/pfc/m2_artifact_replay.py`
+- `scripts/m3_replay_m2_artifact.py`
+- `tests/unit/test_pfc_m2_artifact_replay.py`
+
+Example:
+
+```bash
+./.venv/bin/python scripts/m3_replay_m2_artifact.py \
+  data/m2_policy/family_policy_validation_20260429_130530/vowel_ah_var_nearfield_seed0
+```
+
+Observed replay from that artifact:
+
+```text
+summary=self/both/world=0/27/100 speech_ratio=0.38125
+t=1.00s verdict=BOTH speech=True state=IDLE can_speak=True
+t=1.15s verdict=BOTH speech=True state=LISTEN can_speak=False
+t=1.50s verdict=SILENCE speech=False state=IDLE can_speak=True
+accepted_initial_output=False
+resumed_output='I can respond now.'
+```
+
+This proves saved M2 summaries can drive the M3 defer/resume controller path.
+The replay is intentionally coarse because M2 summaries currently store frame
+counts rather than the full per-frame verdict timeline. A later M3 hardware demo
+should save the full M2 frame sequence.
+
+## M3 artifact ladder
+
+Added `scripts/m3_artifact_ladder.py` to run a graded replay ladder:
+
+1. clean vowel overlap
+2. repeated-babble overlap stress
+3. world-only control
+4. self-only control
+
+Example:
+
+```bash
+./.venv/bin/python scripts/m3_artifact_ladder.py \
+  --output data/m3_artifact_ladder_20260429_140211.json
+```
+
+Observed ladder result:
+
+| Case | Verdict replay | M3 states | Output behavior |
+| --- | --- | --- | --- |
+| clean vowel overlap | `BOTH → BOTH → SILENCE` | `IDLE → LISTEN → IDLE` | defer, then resume |
+| babble overlap stress | `BOTH → BOTH → SILENCE` | `IDLE → LISTEN → IDLE` | defer, then resume |
+| world-only control | `BOTH → BOTH → SILENCE` | `IDLE → LISTEN → IDLE` | defer, then resume |
+| self-only control | `SELF → SILENCE` | `IDLE → IDLE` | speak immediately |
+
+Note: the world-only artifact replays as `BOTH` because existing M2 summary
+artifacts store aggregate frame counts and that older world-only control still
+reported motor-window `BOTH` frames. This is acceptable for the current M3
+replay ladder because `BOTH+speech` is conservatively treated as listen/defer,
+but future M2 artifacts should save full per-frame verdict timelines for more
+faithful M3 replay.
