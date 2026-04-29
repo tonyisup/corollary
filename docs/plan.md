@@ -129,7 +129,7 @@ corollary/
 - **Hardware Success:** Implemented `ThalamicAttributor` for motor-command gating and `dual_input_fusion` for geometry-aware two-mic evidence fusion. Passed Replay Control (rejected self-like external audio). Validated SELF/WORLD/BOTH across seed `0,1,2` self-only, world-only, sequential, partial-overlap, and full-overlap hardware cases using Fifine + BL-2021 dual input.
 
 ### M2: Speech-Aware Self/World Separation
-- 🎯 **Status:** CURRENT FOCUS
+- 🔧 **Status:** OPTIMIZING PARAMETERS
 - Detect speech vs non-speech in external audio streams
 - Preserve external speech under overlap with self-generated sound
 - Enable speech-aware AEC and efference masking
@@ -141,9 +141,10 @@ corollary/
 2. measure speech-vs-non-speech stability with self overlap on the current hardware path
 3. verify external speech retention before tuning any stronger self suppression
 4. record baseline metrics and only then iterate on masking heuristics
+5. **Bayesian hyperparameter optimization**: use Optuna TPE to automatically search onset_latency_ms, causal_tolerance_ms, similarity_threshold, onset_method, and per-family gains. See `docs/m2_bayesian_optimization_design.md` and `scripts/m2_bayesian_optimizer.py`.
 
 ### M3: Agentive Listening and Proto-Turn-Taking
-- 🧪 **Status:** PROTOTYPE / EARLY CONTROLLER DEMO
+- 🧪 **Status:** INTEGRATED DEMO (ARTIFACT-BACKED)
 - Distinguish agentive vocal others from non-agentive environment noise
 - Detect when external speech should suppress or defer self-output
 - **Current evidence:** `AgentiveController` provides an initial timing-based controller sketch (`IDLE`, `LISTEN`, `SPEAK`) with deferred-output logic, but the current implementation primarily validates hysteresis and queued responses rather than a fully hardware-validated turn-taking milestone.
