@@ -140,20 +140,33 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Bayesian optimization of M2 audio gating parameters")
     parser.add_argument("--n-trials", type=int, default=50, help="Number of optimization trials")
     parser.add_argument("--save-dir", default=None, help="Save best trial artifacts here")
-    params = parser.parse_args()
+    parser.add_argument("--study-name", default="m2_bayesian", help="Optuna study name for persistence")
+    parser.add_argument("--storage", default=None, help="Optuna storage URL (sqlite: for example)")
+    args = parser.parse_args()
 
-    study = optuna.create_study(
-        direction="minimize",
-        sampler=optuna.samplers.TPESampler(seed=42),
-    )
+    if args.storage:
+        study = optuna.create_study(
+            direction="minimize",
+            study_name=args.study_name,
+            storage=args.storage,
+            sampler=optuna.samplers.TPESampler(seed=42, n_startup_trials=5),
+            load_if_exists=True,
+        )
+    else:
+        study = optuna.create_study(
+            direction="minimize",
+            sampler=optuna.samplers.TPESampler(seed=42, n_startup_trials=5),
+        )
 
-    print(f"Starting Bayesian optimization: {params.n_trials} trials")
-    print(f"Parameters onset_latency_ms causal_tolerance_ms similarity_threshold onset_method vowel_gain babble_gain")
-    print(f"Loss = mean(WER) + 0.1*attribution_score")
+    print(f"Starting Bayesian optimization: {args.n_trials} trials")
+    param_names = ["onset_latency_ms", "causal_tolerance_ms", "similarity_threshold", "onset_method", "vowel_gain", "babble_gain"]
+    print(f"Parameters: {', '.join(param_names)}")
+    print("Loss = attribution_component + both_penalty + wer_penalty + param_penalty")
+    print(f"Storage: {args.storage or 'memory'}")
     print()
 
     try:
-        study.optimize(objective, n_trials=params.n_trials, n_jobs=1, gc_after_trial=True)
+        study.optimize(objective, n_trials=args.n_trials, n_jobs=1, gc_after_trial=True)
     except KeyboardInterrupt:
         print("\nOptimization interrupted")
 
@@ -163,11 +176,11 @@ def main() -> None:
 
     best_trial = study.best_trial
     artifacts_path = None
-    if params.save_dir:
+    if args.save_dir:
         best_params_dict = best_trial.params
-        result1 = run_single_trial_for_params(best_params_dict, VOWEL_STIM, Path(params.save_dir) / "vowel_best")
-        result2 = run_single_trial_for_params(best_params_dict, BABBLE_STIM, Path(params.save_dir) / "babble_best")
-        artifacts_path = params.save_dir
+        result1 = run_single_trial_for_params(best_params_dict, VOWEL_STIM, Path(args.save_dir) / "vowel_best")
+        result2 = run_single_trial_for_params(best_params_dict, BABBLE_STIM, Path(args.save_dir) / "babble_best")
+        artifacts_path = args.save_dir
 
     output = {
         "best_params": study.best_params,

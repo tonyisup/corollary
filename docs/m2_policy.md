@@ -42,6 +42,28 @@ Useful calibrated attribution settings:
 These settings recovered hard `SELF` on self-only repeated-babble controls while
 still routing mixed speech/self windows to conservative `BOTH`.
 
+### Optimized M2 settings (Bayesian search, 2026-04-29)
+
+A 30-trial Bayesian optimization via Optuna TPE confirmed and refined these
+values. Trial 14 achieved loss 0.243 vs random-start baseline of 0.778.
+
+```bash
+--similarity-threshold 0.23 \
+--onset-latency-ms 405 \
+--onset-method energy \
+--causal-tolerance-ms 74
+```
+
+Compared to manual calibration:
+- `similarity_threshold`: 0.23 vs 0.20 (looser matching preferred)
+- `onset_latency_ms`: 405 vs 400 (essentially unchanged)
+- `causal_tolerance_ms`: 74 vs 75 (essentially unchanged)
+- `onset_method`: energy confirmed
+
+The optimizer also found adjusted gains: `vowel_gain 0.615` (vs 0.5) and
+`babble_gain 0.928` (vs 1.0). These suggest slightly less aggressive vowel
+suppression and a small babble attenuation benefit.
+
 ## Promotion criterion
 
 A strategy is only promotable for a stimulus family if it beats preserve-`BOTH`
