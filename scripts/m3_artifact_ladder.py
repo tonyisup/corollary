@@ -13,7 +13,7 @@ from typing import Any
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
 from pfc.agentive_controller import AgentiveController
-from pfc.m2_artifact_replay import frames_from_m2_summary, load_m2_summary
+from pfc.m2_artifact_replay import frames_from_artifact, load_m2_summary
 from pfc.m2_turn_bridge import run_turn_taking_bridge
 
 
@@ -27,7 +27,7 @@ DEFAULT_ARTIFACTS = [
 
 def replay(name: str, artifact: str, text: str) -> dict[str, Any]:
     summary = load_m2_summary(artifact)
-    frames = frames_from_m2_summary(summary)
+    frames = frames_from_artifact(artifact)
     controller = AgentiveController(listen_threshold_ms=100, cooldown_ms=200)
     result = run_turn_taking_bridge(frames, text, controller=controller)
     return {

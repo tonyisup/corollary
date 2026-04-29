@@ -10,7 +10,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
 from pfc.agentive_controller import AgentiveController
-from pfc.m2_artifact_replay import frames_from_m2_summary, load_m2_summary
+from pfc.m2_artifact_replay import frames_from_artifact, load_m2_summary
 from pfc.m2_turn_bridge import run_turn_taking_bridge
 
 
@@ -23,7 +23,7 @@ def main() -> None:
     args = parser.parse_args()
 
     summary = load_m2_summary(args.summary)
-    frames = frames_from_m2_summary(summary)
+    frames = frames_from_artifact(args.summary)
     controller = AgentiveController(
         listen_threshold_ms=args.listen_threshold_ms,
         cooldown_ms=args.cooldown_ms,

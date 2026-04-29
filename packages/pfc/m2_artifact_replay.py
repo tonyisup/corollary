@@ -30,6 +30,54 @@ def load_m2_summary(path: str | Path) -> dict[str, Any]:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
+def frames_from_frame_records(
+    records: list[dict[str, Any]],
+    *,
+    max_frames: int = 12,
+    cooldown_gap_s: float = 0.35,
+) -> list[M2Frame]:
+    """Convert saved per-frame M2 verdict records into M3 frames."""
+    frames: list[M2Frame] = []
+    interesting = [
+        row for row in records
+        if row.get("verdict") in {"WORLD", "BOTH", "SELF"} or row.get("is_speech")
+    ]
+    source = interesting[:max_frames] if interesting else records[:1]
+    for row in source:
+        verdict = SourceVerdict[str(row.get("verdict", "SILENCE"))]
+        frames.append(M2Frame(
+            float(row.get("start_s", 0.0)),
+            attribution(verdict, bool(row.get("is_speech", False)), float(row.get("rms_db", -30.0))),
+        ))
+    if frames:
+        frames.append(M2Frame(
+            frames[-1].time_s + cooldown_gap_s,
+            attribution(SourceVerdict.SILENCE, is_speech=False, energy_db=-70.0),
+        ))
+    return frames
+
+
+def load_frame_records(path: str | Path) -> list[dict[str, Any]]:
+    p = Path(path)
+    if p.is_dir():
+        p = p / "frame_verdicts.jsonl"
+    rows: list[dict[str, Any]] = []
+    with p.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    return rows
+
+
+def frames_from_artifact(path: str | Path) -> list[M2Frame]:
+    """Load an M2 artifact directory using frame timeline when available."""
+    p = Path(path)
+    if p.is_dir() and (p / "frame_verdicts.jsonl").exists():
+        return frames_from_frame_records(load_frame_records(p))
+    return frames_from_m2_summary(load_m2_summary(p))
+
+
 def frames_from_m2_summary(
     summary: dict[str, Any],
     *,

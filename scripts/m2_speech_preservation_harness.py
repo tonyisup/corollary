@@ -317,6 +317,7 @@ def run_m2_trial(
 
     num_frames = len(observed) // VAD_FRAME_SAMPLES
     verdicts = []
+    frame_records: list[dict[str, Any]] = []
     speech_frames = 0
 
     for i in range(num_frames):
@@ -347,6 +348,20 @@ def run_m2_trial(
             is_speech=is_speech,
         )
         verdicts.append(res.verdict)
+        frame_records.append({
+            "index": i,
+            "start_sample": start,
+            "end_sample": end,
+            "start_s": start / SR,
+            "end_s": end / SR,
+            "verdict": res.verdict.name,
+            "is_speech": bool(is_speech),
+            "rms_db": rms_db,
+            "match_score": float(self_score if is_playing else 0.0),
+            "is_playing": bool(is_playing),
+            "causal_score": float(res.causal_score),
+            "onset_error_ms": res.onset_error_ms,
+        })
 
     gain = build_gating_gain(verdicts, VAD_FRAME_SAMPLES, len(observed), both_gain)
     mask = gain > 0.0
@@ -396,6 +411,7 @@ def run_m2_trial(
         "both_frames": sum(1 for v in verdicts if v == SourceVerdict.BOTH),
         "world_frames": sum(1 for v in verdicts if v == SourceVerdict.WORLD),
         "metrics": metrics,
+        "frame_records": frame_records,
         "observed": observed,
         "mask": mask,
         "gain": gain,
@@ -428,6 +444,9 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
     np.save(os.path.join(save_dir, "gating_mask.npy"), result["mask"].astype(np.uint8))
     np.save(os.path.join(save_dir, "gating_gain.npy"), result["gain"].astype(np.float32))
     np.save(os.path.join(save_dir, "processed.npy"), result["processed"].astype(np.float32))
+    with open(os.path.join(save_dir, "frame_verdicts.jsonl"), "w", encoding="utf-8") as f:
+        for row in result["frame_records"]:
+            f.write(json.dumps(row, sort_keys=True) + "\n")
 
     summary = {
         "raw_text": result["raw_text"],
@@ -456,6 +475,7 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
         "self_expected_shift_samples": result["self_expected_shift_samples"],
         "self_onset_error_ms": result["self_onset_error_ms"],
         "causal_tolerance_ms": result["causal_tolerance_ms"],
+        "frame_verdicts": "frame_verdicts.jsonl",
         "metrics": result["metrics"],
     }
     with open(os.path.join(save_dir, "summary.json"), "w", encoding="utf-8") as f:

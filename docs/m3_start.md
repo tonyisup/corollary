@@ -118,3 +118,37 @@ reported motor-window `BOTH` frames. This is acceptable for the current M3
 replay ladder because `BOTH+speech` is conservatively treated as listen/defer,
 but future M2 artifacts should save full per-frame verdict timelines for more
 faithful M3 replay.
+
+## Per-frame M2 replay timeline
+
+M2 artifacts now save a per-frame verdict timeline:
+
+- `frame_verdicts.jsonl`
+- each row includes frame index, time span, verdict, speech flag, RMS, match score,
+  motor-window flag, causal score, and onset error
+
+`frames_from_artifact(...)` now prefers `frame_verdicts.jsonl` when present and
+falls back to aggregate `summary.json` only for older artifacts.
+
+Fresh validation artifacts:
+- `data/m2_policy/frame_timeline_validation_20260429_140648/vowel_seed0`
+- `data/m2_policy/frame_timeline_validation_20260429_140648/babble_seed0`
+
+The vowel timeline contains:
+- `WORLD`: 130 frames
+- `BOTH`: 29 frames
+- `SILENCE`: 1 frame
+
+Replay now uses real frame verdict order rather than synthesized aggregate
+counts. Example vowel replay entered `LISTEN` after sustained world speech and
+resumed after silence:
+
+```text
+t=0.00s verdict=WORLD speech=True state=IDLE can_speak=True
+...
+t=0.15s verdict=WORLD speech=True state=LISTEN can_speak=False
+...
+t=0.68s verdict=SILENCE speech=False state=IDLE can_speak=True
+accepted_initial_output=False
+resumed_output='I can respond now.'
+```
