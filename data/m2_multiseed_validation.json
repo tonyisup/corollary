@@ -1,0 +1,114 @@
+{
+  "manual": {
+    "vowel_ah_var_nearfield/seed0": {
+      "self_match": 0.3332892656326294,
+      "self_frames": 0,
+      "both_frames": 29,
+      "world_frames": 98,
+      "speech_ratio": 0.39375,
+      "raw_wer": 0.375,
+      "gated_wer": 0.375
+    },
+    "vowel_ah_var_nearfield/seed1": {
+      "self_match": 0.39711448550224304,
+      "self_frames": 0,
+      "both_frames": 27,
+      "world_frames": 104,
+      "speech_ratio": 0.4,
+      "raw_wer": 0.375,
+      "gated_wer": 0.375
+    },
+    "vowel_ah_var_nearfield/seed2": {
+      "self_match": 0.3146645128726959,
+      "self_frames": 0,
+      "both_frames": 29,
+      "world_frames": 102,
+      "speech_ratio": 0.39375,
+      "raw_wer": 1.375,
+      "gated_wer": 0.375
+    },
+    "babble_ba_repeat_short_tight_var/seed0": {
+      "self_match": 0.2863701581954956,
+      "self_frames": 0,
+      "both_frames": 30,
+      "world_frames": 86,
+      "speech_ratio": 0.38125,
+      "raw_wer": 0.375,
+      "gated_wer": 0.375
+    },
+    "babble_ba_repeat_short_tight_var/seed1": {
+      "self_match": 0.314297080039978,
+      "self_frames": 0,
+      "both_frames": 28,
+      "world_frames": 91,
+      "speech_ratio": 0.41875,
+      "raw_wer": 0.375,
+      "gated_wer": 0.375
+    },
+    "babble_ba_repeat_short_tight_var/seed2": {
+      "self_match": 0.29462388157844543,
+      "self_frames": 0,
+      "both_frames": 30,
+      "world_frames": 79,
+      "speech_ratio": 0.4,
+      "raw_wer": 0.625,
+      "gated_wer": 0.625
+    }
+  },
+  "optimized": {
+    "vowel_ah_var_nearfield/seed0": {
+      "self_match": 0.39089980721473694,
+      "self_frames": 0,
+      "both_frames": 31,
+      "world_frames": 69,
+      "speech_ratio": 0.39375,
+      "raw_wer": 1.75,
+      "gated_wer": 0.375
+    },
+    "vowel_ah_var_nearfield/seed1": {
+      "self_match": 0.48406076431274414,
+      "self_frames": 0,
+      "both_frames": 31,
+      "world_frames": 78,
+      "speech_ratio": 0.4,
+      "raw_wer": 0.375,
+      "gated_wer": 0.375
+    },
+    "vowel_ah_var_nearfield/seed2": {
+      "self_match": 0.28988543152809143,
+      "self_frames": 0,
+      "both_frames": 31,
+      "world_frames": 67,
+      "speech_ratio": 0.40625,
+      "raw_wer": 0.375,
+      "gated_wer": 0.375
+    },
+    "babble_ba_repeat_short_tight_var/seed0": {
+      "self_match": 0.2824364900588989,
+      "self_frames": 0,
+      "both_frames": 32,
+      "world_frames": 70,
+      "speech_ratio": 0.425,
+      "raw_wer": 0.625,
+      "gated_wer": 0.625
+    },
+    "babble_ba_repeat_short_tight_var/seed1": {
+      "self_match": 0.4217630624771118,
+      "self_frames": 0,
+      "both_frames": 30,
+      "world_frames": 65,
+      "speech_ratio": 0.39375,
+      "raw_wer": 0.375,
+      "gated_wer": 0.375
+    },
+    "babble_ba_repeat_short_tight_var/seed2": {
+      "self_match": 0.4523462653160095,
+      "self_frames": 0,
+      "both_frames": 33,
+      "world_frames": 72,
+      "speech_ratio": 0.39375,
+      "raw_wer": 0.375,
+      "gated_wer": 0.375
+    }
+  }
+}

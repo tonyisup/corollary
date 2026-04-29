@@ -63,7 +63,26 @@ Autoresearch is designed for neural architecture search and model training. This
 - ✅ Works on both vowel and babble families
 - ✅ Doesn't regress self-attribution
 
-## Results (2026-04-29)
+## Multi-seed validation (2026-04-29)
+
+12-run validation across seeds 0-2, both vowel and babble stimuli:
+
+| Metric | Manual | Optimized | Delta |
+|---|---|---|---|
+| Self-match (mean) | 0.323 | 0.387 | +19% |
+| BOTH frames (mean) | 28.8 | 31.3 | +8.6% |
+| World frames (mean) | 93.3 | 73.0 | looser attribution |
+| Gated WER (mean) | 0.417 | 0.417 | neutral |
+| Gated WER ≥ Raw WER | 0/6 | 0/6 | no regressions |
+
+Optimized params improve self-identification by 19% on average, with no WER
+regressions. WER itself stays at the Whisper noise floor. The system labels
+more overlap as BOTH (looser threshold), which is the conservative/safe behavior.
+
+Script: `scripts/m2_multiseed_validation.py`
+Results: `data/m2_multiseed_validation.json`
+
+## Results (2026-04-29) — single-seed (first run)
 
 First 30-trial optimization run completed. Trial 14 achieved best loss of **0.2427**.
 
