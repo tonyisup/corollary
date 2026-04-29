@@ -38,10 +38,18 @@ def frames_from_frame_records(
 ) -> list[M2Frame]:
     """Convert saved per-frame M2 verdict records into M3 frames."""
     frames: list[M2Frame] = []
-    interesting = [
+    # Prefer frames that should matter for M3 turn-taking: speech-bearing
+    # WORLD/BOTH frames. Fall back to SELF/non-speech verdicts only for controls.
+    agentive = [
+        row for row in records
+        if row.get("is_speech") and row.get("verdict") in {"WORLD", "BOTH"}
+    ]
+    non_speech_self = [row for row in records if row.get("verdict") == "SELF"]
+    other_interesting = [
         row for row in records
         if row.get("verdict") in {"WORLD", "BOTH", "SELF"} or row.get("is_speech")
     ]
+    interesting = agentive or non_speech_self or other_interesting
     source = interesting[:max_frames] if interesting else records[:1]
     for row in source:
         verdict = SourceVerdict[str(row.get("verdict", "SILENCE"))]

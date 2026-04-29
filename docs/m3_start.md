@@ -152,3 +152,32 @@ t=0.68s verdict=SILENCE speech=False state=IDLE can_speak=True
 accepted_initial_output=False
 resumed_output='I can respond now.'
 ```
+
+## Live-ish M2 to M3 demo
+
+Added `scripts/m3_live_m2_turn_demo.py`, which runs one M2 speech-preservation
+trial and immediately feeds the in-memory `frame_records` into M3 turn-taking.
+This avoids relying on saved artifacts for the main controller path.
+
+Example:
+
+```bash
+./.venv/bin/python scripts/m3_live_m2_turn_demo.py \
+  --save-dir data/m3_live_m2_turn_demo_20260429_142110
+```
+
+Observed run:
+
+```text
+M2 policy: vowel_ah_var_nearfield_promoted_gain_0p5 mode=gain gain=0.5
+M2 frames self/both/world: 0/29/129
+M2 WER raw/gated: 0.375/0.375
+M3 accepted_initial_output=False
+M3 resumed_output='I can respond now.'
+M3 states: IDLE -> IDLE -> IDLE -> IDLE -> IDLE -> LISTEN -> LISTEN -> ... -> IDLE
+```
+
+During this work, an important replay-selector issue surfaced: selecting the
+first interesting frames could choose early non-speech `WORLD` frames and miss
+the actual speech-bearing segment. Timeline replay now prioritizes speech-bearing
+`WORLD`/`BOTH` frames before falling back to controls such as `SELF`.
