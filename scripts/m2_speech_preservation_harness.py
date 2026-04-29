@@ -120,6 +120,81 @@ def build_gating_gain(
     return gain
 
 
+
+
+def subtract_self_template(
+    observed: np.ndarray,
+    self_pcm: np.ndarray,
+    verdicts: list[SourceVerdict],
+    frame_samples: int,
+    self_shift: int,
+    both_subtract_gain: float,
+) -> np.ndarray:
+    """Subtract aligned self-template only inside BOTH frames."""
+    out = observed.astype(np.float32).copy()
+    if len(self_pcm) == 0:
+        return out
+
+    template = np.zeros_like(out)
+    start = max(0, int(self_shift))
+    src_start = 0
+    if self_shift < 0:
+        src_start = -int(self_shift)
+        start = 0
+    n = min(len(self_pcm) - src_start, len(out) - start)
+    if n <= 0:
+        return out
+
+    # Fit a single conservative scale using BOTH-window samples only.
+    both_mask = np.zeros(len(out), dtype=bool)
+    for i, verdict in enumerate(verdicts):
+        if verdict == SourceVerdict.BOTH:
+            a = i * frame_samples
+            b = min(a + frame_samples, len(out))
+            both_mask[a:b] = True
+    if not np.any(both_mask):
+        return out
+
+    template[start:start+n] = self_pcm[src_start:src_start+n]
+    t = template[both_mask]
+    y = out[both_mask]
+    denom = float(np.dot(t, t))
+    if denom < 1e-9:
+        return out
+    scale = float(np.dot(y, t) / denom)
+    scale = float(np.clip(scale, 0.0, 2.0)) * float(np.clip(both_subtract_gain, 0.0, 1.0))
+    out[both_mask] = y - scale * t
+    return out
+
+def energy_onset(
+    observed: np.ndarray,
+    start_hint_samples: int,
+    search_before_ms: float = 0.0,
+    search_after_ms: float = 800.0,
+    frame_samples: int = VAD_FRAME_SAMPLES,
+    threshold_ratio: float = 0.20,
+) -> int:
+    """Estimate onset as first local frame above a fraction of local peak RMS."""
+    start = max(0, start_hint_samples - int(search_before_ms * SR / 1000.0))
+    stop = min(len(observed), start_hint_samples + int(search_after_ms * SR / 1000.0))
+    if stop <= start + frame_samples:
+        return start_hint_samples
+
+    frames: list[tuple[int, float]] = []
+    for pos in range(start, stop - frame_samples + 1, frame_samples):
+        frame = observed[pos:pos + frame_samples]
+        frames.append((pos, float(np.sqrt(np.mean(frame ** 2)))))
+    if not frames:
+        return start_hint_samples
+
+    floor = float(np.median([r for _, r in frames[: max(1, min(5, len(frames)))]]))
+    peak = max(r for _, r in frames)
+    threshold = floor + (peak - floor) * float(np.clip(threshold_ratio, 0.0, 1.0))
+    for pos, rms in frames:
+        if rms >= threshold:
+            return pos
+    return max(frames, key=lambda x: x[1])[0]
+
 def run_m2_trial(
     self_stim: str,
     world_speech_file: str,
@@ -131,6 +206,8 @@ def run_m2_trial(
     seed: int = 0,
     expected_text: str | None = None,
     both_gain: float = 0.5,
+    both_mode: str = "gain",
+    both_subtract_gain: float = 0.5,
     self_duration_ms: int = 350,
     self_amplitude: float = 0.7,
     self_only: bool = False,
@@ -138,6 +215,8 @@ def run_m2_trial(
     similarity_threshold: float = 0.45,
     speech_override: str = "vad",
     onset_latency_ms: float = 0.0,
+    onset_method: str = "xcorr",
+    causal_tolerance_ms: float = 25.0,
 ) -> dict[str, Any]:
     self_meta = generate_stimulus_with_metadata(self_stim, self_duration_ms, self_amplitude, seed=seed)
     self_pcm = self_meta["pcm"]
@@ -215,11 +294,15 @@ def run_m2_trial(
     else:
         observed = captured_audio
 
-    attributor = ThalamicAttributor(sr=SR, similarity_threshold=similarity_threshold)
+    attributor = ThalamicAttributor(sr=SR, similarity_threshold=similarity_threshold, causal_tolerance_ms=causal_tolerance_ms)
     vad = SmoothedVAD()
 
-    self_score, self_shift = normalized_xcorr(observed, self_pcm)
+    self_score, xcorr_shift = normalized_xcorr(observed, self_pcm)
     self_expected_shift = int((self_start_s + onset_latency_ms / 1000.0) * SR)
+    if onset_method == "energy":
+        self_shift = energy_onset(observed, self_expected_shift)
+    else:
+        self_shift = xcorr_shift
 
     num_frames = len(observed) // VAD_FRAME_SAMPLES
     verdicts = []
@@ -256,13 +339,26 @@ def run_m2_trial(
 
     gain = build_gating_gain(verdicts, VAD_FRAME_SAMPLES, len(observed), both_gain)
     mask = gain > 0.0
+    if both_mode == "subtract":
+        processed = subtract_self_template(
+            observed,
+            self_pcm,
+            verdicts,
+            VAD_FRAME_SAMPLES,
+            self_shift,
+            both_subtract_gain,
+        )
+        asr_mask = mask.astype(np.float32)
+    else:
+        processed = observed
+        asr_mask = gain
 
     print("\nRunning ASR on Raw Audio...")
     raw_res = transcribe(observed, model_size="base")
     print(f"Raw ASR: \"{raw_res.text}\"")
 
     print("\nRunning ASR on Gated Audio...")
-    gated_res = transcribe(observed, mask=gain, model_size="base")
+    gated_res = transcribe(processed, mask=asr_mask, model_size="base")
     print(f"Gated ASR: \"{gated_res.text}\"")
 
     metrics: dict[str, Any] = {}
@@ -292,7 +388,10 @@ def run_m2_trial(
         "observed": observed,
         "mask": mask,
         "gain": gain,
+        "processed": processed,
         "both_gain": both_gain,
+        "both_mode": both_mode,
+        "both_subtract_gain": both_subtract_gain,
         "seed": seed,
         "self_duration_ms": self_duration_ms,
         "self_amplitude": self_amplitude,
@@ -301,9 +400,12 @@ def run_m2_trial(
         "similarity_threshold": similarity_threshold,
         "speech_override": speech_override,
         "onset_latency_ms": onset_latency_ms,
+        "onset_method": onset_method,
         "self_shift_samples": int(self_shift),
+        "self_xcorr_shift_samples": int(xcorr_shift),
         "self_expected_shift_samples": int(self_expected_shift),
         "self_onset_error_ms": float((self_shift - self_expected_shift) * 1000.0 / SR),
+        "causal_tolerance_ms": causal_tolerance_ms,
     }
 
 
@@ -312,6 +414,7 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
     np.save(os.path.join(save_dir, "observed.npy"), result["observed"])
     np.save(os.path.join(save_dir, "gating_mask.npy"), result["mask"].astype(np.uint8))
     np.save(os.path.join(save_dir, "gating_gain.npy"), result["gain"].astype(np.float32))
+    np.save(os.path.join(save_dir, "processed.npy"), result["processed"].astype(np.float32))
 
     summary = {
         "raw_text": result["raw_text"],
@@ -322,6 +425,8 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
         "both_frames": result["both_frames"],
         "world_frames": result["world_frames"],
         "both_gain": result["both_gain"],
+        "both_mode": result["both_mode"],
+        "both_subtract_gain": result["both_subtract_gain"],
         "seed": result["seed"],
         "self_duration_ms": result["self_duration_ms"],
         "self_amplitude": result["self_amplitude"],
@@ -330,9 +435,12 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
         "similarity_threshold": result["similarity_threshold"],
         "speech_override": result["speech_override"],
         "onset_latency_ms": result["onset_latency_ms"],
+        "onset_method": result["onset_method"],
         "self_shift_samples": result["self_shift_samples"],
+        "self_xcorr_shift_samples": result["self_xcorr_shift_samples"],
         "self_expected_shift_samples": result["self_expected_shift_samples"],
         "self_onset_error_ms": result["self_onset_error_ms"],
+        "causal_tolerance_ms": result["causal_tolerance_ms"],
         "metrics": result["metrics"],
     }
     with open(os.path.join(save_dir, "summary.json"), "w", encoding="utf-8") as f:
@@ -349,6 +457,8 @@ def main():
     parser.add_argument("--expected-text", default=None, help="Reference transcript for WER measurement")
     parser.add_argument("--save-dir", default=None, help="Optional directory to save observed audio, mask, and summary")
     parser.add_argument("--both-gain", type=float, default=0.5, help="Soft gain applied to BOTH frames before ASR")
+    parser.add_argument("--both-mode", choices=["gain", "subtract"], default="gain", help="How to handle BOTH frames: whole-frame gain or aligned self-template subtraction")
+    parser.add_argument("--both-subtract-gain", type=float, default=0.5, help="Template subtraction strength for BOTH frames")
     parser.add_argument("--seed", type=int, default=0, help="Stimulus seed")
     parser.add_argument("--self-duration-ms", type=int, default=350, help="Nominal self-stimulus duration in milliseconds")
     parser.add_argument("--self-amplitude", type=float, default=0.7, help="Self-stimulus playback amplitude")
@@ -357,6 +467,8 @@ def main():
     parser.add_argument("--similarity-threshold", type=float, default=0.45, help="Attributor acoustic-similarity threshold")
     parser.add_argument("--speech-override", choices=["vad", "true", "false"], default="vad", help="Override VAD speech flag for calibration")
     parser.add_argument("--onset-latency-ms", type=float, default=0.0, help="Playback/capture onset latency compensation in milliseconds")
+    parser.add_argument("--onset-method", choices=["xcorr", "energy"], default="xcorr", help="Observed onset estimator for causal attribution")
+    parser.add_argument("--causal-tolerance-ms", type=float, default=25.0, help="Attributor causal timing tolerance in milliseconds")
     args = parser.parse_args()
 
     res = run_m2_trial(
@@ -368,6 +480,8 @@ def main():
         seed=args.seed,
         expected_text=args.expected_text,
         both_gain=args.both_gain,
+        both_mode=args.both_mode,
+        both_subtract_gain=args.both_subtract_gain,
         self_duration_ms=args.self_duration_ms,
         self_amplitude=args.self_amplitude,
         self_only=args.self_only,
@@ -375,6 +489,8 @@ def main():
         similarity_threshold=args.similarity_threshold,
         speech_override=args.speech_override,
         onset_latency_ms=args.onset_latency_ms,
+        onset_method=args.onset_method,
+        causal_tolerance_ms=args.causal_tolerance_ms,
     )
 
     if args.save_dir:

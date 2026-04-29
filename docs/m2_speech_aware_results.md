@@ -95,3 +95,56 @@ Updated interpretation:
   1. babble is speech-like to VAD, so M2 intentionally avoids hard SELF during speech;
   2. the hardware path needs explicit onset-latency calibration before M1-style causal attribution is meaningful.
 - M2 should therefore split calibration into two passes: first estimate hardware onset latency with self-only / speech-disabled controls, then run speech-preservation trials with VAD enabled and that latency compensation applied.
+
+### 2026-04-29 Calibrated Seed Matrix
+
+A tighter calibrated protocol was tested with:
+- stimulus: `babble_ba_repeat_short_tight_var`
+- seeds: `0,1,2`
+- self duration/amplitude: `900 ms`, `1.0`
+- similarity threshold: `0.20`
+- onset latency compensation: `400 ms`
+- onset method: forward energy onset (`--onset-method energy`, searching from the compensated expected onset)
+- causal tolerance: `75 ms`
+- mixed-trial `BOTH` gain: `0.5`
+
+Results:
+
+| Trial | SELF/BOTH/WORLD | Raw WER | Gated WER | Interpretation |
+| --- | ---: | ---: | ---: | --- |
+| self-only seed 0 | 30 / 0 / 130 | n/a | n/a | hard SELF recovered |
+| self-only seed 1 | 28 / 0 / 132 | n/a | n/a | hard SELF recovered |
+| self-only seed 2 | 30 / 0 / 130 | n/a | n/a | hard SELF recovered |
+| mixed seed 0 | 0 / 30 / 130 | 0.375 | 0.375 | preserved, no WER gain |
+| mixed seed 1 | 0 / 28 / 132 | 0.375 | 0.750 | regression; gated transcript leaked babble-like tokens |
+| mixed seed 2 | 0 / 30 / 130 | 0.500 | 0.375 | improved by removing babble-like tokens |
+
+Conclusion:
+- The calibrated self-only path now consistently recovers hard `SELF` attribution across seeds `0,1,2`.
+- The mixed path consistently routes motor-window speech-like overlap to `BOTH`, preserving the conservative M2 rule.
+- Fixed `BOTH` gain is not yet robust: seed 2 improved, seed 0 was neutral, seed 1 regressed.
+- Next implementation should stop treating `BOTH` as one global gain. It needs a more selective soft gate, likely using the self template/efference estimate inside `BOTH` windows rather than attenuating the whole frame.
+
+### 2026-04-29 BOTH Template-Subtraction Prototype
+
+Implementation update:
+- Added `--both-mode {gain,subtract}` to `scripts/m2_speech_preservation_harness.py`.
+- Added `--both-subtract-gain` for aligned self-template subtraction inside `BOTH` windows.
+- The harness now saves `processed.npy` alongside `observed.npy`, `gating_mask.npy`, and `gating_gain.npy`.
+
+Prototype matrix:
+- calibrated settings from the prior matrix: `--onset-method energy`, `--onset-latency-ms 400`, `--causal-tolerance-ms 75`, `--similarity-threshold 0.20`
+- stimulus: `babble_ba_repeat_short_tight_var`, seeds `0,1,2`
+- save dir: `data/m2_baseline/m2_subtract_matrix_20260429_093920`
+
+| Subtract gain | Seed deltas (gated WER - raw WER) | Mean delta | Interpretation |
+| ---: | --- | ---: | --- |
+| 0.25 | `0.000`, `0.000`, `-0.125` | `-0.042` | safest tested subtraction; neutral/slightly helpful |
+| 0.50 | `+0.250`, `+0.250`, `0.000` | `+0.167` | too destructive / unstable |
+| 0.75 | `0.000`, `0.000`, `+0.750` | `+0.250` | clearly too aggressive |
+
+Updated conclusion:
+- Template subtraction is directionally better than blunt global gain only at very conservative strength (`0.25`).
+- Stronger template subtraction creates ASR artifacts and can damage world speech.
+- The current physical setup has high lexical variability across repeated captures, so promotion should require paired controls and repeated runs rather than single-run WER deltas.
+- Near-term default for continued M2 work: `both-mode=subtract`, `both-subtract-gain=0.25`, calibrated energy onset, and explicit no-processing / gain controls in the same run batch.
