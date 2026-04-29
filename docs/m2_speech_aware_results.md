@@ -178,3 +178,49 @@ Interpretation:
 - In this paired run, blunt `gain_0p5` had the best mean ΔWER, but its win was unstable and driven by one large improvement.
 - `subtract_0p25` was mostly neutral but regressed on one seed.
 - Next refinement should separate acquisition from processing: capture one raw mixed trial per seed, then replay multiple processing strategies offline against the identical `observed.npy` so strategy comparisons are no longer confounded by live capture variability.
+
+### 2026-04-29 Offline Strategy Evaluation
+
+Added `scripts/m2_offline_eval.py` to evaluate multiple M2 processing strategies against the same saved `observed.npy` captures. This separates live acquisition variability from processing-strategy effects.
+
+Run input:
+- source captures: `data/m2_baseline/m2_paired_eval_20260429_094643/gain_1p0/seed{0,1,2}`
+- output: `data/m2_baseline/m2_offline_eval_20260429_095203/offline_summary.json`
+
+Offline aggregate:
+
+| Strategy | Trials | Mean ΔWER | Improved / Neutral / Regressed |
+| --- | ---: | ---: | ---: |
+| `gain_1p0` | 3 | `0.000` | 0 / 3 / 0 |
+| `gain_0p5` | 3 | `-0.083` | 1 / 2 / 0 |
+| `subtract_0p25` | 3 | `+0.208` | 0 / 2 / 1 |
+
+Offline conclusion:
+- Against identical captures, blunt `gain_0p5` is currently safer than template subtraction.
+- `subtract_0p25` regressed on seed 0, so the simple aligned-template subtraction is not yet promotion-worthy.
+- This likely means the current self template is too acoustically mismatched to the captured room-transformed self component; subtracting it can distort world speech instead of cleanly removing self.
+- Next implementation target should be room-aware/efference-aware subtraction: estimate a scale + short impulse response or use the learned forward model, rather than subtracting the dry generated template.
+
+### 2026-04-29 Room-Aware Offline Subtraction Prototype
+
+Extended `scripts/m2_offline_eval.py` with `room_subtract` strategies. This estimates a small ridge-regularized FIR room transform from the dry self template to the captured mixture inside `BOTH` windows, then subtracts a conservative room-shaped self estimate.
+
+Run:
+- output: `data/m2_baseline/m2_offline_room_eval_20260429_100212/offline_summary.json`
+- source captures: same `gain_1p0` seed captures from `m2_paired_eval_20260429_094643`
+
+Aggregate result:
+
+| Strategy | Trials | Mean ΔWER | Improved / Neutral / Regressed |
+| --- | ---: | ---: | ---: |
+| `gain_1p0` | 3 | `0.000` | 0 / 3 / 0 |
+| `gain_0p5` | 3 | `-0.083` | 1 / 2 / 0 |
+| `subtract_0p25` | 3 | `+0.042` | 0 / 2 / 1 |
+| `room_subtract_0p1_t64` | 3 | `+0.042` | 1 / 1 / 1 |
+| `room_subtract_0p25_t64` | 3 | `-0.083` | 1 / 2 / 0 |
+
+Interpretation:
+- Room-aware subtraction at `0.25` now matches blunt `gain_0p5` on this offline batch.
+- That is a meaningful improvement over dry-template subtraction, which regressed on one seed.
+- It is not yet a promotion over `gain_0p5`; both are tied at mean ΔWER `-0.083` with 1 improved / 2 neutral / 0 regressed.
+- The next useful test is a larger offline-only seed/capture set and/or lower-variance world speech before deciding whether room-aware subtraction should replace the simpler gain baseline.
