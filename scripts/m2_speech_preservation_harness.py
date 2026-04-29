@@ -131,8 +131,10 @@ def run_m2_trial(
     seed: int = 0,
     expected_text: str | None = None,
     both_gain: float = 0.5,
+    self_duration_ms: int = 350,
+    self_amplitude: float = 0.7,
 ) -> dict[str, Any]:
-    self_meta = generate_stimulus_with_metadata(self_stim, 350, 0.7, seed=seed)
+    self_meta = generate_stimulus_with_metadata(self_stim, self_duration_ms, self_amplitude, seed=seed)
     self_pcm = self_meta["pcm"]
 
     if world_speech_file.endswith(".npy"):
@@ -273,6 +275,9 @@ def run_m2_trial(
         "mask": mask,
         "gain": gain,
         "both_gain": both_gain,
+        "seed": seed,
+        "self_duration_ms": self_duration_ms,
+        "self_amplitude": self_amplitude,
     }
 
 
@@ -291,6 +296,9 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
         "both_frames": result["both_frames"],
         "world_frames": result["world_frames"],
         "both_gain": result["both_gain"],
+        "seed": result["seed"],
+        "self_duration_ms": result["self_duration_ms"],
+        "self_amplitude": result["self_amplitude"],
         "metrics": result["metrics"],
     }
     with open(os.path.join(save_dir, "summary.json"), "w", encoding="utf-8") as f:
@@ -307,6 +315,9 @@ def main():
     parser.add_argument("--expected-text", default=None, help="Reference transcript for WER measurement")
     parser.add_argument("--save-dir", default=None, help="Optional directory to save observed audio, mask, and summary")
     parser.add_argument("--both-gain", type=float, default=0.5, help="Soft gain applied to BOTH frames before ASR")
+    parser.add_argument("--seed", type=int, default=0, help="Stimulus seed")
+    parser.add_argument("--self-duration-ms", type=int, default=350, help="Nominal self-stimulus duration in milliseconds")
+    parser.add_argument("--self-amplitude", type=float, default=0.7, help="Self-stimulus playback amplitude")
     args = parser.parse_args()
 
     res = run_m2_trial(
@@ -315,8 +326,11 @@ def main():
         input_device=args.input_device,
         output_device=args.output_device,
         noise_device=args.noise_device,
+        seed=args.seed,
         expected_text=args.expected_text,
         both_gain=args.both_gain,
+        self_duration_ms=args.self_duration_ms,
+        self_amplitude=args.self_amplitude,
     )
 
     if args.save_dir:

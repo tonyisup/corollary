@@ -1,0 +1,19 @@
+{
+  "raw_text": "This is a tester.",
+  "gated_text": "This is a tester for me. This is a tester for me.",
+  "self_score": 0.2887604236602783,
+  "speech_ratio": 1.0,
+  "self_frames": 0,
+  "both_frames": 29,
+  "world_frames": 131,
+  "both_gain": 0.25,
+  "seed": 0,
+  "self_duration_ms": 900,
+  "self_amplitude": 1.0,
+  "metrics": {
+    "expected_text": "this is a test of world speech conservation",
+    "raw_wer": 0.625,
+    "gated_wer": 1.125,
+    "wer_delta": 0.5
+  }
+}
