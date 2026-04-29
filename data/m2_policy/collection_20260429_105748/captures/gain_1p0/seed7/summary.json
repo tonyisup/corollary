@@ -1,0 +1,32 @@
+{
+  "raw_text": "And this is a test of rules of action.",
+  "gated_text": "And this is a test of rules of action.",
+  "self_score": 0.4211641848087311,
+  "speech_ratio": 0.3875,
+  "self_frames": 0,
+  "both_frames": 28,
+  "world_frames": 109,
+  "both_gain": 1.0,
+  "both_mode": "gain",
+  "both_subtract_gain": 0.5,
+  "seed": 7,
+  "self_duration_ms": 900,
+  "self_amplitude": 1.0,
+  "self_only": false,
+  "world_only": false,
+  "similarity_threshold": 0.2,
+  "speech_override": "vad",
+  "onset_latency_ms": 400.0,
+  "onset_method": "energy",
+  "self_shift_samples": 33531,
+  "self_xcorr_shift_samples": 24156,
+  "self_expected_shift_samples": 33531,
+  "self_onset_error_ms": 0.0,
+  "causal_tolerance_ms": 75.0,
+  "metrics": {
+    "expected_text": "this is a test of world speech conservation",
+    "raw_wer": 0.5,
+    "gated_wer": 0.5,
+    "wer_delta": 0.0
+  }
+}

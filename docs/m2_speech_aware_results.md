@@ -248,3 +248,203 @@ Updated interpretation:
 - `room_subtract_0p25_t64` remains interesting but is not safer than preservation; it improved two captures but regressed one.
 - M2's current validated result should therefore be framed as **speech-preserving conservative attribution**, not reliable speech-enhancing suppression.
 - Next work should improve the benchmark itself before more suppression tuning: cleaner fixed world-speech playback, stronger saved reference controls, and a capture-once/process-offline workflow as the default.
+
+### 2026-04-29 M2 BOTH-Policy Risk Gate Slice
+
+Added the first bounded ML-adjacent policy layer:
+- `packages/m2_policy/dataset.py` loads offline M2 rows and extracts compact trial/strategy features.
+- `packages/m2_policy/risk_gate.py` implements a deliberately tiny conservative baseline gate.
+- `scripts/m2_policy_eval.py` evaluates policy selection against the current fallback, `gain_1p0` / preserve `BOTH`.
+
+This is not yet a neural model. It is the interpretable baseline a learned model must beat.
+
+Run:
+```bash
+./.venv/bin/python scripts/m2_policy_eval.py \
+  data/m2_baseline/m2_offline_room_eval_6cap_20260429_101059/offline_summary.json
+```
+
+Result on the six-capture offline set:
+- full-data best mean strategy remains `gain_1p0` at mean ΔWER `-0.0417`.
+- leave-one-seed-out policy selection chose `room_subtract_0p25_t64` for seed 5 based on training means, but that regressed badly on held-out seed 5 (`-0.125` fallback vs `+0.375` chosen).
+- leave-one-seed-out mean fallback ΔWER: `-0.0417`.
+- leave-one-seed-out mean chosen ΔWER: `+0.0417`.
+- regressions vs fallback: `1`.
+
+Conclusion:
+- This is exactly why the ML pivot should start with a risk gate: naive strategy selection overfits immediately on the tiny dataset.
+- No learned/policy strategy should be promoted yet.
+- The current safe operational policy remains preserve `BOTH` (`gain_1p0`).
+- Next ML slice should add more data and evaluate a stricter gate that only allows active suppression when it can beat preserve-`BOTH` with zero held-out regressions.
+
+### 2026-04-29 M2 Dataset Collector Pilot
+
+Added `scripts/m2_collect_dataset.py`, which implements the capture-once/process-offline workflow:
+1. capture preserve-`BOTH` trials (`gain_1p0`)
+2. run `scripts/m2_offline_eval.py` over those identical captures
+3. export canonical policy rows to `m2_policy_dataset.jsonl`
+
+Pilot run:
+```bash
+./.venv/bin/python scripts/m2_collect_dataset.py --seeds 6-9
+```
+
+Output:
+- root: `data/m2_policy/collection_20260429_105748`
+- dataset: `data/m2_policy/collection_20260429_105748/m2_policy_dataset.jsonl`
+- offline summary: `data/m2_policy/collection_20260429_105748/offline_eval/offline_summary.json`
+
+Pilot aggregate (`seeds 6-9`):
+
+| Strategy | Trials | Mean ΔWER | Improved / Neutral / Regressed |
+| --- | ---: | ---: | ---: |
+| `gain_1p0` | 4 | `0.000` | 0 / 4 / 0 |
+| `gain_0p5` | 4 | `-0.031` | 1 / 3 / 0 |
+| `subtract_0p25` | 4 | `0.000` | 0 / 4 / 0 |
+| `room_subtract_0p1_t64` | 4 | `+0.031` | 0 / 3 / 1 |
+| `room_subtract_0p25_t64` | 4 | `-0.031` | 1 / 3 / 0 |
+
+Combined policy evaluation over seeds `0-9` (`50` strategy rows):
+- `gain_1p0`, `gain_0p5`, and `room_subtract_0p25_t64` all tie at mean ΔWER `-0.025` on full data.
+- leave-one-seed-out still fails promotion: chosen mean ΔWER `+0.0375` vs fallback `-0.025`, with `2` regressions vs preserve-`BOTH`.
+
+Conclusion:
+- More data preserved the central rule: active suppression sometimes helps, but naive policy selection still regresses on held-out seeds.
+- The collector is now the right path to scale data safely.
+- Preserve-`BOTH` remains the operational baseline until a gate can beat it with zero held-out regressions.
+
+### 2026-04-29 Seeds 10-19 Collection and Combined 0-19 Policy Evaluation
+
+Collected a bounded next batch with:
+```bash
+./.venv/bin/python scripts/m2_collect_dataset.py --seeds 10-19
+```
+
+Output:
+- root: `data/m2_policy/collection_20260429_113544`
+- dataset: `data/m2_policy/collection_20260429_113544/m2_policy_dataset.jsonl`
+- offline summary: `data/m2_policy/collection_20260429_113544/offline_eval/offline_summary.json`
+
+Seeds `10-19` aggregate:
+
+| Strategy | Trials | Mean ΔWER | Improved / Neutral / Regressed |
+| --- | ---: | ---: | ---: |
+| `gain_1p0` | 10 | `+0.250` | 0 / 9 / 1 |
+| `gain_0p5` | 10 | `+0.100` | 3 / 5 / 2 |
+| `subtract_0p25` | 10 | `-0.013` | 1 / 9 / 0 |
+| `room_subtract_0p1_t64` | 10 | `0.000` | 3 / 4 / 3 |
+| `room_subtract_0p25_t64` | 10 | `+0.013` | 3 / 4 / 3 |
+
+Notable issue:
+- seed `16` produced a severe `gain_1p0` offline ASR regression (`+2.500` ΔWER) despite preserve-`BOTH`; this shows the current ASR-scored benchmark itself has stochastic / decoding instability, not just policy instability.
+
+Combined policy evaluation over seeds `0-19` (`100` strategy rows):
+
+| Strategy | Mean ΔWER |
+| --- | ---: |
+| `gain_1p0` | `+0.1125` |
+| `gain_0p5` | `+0.0375` |
+| `subtract_0p25` | `0.0000` |
+| `room_subtract_0p1_t64` | `+0.0500` |
+| `room_subtract_0p25_t64` | `-0.00625` |
+
+Leave-one-seed-out policy result:
+- fallback preserve-`BOTH` mean ΔWER: `+0.1125`
+- chosen policy mean ΔWER: `+0.2125`
+- regressions vs fallback: `4`
+
+Updated conclusion:
+- More data did not make the current gate promotable; it made the benchmark weakness clearer.
+- The current WER scoring path is too noisy for fine policy selection, because even preserve-`BOTH` can show large offline ASR swings.
+- Next step should not be blindly collecting more babble seeds. It should add benchmark controls: repeat offline ASR on the same `observed.npy` to measure decoder variance, and add a cleaner stimulus/control condition such as `vowel_ah_var_nearfield`.
+
+### 2026-04-29 ASR Repeatability and Vowel Control Pilot
+
+Added `scripts/m2_asr_repeatability.py` to measure Whisper repeatability on identical saved audio.
+
+Repeatability checks:
+- seed `16` observed audio (`data/m2_policy/collection_20260429_113544/captures/gain_1p0/seed16/observed.npy`): 8 repeats, `3` unique transcripts, WER range `0.375-0.500`.
+- seed `10` observed audio: 5 repeats, `1` unique transcript, WER range `0.375-0.375`.
+
+Interpretation:
+- ASR repeatability is not perfectly deterministic, but the extreme seed-16 offline outlier (`+2.5` ΔWER) was not reproduced by repeated direct transcription of the same observed audio or all-ones masked audio.
+- The benchmark issue appears to be a combination of ASR variability plus processing/evaluation path sensitivity, not pure random decoder variance alone.
+
+Vowel control pilot:
+```bash
+./.venv/bin/python scripts/m2_collect_dataset.py \
+  --seeds 0-3 \
+  --self-stim vowel_ah_var_nearfield \
+  --output-root data/m2_policy/vowel_control_20260429_115524
+```
+
+Aggregate:
+
+| Strategy | Trials | Mean ΔWER | Improved / Neutral / Regressed |
+| --- | ---: | ---: | ---: |
+| `gain_1p0` | 4 | `0.000` | 0 / 4 / 0 |
+| `gain_0p5` | 4 | `-0.3125` | 2 / 2 / 0 |
+| `subtract_0p25` | 4 | `-0.1250` | 1 / 3 / 0 |
+| `room_subtract_0p1_t64` | 4 | `-0.3125` | 2 / 2 / 0 |
+| `room_subtract_0p25_t64` | 4 | `-0.3125` | 2 / 2 / 0 |
+
+Updated direction:
+- The vowel-control pilot is much more favorable to active suppression than the repeated-babble set.
+- This supports the hypothesis that repeated babble is a harder / more ASR-hostile stress condition, while `vowel_ah_var_nearfield` may be a cleaner control for learning the M2 BOTH-policy gate.
+- Next: expand vowel-control seeds before further babble scaling, then train/evaluate policy separately by stimulus family.
+
+### 2026-04-29 Expanded Vowel-Control Evaluation
+
+Expanded `vowel_ah_var_nearfield` control with:
+```bash
+./.venv/bin/python scripts/m2_collect_dataset.py \
+  --seeds 4-9 \
+  --self-stim vowel_ah_var_nearfield \
+  --output-root data/m2_policy/vowel_control2_20260429_120112
+```
+
+Seeds `4-9` aggregate:
+- all strategies were neutral: mean ΔWER `0.000`, 0 improved / 6 neutral / 0 regressed.
+
+Combined vowel seeds `0-9` policy evaluation (`50` strategy rows):
+
+| Strategy | Mean ΔWER |
+| --- | ---: |
+| `gain_1p0` | `0.000` |
+| `gain_0p5` | `-0.125` |
+| `subtract_0p25` | `-0.050` |
+| `room_subtract_0p1_t64` | `-0.125` |
+| `room_subtract_0p25_t64` | `-0.125` |
+
+Leave-one-seed-out vowel policy:
+- selected `gain_0p5` for all held-out seeds
+- fallback preserve-`BOTH` mean ΔWER: `0.000`
+- chosen mean ΔWER: `-0.125`
+- regressions vs fallback: `0`
+
+Interpretation:
+- For `vowel_ah_var_nearfield`, active suppression is now promotion-worthy under the current conservative criterion.
+- The simplest promoted vowel-family policy is `gain_0p5`: it matches the best mean ΔWER and has zero held-out regressions.
+- This should be scoped narrowly: promote `gain_0p5` for vowel-family M2 controls, while repeated-babble remains preserve-`BOTH` / stress-test only.
+
+### 2026-04-29 Family-Aware BOTH Policy Implementation
+
+Implemented the first deterministic M2 BOTH-frame policy:
+- `packages/m2_policy/policy.py`
+- harness flag: `--both-policy family`
+
+Policy:
+- `vowel_ah_var_nearfield*` → `mode=gain`, `gain=0.5`
+- repeated babble (`babble_ba_repeat*`) → preserve `BOTH` with `gain=1.0`
+- unknown / other stimuli → preserve `BOTH` with `gain=1.0`
+
+Rationale:
+- Vowel-family seeds `0-9` met the conservative promotion criterion for `gain_0p5`: mean ΔWER improved vs preserve and zero held-out regressions.
+- Repeated-babble stress captures did not meet promotion criteria; active suppression caused held-out regressions.
+
+Validation:
+- Added `tests/unit/test_m2_policy_family.py`.
+- Policy selector sanity check:
+  - `vowel_ah_var_nearfield` → `BothPolicyDecision(mode='gain', gain=0.5, reason='vowel_ah_var_nearfield_promoted_gain_0p5')`
+  - `babble_ba_repeat_short_tight_var` → `BothPolicyDecision(mode='gain', gain=1.0, reason='repeated_babble_preserve_both')`
+  - `chirp` → `BothPolicyDecision(mode='gain', gain=1.0, reason='unknown_preserve_both')`

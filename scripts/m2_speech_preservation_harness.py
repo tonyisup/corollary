@@ -36,6 +36,7 @@ from cochlea.capture import SR
 from cochlea.vad import SmoothedVAD, VAD_FRAME_SAMPLES
 from thalamus.attributor import ThalamicAttributor, SourceVerdict
 from stg.asr import transcribe
+from m2_policy.policy import select_family_policy
 
 sys.path.insert(0, os.path.dirname(__file__))
 from m1_tone_attribution import generate_stimulus_with_metadata
@@ -208,6 +209,7 @@ def run_m2_trial(
     both_gain: float = 0.5,
     both_mode: str = "gain",
     both_subtract_gain: float = 0.5,
+    both_policy: str = "manual",
     self_duration_ms: int = 350,
     self_amplitude: float = 0.7,
     self_only: bool = False,
@@ -218,6 +220,15 @@ def run_m2_trial(
     onset_method: str = "xcorr",
     causal_tolerance_ms: float = 25.0,
 ) -> dict[str, Any]:
+    if both_policy == "family":
+        decision = select_family_policy(self_stim)
+        both_mode = decision.mode
+        both_gain = decision.gain
+        both_subtract_gain = decision.subtract_gain
+        both_policy_reason = decision.reason
+    else:
+        both_policy_reason = "manual"
+
     self_meta = generate_stimulus_with_metadata(self_stim, self_duration_ms, self_amplitude, seed=seed)
     self_pcm = self_meta["pcm"]
 
@@ -392,6 +403,8 @@ def run_m2_trial(
         "both_gain": both_gain,
         "both_mode": both_mode,
         "both_subtract_gain": both_subtract_gain,
+        "both_policy": both_policy,
+        "both_policy_reason": both_policy_reason,
         "seed": seed,
         "self_duration_ms": self_duration_ms,
         "self_amplitude": self_amplitude,
@@ -427,6 +440,8 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
         "both_gain": result["both_gain"],
         "both_mode": result["both_mode"],
         "both_subtract_gain": result["both_subtract_gain"],
+        "both_policy": result["both_policy"],
+        "both_policy_reason": result["both_policy_reason"],
         "seed": result["seed"],
         "self_duration_ms": result["self_duration_ms"],
         "self_amplitude": result["self_amplitude"],
@@ -459,6 +474,7 @@ def main():
     parser.add_argument("--both-gain", type=float, default=0.5, help="Soft gain applied to BOTH frames before ASR")
     parser.add_argument("--both-mode", choices=["gain", "subtract"], default="gain", help="How to handle BOTH frames: whole-frame gain or aligned self-template subtraction")
     parser.add_argument("--both-subtract-gain", type=float, default=0.5, help="Template subtraction strength for BOTH frames")
+    parser.add_argument("--both-policy", choices=["manual", "family"], default="manual", help="Override BOTH processing from deterministic M2 policy")
     parser.add_argument("--seed", type=int, default=0, help="Stimulus seed")
     parser.add_argument("--self-duration-ms", type=int, default=350, help="Nominal self-stimulus duration in milliseconds")
     parser.add_argument("--self-amplitude", type=float, default=0.7, help="Self-stimulus playback amplitude")
@@ -482,6 +498,7 @@ def main():
         both_gain=args.both_gain,
         both_mode=args.both_mode,
         both_subtract_gain=args.both_subtract_gain,
+        both_policy=args.both_policy,
         self_duration_ms=args.self_duration_ms,
         self_amplitude=args.self_amplitude,
         self_only=args.self_only,
