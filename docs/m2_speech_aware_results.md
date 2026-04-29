@@ -224,3 +224,27 @@ Interpretation:
 - That is a meaningful improvement over dry-template subtraction, which regressed on one seed.
 - It is not yet a promotion over `gain_0p5`; both are tied at mean ΔWER `-0.083` with 1 improved / 2 neutral / 0 regressed.
 - The next useful test is a larger offline-only seed/capture set and/or lower-variance world speech before deciding whether room-aware subtraction should replace the simpler gain baseline.
+
+### 2026-04-29 Six-Capture Offline Expansion
+
+Expanded the offline evaluation set with three additional live captures:
+- new captures: `data/m2_baseline/m2_capture_expansion_20260429_101014/gain_1p0/seed{3,4,5}`
+- combined with earlier captures: `data/m2_baseline/m2_paired_eval_20260429_094643/gain_1p0/seed{0,1,2}`
+- offline output: `data/m2_baseline/m2_offline_room_eval_6cap_20260429_101059/offline_summary.json`
+
+Six-capture aggregate:
+
+| Strategy | Trials | Mean ΔWER | Improved / Neutral / Regressed |
+| --- | ---: | ---: | ---: |
+| `gain_1p0` | 6 | `-0.042` | 2 / 4 / 0 |
+| `gain_0p5` | 6 | `-0.021` | 1 / 3 / 2 |
+| `subtract_0p25` | 6 | `+0.021` | 0 / 5 / 1 |
+| `room_subtract_0p1_t64` | 6 | `+0.146` | 1 / 1 / 4 |
+| `room_subtract_0p25_t64` | 6 | `-0.021` | 2 / 3 / 1 |
+
+Updated interpretation:
+- The larger offline set weakens the case for any active M2 suppression strategy on this hardware/world-speech setup.
+- `gain_1p0` (effectively preserve `BOTH`) is the safest current baseline: it had no regressions and the best mean ΔWER in this six-capture comparison.
+- `room_subtract_0p25_t64` remains interesting but is not safer than preservation; it improved two captures but regressed one.
+- M2's current validated result should therefore be framed as **speech-preserving conservative attribution**, not reliable speech-enhancing suppression.
+- Next work should improve the benchmark itself before more suppression tuning: cleaner fixed world-speech playback, stronger saved reference controls, and a capture-once/process-offline workflow as the default.
