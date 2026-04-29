@@ -136,6 +136,12 @@ corollary/
 - Reintroduce lexical and ASR-oriented evaluation only after M1 attribution is stable
 - **Acceptance:** +15 dB suppression over AEC alone; external WER < 10% degradation; speech/non-speech discrimination remains stable under self overlap
 
+#### Immediate next steps
+1. lock a small M2 eval set for overlap / non-overlap speech tests
+2. measure speech-vs-non-speech stability with self overlap on the current hardware path
+3. verify external speech retention before tuning any stronger self suppression
+4. record baseline metrics and only then iterate on masking heuristics
+
 ### M3: Agentive Listening and Proto-Turn-Taking
 - 🧪 **Status:** PROTOTYPE / EARLY CONTROLLER DEMO
 - Distinguish agentive vocal others from non-agentive environment noise

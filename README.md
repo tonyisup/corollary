@@ -121,6 +121,8 @@ Current Mac mini + Fifine observation:
 | M5 | Multi-speaker world model + memory | ⏳ Planned |
 | M6 | Self-model and introspection | ⏳ Planned |
 
+Immediate next steps: lock an M2 eval set, measure overlap stability, verify external speech retention, then tune masking heuristics.
+
 ### 2026-04-20 debrief lessons
 
 - **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` exposes the single-channel speech-aware attribution primitive, and M1c now adds `dual_input_fusion` for geometry-aware two-mic SELF/WORLD/BOTH evidence fusion.
