@@ -448,3 +448,11 @@ Validation:
   - `vowel_ah_var_nearfield` → `BothPolicyDecision(mode='gain', gain=0.5, reason='vowel_ah_var_nearfield_promoted_gain_0p5')`
   - `babble_ba_repeat_short_tight_var` → `BothPolicyDecision(mode='gain', gain=1.0, reason='repeated_babble_preserve_both')`
   - `chirp` → `BothPolicyDecision(mode='gain', gain=1.0, reason='unknown_preserve_both')`
+
+### 2026-04-29 M3 Bridge Started
+
+M2 now feeds the first M3 proto-turn-taking slice:
+- speech-like `BOTH` frames are treated as agentive external speech for turn-taking
+- the PFC controller defers output while listening and resumes after silence/cooldown
+
+See `docs/m3_start.md` and `scripts/m3_turn_taking_demo.py`.

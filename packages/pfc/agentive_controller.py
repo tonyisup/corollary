@@ -37,10 +37,12 @@ class AgentiveController:
         self,
         listen_threshold_ms: float = 300.0,
         cooldown_ms: float = 500.0,
+        treat_both_speech_as_agentive: bool = True,
     ) -> None:
         self.state = AgentState.IDLE
         self.listen_threshold_ms = listen_threshold_ms
         self.cooldown_ms = cooldown_ms
+        self.treat_both_speech_as_agentive = treat_both_speech_as_agentive
         
         self.last_speech_time: float = 0.0
         self.speech_start_time: float = 0.0
@@ -76,8 +78,14 @@ class AgentiveController:
             
         # 1. Update Speech Timing
         is_world_speech = res.is_speech and res.verdict == SourceVerdict.WORLD
+        is_overlap_speech = (
+            self.treat_both_speech_as_agentive
+            and res.is_speech
+            and res.verdict == SourceVerdict.BOTH
+        )
+        is_agentive_external_speech = is_world_speech or is_overlap_speech
         
-        if is_world_speech:
+        if is_agentive_external_speech:
             if self.speech_start_time == 0:
                 self.speech_start_time = current_time
             self.last_speech_time = current_time
