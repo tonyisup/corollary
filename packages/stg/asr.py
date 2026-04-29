@@ -97,8 +97,9 @@ def transcribe(
     initial_prompt : str, optional
         Optional prompt to bias the model.
     mask : np.ndarray, optional
-        Boolean mask of the same length as audio. 
-        False = mask out (zero), True = keep.
+        Boolean mask or numeric gain vector of the same length as audio.
+        Boolean values use False = zero, True = keep. Numeric values are
+        applied as sample-level gains.
 
     Returns
     -------

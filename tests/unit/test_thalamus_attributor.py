@@ -19,6 +19,18 @@ def test_attributor_self():
     assert res.verdict == SourceVerdict.SELF
     assert res.confidence > 0.7
 
+def test_attributor_speech_overlap_is_both():
+    attributor = ThalamicAttributor()
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=800,
+        expected_onset_samples=800,
+        rms_db=-30.0,
+        is_playing=True,
+        is_speech=True,
+    )
+    assert res.verdict == SourceVerdict.BOTH
+
 def test_attributor_world_replay():
     attributor = ThalamicAttributor()
     # High match, but NOT playing

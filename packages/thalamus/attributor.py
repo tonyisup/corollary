@@ -104,13 +104,25 @@ class ThalamicAttributor:
         is_self_like = match_score >= self.similarity_threshold
         is_timely = causal_score > 0.0
         
+        if is_playing and is_self_like and is_timely and is_speech:
+            # M2 conservatism: speech during playback can contain world speech
+            # even when the self template also matches, so preserve it for a
+            # soft downstream gate instead of making a hard SELF decision.
+            confidence = (match_score + causal_score) / 2.0
+            return AttributionResult(
+                verdict=SourceVerdict.BOTH,
+                confidence=confidence,
+                self_match_score=match_score,
+                is_in_motor_window=is_playing,
+                causal_score=causal_score,
+                energy_db=rms_db,
+                is_speech=is_speech,
+                onset_error_ms=onset_error_ms,
+            )
+
         if is_playing and is_self_like and is_timely:
             # High similarity + motor command + correct timing = SELF
             confidence = (match_score + causal_score) / 2.0
-            
-            # M2 refinement: if it's speech but also sounds like ME,
-            # we check if the match is "too good".
-            # For now, if we are playing and it's self-like, it's SELF.
             return AttributionResult(
                 verdict=SourceVerdict.SELF,
                 confidence=confidence,

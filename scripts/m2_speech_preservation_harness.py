@@ -99,6 +99,27 @@ def normalized_xcorr(observed: np.ndarray, template: np.ndarray) -> tuple[float,
     return max(0.0, best_score), best_shift
 
 
+def build_gating_gain(
+    verdicts: list[SourceVerdict],
+    frame_samples: int,
+    total_samples: int,
+    both_gain: float,
+) -> np.ndarray:
+    """Build a sample-level gain vector from frame verdicts."""
+    gain = np.ones(total_samples, dtype=np.float32)
+    both_gain = float(np.clip(both_gain, 0.0, 1.0))
+
+    for i, verdict in enumerate(verdicts):
+        start = i * frame_samples
+        end = min(start + frame_samples, total_samples)
+        if verdict == SourceVerdict.SELF:
+            gain[start:end] = 0.0
+        elif verdict == SourceVerdict.BOTH:
+            gain[start:end] = both_gain
+
+    return gain
+
+
 def run_m2_trial(
     self_stim: str,
     world_speech_file: str,
@@ -109,6 +130,7 @@ def run_m2_trial(
     tail_s: float = 1.0,
     seed: int = 0,
     expected_text: str | None = None,
+    both_gain: float = 0.5,
 ) -> dict[str, Any]:
     self_meta = generate_stimulus_with_metadata(self_stim, 350, 0.7, seed=seed)
     self_pcm = self_meta["pcm"]
@@ -186,8 +208,6 @@ def run_m2_trial(
     self_expected_shift = int(self_start_s * SR)
 
     num_frames = len(observed) // VAD_FRAME_SAMPLES
-    mask = np.ones(len(observed), dtype=bool)
-
     verdicts = []
     speech_frames = 0
 
@@ -214,17 +234,15 @@ def run_m2_trial(
         )
         verdicts.append(res.verdict)
 
-        if res.verdict == SourceVerdict.SELF:
-            mask[start:end] = False
-        elif res.verdict == SourceVerdict.BOTH:
-            mask[start:end] = True
+    gain = build_gating_gain(verdicts, VAD_FRAME_SAMPLES, len(observed), both_gain)
+    mask = gain > 0.0
 
     print("\nRunning ASR on Raw Audio...")
     raw_res = transcribe(observed, model_size="base")
     print(f"Raw ASR: \"{raw_res.text}\"")
 
     print("\nRunning ASR on Gated Audio...")
-    gated_res = transcribe(observed, mask=mask, model_size="base")
+    gated_res = transcribe(observed, mask=gain, model_size="base")
     print(f"Gated ASR: \"{gated_res.text}\"")
 
     metrics: dict[str, Any] = {}
@@ -253,6 +271,8 @@ def run_m2_trial(
         "metrics": metrics,
         "observed": observed,
         "mask": mask,
+        "gain": gain,
+        "both_gain": both_gain,
     }
 
 
@@ -260,6 +280,7 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
     os.makedirs(save_dir, exist_ok=True)
     np.save(os.path.join(save_dir, "observed.npy"), result["observed"])
     np.save(os.path.join(save_dir, "gating_mask.npy"), result["mask"].astype(np.uint8))
+    np.save(os.path.join(save_dir, "gating_gain.npy"), result["gain"].astype(np.float32))
 
     summary = {
         "raw_text": result["raw_text"],
@@ -269,6 +290,7 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
         "self_frames": result["self_frames"],
         "both_frames": result["both_frames"],
         "world_frames": result["world_frames"],
+        "both_gain": result["both_gain"],
         "metrics": result["metrics"],
     }
     with open(os.path.join(save_dir, "summary.json"), "w", encoding="utf-8") as f:
@@ -284,6 +306,7 @@ def main():
     parser.add_argument("--noise-device", type=int, default=3)
     parser.add_argument("--expected-text", default=None, help="Reference transcript for WER measurement")
     parser.add_argument("--save-dir", default=None, help="Optional directory to save observed audio, mask, and summary")
+    parser.add_argument("--both-gain", type=float, default=0.5, help="Soft gain applied to BOTH frames before ASR")
     args = parser.parse_args()
 
     res = run_m2_trial(
@@ -293,6 +316,7 @@ def main():
         output_device=args.output_device,
         noise_device=args.noise_device,
         expected_text=args.expected_text,
+        both_gain=args.both_gain,
     )
 
     if args.save_dir:

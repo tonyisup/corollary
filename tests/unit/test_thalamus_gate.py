@@ -9,6 +9,8 @@ from thalamus.gate import (
     ThalamicGate,
     DEFAULT_SVSR_THRESHOLD,
 )
+from thalamus.attributor import SourceVerdict
+from scripts.m2_speech_preservation_harness import build_gating_gain
 
 
 # --- Spectral Subtraction Tests ---
@@ -52,6 +54,19 @@ class TestSpectralSubtraction:
         predicted = np.random.randn(20, 80).astype(np.float32)
         residual, mask = spectral_subtraction(observed, predicted)
         assert residual.shape == observed.shape
+
+
+def test_m2_gating_gain_softens_both_frames():
+    gain = build_gating_gain(
+        [SourceVerdict.WORLD, SourceVerdict.BOTH, SourceVerdict.SELF],
+        frame_samples=4,
+        total_samples=12,
+        both_gain=0.4,
+    )
+
+    np.testing.assert_array_equal(gain[:4], np.ones(4, dtype=np.float32))
+    np.testing.assert_array_equal(gain[4:8], np.full(4, 0.4, dtype=np.float32))
+    np.testing.assert_array_equal(gain[8:], np.zeros(4, dtype=np.float32))
 
 
 # --- SVSR Tests ---
