@@ -73,3 +73,25 @@ Next tests:
 2. add a no-self world-speech control for the same device geometry
 3. add a self-only control to verify expected `SELF` or `BOTH` attribution behavior without world speech
 4. only then tune soft-gate policy beyond fixed gain
+
+### 2026-04-29 Control / Calibration Follow-up
+
+Additional harness controls were added:
+- `--self-only` and `--world-only` isolate the two audio sources.
+- `--speech-override {vad,true,false}` separates VAD conservatism from acoustic self-matching.
+- `--similarity-threshold` allows controlled threshold sweeps.
+- `--onset-latency-ms` compensates physical playback/capture latency.
+- summaries now include onset diagnostics (`self_shift_samples`, `self_expected_shift_samples`, `self_onset_error_ms`).
+
+Control findings:
+- World-only control behaved as expected: no self match (`self_score=0.0`) and world speech remained recoverable.
+- Self-only with normal VAD still produced `BOTH`, because the babble stimulus itself triggers speech detection; this is expected under the M2 conservative policy.
+- Self-only with `--speech-override false` revealed the second bottleneck: physical onset timing. Without compensation, the attributor sees the self event as too late for the 25 ms causal window.
+- With `--onset-latency-ms 400`, `--similarity-threshold 0.20`, and `--speech-override false`, self-only attribution produced hard `SELF` frames (`30 / 0 / 130` SELF/BOTH/WORLD), proving the path can still produce SELF when VAD conservatism and hardware latency are controlled.
+- Mixed speech with the same latency/threshold and normal VAD produced `0 / 30 / 130` SELF/BOTH/WORLD, which is the desired conservative M2 behavior: self-like motor-window audio plus detected speech is preserved as `BOTH` rather than dropped as `SELF`.
+
+Updated interpretation:
+- The earlier `SELF=0` result was not a simple failure. It was caused by two interacting factors:
+  1. babble is speech-like to VAD, so M2 intentionally avoids hard SELF during speech;
+  2. the hardware path needs explicit onset-latency calibration before M1-style causal attribution is meaningful.
+- M2 should therefore split calibration into two passes: first estimate hardware onset latency with self-only / speech-disabled controls, then run speech-preservation trials with VAD enabled and that latency compensation applied.

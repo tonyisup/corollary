@@ -133,6 +133,11 @@ def run_m2_trial(
     both_gain: float = 0.5,
     self_duration_ms: int = 350,
     self_amplitude: float = 0.7,
+    self_only: bool = False,
+    world_only: bool = False,
+    similarity_threshold: float = 0.45,
+    speech_override: str = "vad",
+    onset_latency_ms: float = 0.0,
 ) -> dict[str, Any]:
     self_meta = generate_stimulus_with_metadata(self_stim, self_duration_ms, self_amplitude, seed=seed)
     self_pcm = self_meta["pcm"]
@@ -141,6 +146,13 @@ def run_m2_trial(
         world_pcm = np.load(world_speech_file)
     else:
         world_pcm = np.sin(2 * np.pi * 440 * np.arange(SR * 2) / SR).astype(np.float32) * 0.5
+
+    if self_only and world_only:
+        raise ValueError("--self-only and --world-only are mutually exclusive")
+    if self_only:
+        world_pcm = np.zeros_like(world_pcm)
+    if world_only:
+        self_pcm = np.zeros_like(self_pcm)
 
     self_duration = len(self_pcm) / SR
     world_duration = len(world_pcm) / SR
@@ -203,11 +215,11 @@ def run_m2_trial(
     else:
         observed = captured_audio
 
-    attributor = ThalamicAttributor(sr=SR)
+    attributor = ThalamicAttributor(sr=SR, similarity_threshold=similarity_threshold)
     vad = SmoothedVAD()
 
     self_score, self_shift = normalized_xcorr(observed, self_pcm)
-    self_expected_shift = int(self_start_s * SR)
+    self_expected_shift = int((self_start_s + onset_latency_ms / 1000.0) * SR)
 
     num_frames = len(observed) // VAD_FRAME_SAMPLES
     verdicts = []
@@ -218,7 +230,13 @@ def run_m2_trial(
         end = start + VAD_FRAME_SAMPLES
         frame = observed[start:end]
 
-        is_speech = vad.process_frame(frame)
+        vad_speech = vad.process_frame(frame)
+        if speech_override == "true":
+            is_speech = True
+        elif speech_override == "false":
+            is_speech = False
+        else:
+            is_speech = vad_speech
         if is_speech:
             speech_frames += 1
 
@@ -278,6 +296,14 @@ def run_m2_trial(
         "seed": seed,
         "self_duration_ms": self_duration_ms,
         "self_amplitude": self_amplitude,
+        "self_only": self_only,
+        "world_only": world_only,
+        "similarity_threshold": similarity_threshold,
+        "speech_override": speech_override,
+        "onset_latency_ms": onset_latency_ms,
+        "self_shift_samples": int(self_shift),
+        "self_expected_shift_samples": int(self_expected_shift),
+        "self_onset_error_ms": float((self_shift - self_expected_shift) * 1000.0 / SR),
     }
 
 
@@ -299,6 +325,14 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
         "seed": result["seed"],
         "self_duration_ms": result["self_duration_ms"],
         "self_amplitude": result["self_amplitude"],
+        "self_only": result["self_only"],
+        "world_only": result["world_only"],
+        "similarity_threshold": result["similarity_threshold"],
+        "speech_override": result["speech_override"],
+        "onset_latency_ms": result["onset_latency_ms"],
+        "self_shift_samples": result["self_shift_samples"],
+        "self_expected_shift_samples": result["self_expected_shift_samples"],
+        "self_onset_error_ms": result["self_onset_error_ms"],
         "metrics": result["metrics"],
     }
     with open(os.path.join(save_dir, "summary.json"), "w", encoding="utf-8") as f:
@@ -318,6 +352,11 @@ def main():
     parser.add_argument("--seed", type=int, default=0, help="Stimulus seed")
     parser.add_argument("--self-duration-ms", type=int, default=350, help="Nominal self-stimulus duration in milliseconds")
     parser.add_argument("--self-amplitude", type=float, default=0.7, help="Self-stimulus playback amplitude")
+    parser.add_argument("--self-only", action="store_true", help="Play only self stimulus; replace world audio with silence")
+    parser.add_argument("--world-only", action="store_true", help="Play only world speech; replace self stimulus with silence")
+    parser.add_argument("--similarity-threshold", type=float, default=0.45, help="Attributor acoustic-similarity threshold")
+    parser.add_argument("--speech-override", choices=["vad", "true", "false"], default="vad", help="Override VAD speech flag for calibration")
+    parser.add_argument("--onset-latency-ms", type=float, default=0.0, help="Playback/capture onset latency compensation in milliseconds")
     args = parser.parse_args()
 
     res = run_m2_trial(
@@ -331,6 +370,11 @@ def main():
         both_gain=args.both_gain,
         self_duration_ms=args.self_duration_ms,
         self_amplitude=args.self_amplitude,
+        self_only=args.self_only,
+        world_only=args.world_only,
+        similarity_threshold=args.similarity_threshold,
+        speech_override=args.speech_override,
+        onset_latency_ms=args.onset_latency_ms,
     )
 
     if args.save_dir:
