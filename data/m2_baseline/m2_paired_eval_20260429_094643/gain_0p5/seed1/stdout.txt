@@ -1,0 +1,26 @@
+
+--- M2 Speech Preservation Trial ---
+Self: babble_ba_repeat_short_tight_var at 1.71s
+World Speech: 3.31s at 0.50s
+3...
+2...
+1...
+
+Running ASR on Raw Audio...
+Raw ASR: "I'm not going to take any more. Ah, ah, ah, ah."
+
+Running ASR on Gated Audio...
+Gated ASR: "I'm sorry. I'm sorry. I'm sorry."
+
+Reference Transcript Metrics:
+Expected: "this is a test of world speech conservation"
+Raw WER:   1.375
+Gated WER: 1.000
+Saved artifacts to: data/m2_baseline/m2_paired_eval_20260429_094643/gain_0p5/seed1
+
+--- M2 Final Verdict ---
+Self Match Score: 0.5607
+Speech Ratio: 100.0%
+Self/Both/World Frames: 0/28/132
+
+✅ SUCCESS: Gated transcript preserved or improved reference accuracy.

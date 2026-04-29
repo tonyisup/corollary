@@ -148,3 +148,33 @@ Updated conclusion:
 - Stronger template subtraction creates ASR artifacts and can damage world speech.
 - The current physical setup has high lexical variability across repeated captures, so promotion should require paired controls and repeated runs rather than single-run WER deltas.
 - Near-term default for continued M2 work: `both-mode=subtract`, `both-subtract-gain=0.25`, calibrated energy onset, and explicit no-processing / gain controls in the same run batch.
+
+### 2026-04-29 Paired Eval Runner
+
+Added `scripts/m2_eval_runner.py` to run paired M2 strategy evaluations with shared seeds and calibrated settings. The runner currently compares:
+- `gain_1p0`: no attenuation / no suppression control
+- `gain_0p5`: blunt half-gain on `BOTH` frames
+- `subtract_0p25`: conservative aligned template subtraction on `BOTH` frames
+
+Run:
+```bash
+./.venv/bin/python scripts/m2_eval_runner.py --seeds 0,1,2
+```
+
+Output:
+- `data/m2_baseline/m2_paired_eval_20260429_094643/aggregate_summary.json`
+
+Aggregate result:
+
+| Strategy | Trials | Mean raw WER | Mean gated WER | Mean ΔWER | Improved / Neutral / Regressed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `gain_1p0` | 3 | 0.833 | 0.958 | +0.125 | 0 / 1 / 2 |
+| `gain_0p5` | 3 | 1.000 | 0.958 | -0.042 | 1 / 1 / 1 |
+| `subtract_0p25` | 3 | 0.625 | 0.708 | +0.083 | 0 / 2 / 1 |
+
+Interpretation:
+- The paired runner is now the preferred M2 measurement tool because it keeps seeds and calibration consistent across strategies.
+- Results remain noisy because each strategy is still physically recaptured rather than replayed from one identical captured mixture.
+- In this paired run, blunt `gain_0p5` had the best mean ΔWER, but its win was unstable and driven by one large improvement.
+- `subtract_0p25` was mostly neutral but regressed on one seed.
+- Next refinement should separate acquisition from processing: capture one raw mixed trial per seed, then replay multiple processing strategies offline against the identical `observed.npy` so strategy comparisons are no longer confounded by live capture variability.
