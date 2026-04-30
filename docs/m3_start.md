@@ -331,7 +331,38 @@ M3 interrupts: [False, True, False, ...]
 ```
 
 Important boundary: the embodied path now uses real Broca audio and real mic
-capture, but the current M2 attribution of TTS self-voice is weak
+capture, but the first M2 attribution of TTS self-voice was weak
 (`self_score=0.031`, no hard `SELF` frames). The turn-taking behavior still
 works conservatively through speech-bearing `BOTH`/`WORLD`, but improving
 TTS-self attribution is the next M2/M3 integration target.
+
+## Broca self-only attribution calibration
+
+Added `scripts/m3_broca_self_attribution_calibration.py` to remove world speech
+and sweep a small set of attribution parameters against embodied Broca TTS.
+
+Quick command:
+
+```bash
+./.venv/bin/python scripts/m3_broca_self_attribution_calibration.py \
+  --latencies-ms 300,400 \
+  --tolerances-ms 75,175 \
+  --similarity-thresholds 0.02 \
+  --onset-methods energy \
+  --save-root data/m3_broca_self_calibration_20260430_quick
+```
+
+Observed top configs:
+
+```text
+trial001 energy latency=300 tolerance=175 threshold=0.02
+  self/both/world=27/59/74 self_score=0.094 onset_error=0.0ms
+trial000 energy latency=300 tolerance=75 threshold=0.02
+  self/both/world=29/57/74 self_score=0.030 onset_error=0.0ms
+```
+
+Key result: Broca TTS self-only can produce hard `SELF` frames once onset
+latency is corrected from `400ms` to about `300ms` and the similarity threshold
+is lowered for room-colored TTS. The remaining low self-score confirms that a
+room-colored/learned self reference is still the likely next improvement, but
+basic timing calibration already recovers a meaningful self-present signal.
