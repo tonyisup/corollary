@@ -271,3 +271,32 @@ This shows the live-ish path can now accept output, encounter M2 agentive speech
 evidence, interrupt, and resume. The run remains “live-ish” rather than fully
 embodied because the agent is not yet emitting real TTS while the M2 capture is
 running.
+
+## M3 acceptance ladder
+
+Added `scripts/m3_acceptance_ladder.py` as the current regression/acceptance
+slice for M3 turn-taking behavior. It checks four cases:
+
+1. defer on agentive overlap,
+2. speak on self-only frames,
+3. interrupt active synthetic speech on overlap,
+4. interrupt active speech using artifact-backed M2 frames.
+
+Command:
+
+```bash
+./.venv/bin/python scripts/m3_acceptance_ladder.py \
+  --output data/m3_acceptance_ladder_20260430.json
+```
+
+Observed:
+
+```text
+PASS defer_on_agentive_overlap
+PASS speak_on_self_only
+PASS interrupt_active_speech_on_overlap
+PASS artifact_backed_interrupt
+```
+
+This gives M3 a concrete acceptance gate before moving from replay/live-ish
+controller demos toward a fully embodied TTS/mic loop.
