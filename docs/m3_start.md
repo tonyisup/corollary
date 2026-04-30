@@ -300,3 +300,38 @@ PASS artifact_backed_interrupt
 
 This gives M3 a concrete acceptance gate before moving from replay/live-ish
 controller demos toward a fully embodied TTS/mic loop.
+
+## Embodied Broca → M2 → M3 TTS loop
+
+Added `scripts/m3_embodied_tts_loop_demo.py` as the first embodied bridge:
+
+1. Broca synthesizes the actual requested agent utterance.
+2. The generated PCM is passed into the M2 harness as the self-reference and
+   played through the output device during mic capture.
+3. M2 emits frame records from the real capture.
+4. M3 consumes those frames with `request_at_s=0` so accepted speech can be
+   interrupted by later speech-bearing `WORLD`/`BOTH` evidence.
+
+Command:
+
+```bash
+./.venv/bin/python scripts/m3_embodied_tts_loop_demo.py \
+  --save-dir data/m3_embodied_tts_loop_20260430_1005
+```
+
+Observed:
+
+```text
+Raw ASR: "I was speaking, then paused."
+M2 frames self/both/world: 0/86/74
+M2 self_score=0.031 onset_error_ms=150.0
+M3 accepted_initial_output=True
+M3 resumed_output='I was speaking, then paused.'
+M3 interrupts: [False, True, False, ...]
+```
+
+Important boundary: the embodied path now uses real Broca audio and real mic
+capture, but the current M2 attribution of TTS self-voice is weak
+(`self_score=0.031`, no hard `SELF` frames). The turn-taking behavior still
+works conservatively through speech-bearing `BOTH`/`WORLD`, but improving
+TTS-self attribution is the next M2/M3 integration target.

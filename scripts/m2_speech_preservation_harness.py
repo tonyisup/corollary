@@ -220,6 +220,7 @@ def run_m2_trial(
     onset_latency_ms: float = 0.0,
     onset_method: str = "xcorr",
     causal_tolerance_ms: float = 25.0,
+    self_pcm_override: np.ndarray | None = None,
 ) -> dict[str, Any]:
     if both_policy == "family":
         decision = select_family_policy(self_stim, family_gain_overrides=family_gain_overrides)
@@ -230,8 +231,13 @@ def run_m2_trial(
     else:
         both_policy_reason = "manual"
 
-    self_meta = generate_stimulus_with_metadata(self_stim, self_duration_ms, self_amplitude, seed=seed)
-    self_pcm = self_meta["pcm"]
+    if self_pcm_override is None:
+        self_meta = generate_stimulus_with_metadata(self_stim, self_duration_ms, self_amplitude, seed=seed)
+        self_pcm = self_meta["pcm"]
+    else:
+        self_pcm = np.asarray(self_pcm_override, dtype=np.float32)
+        if self_pcm.ndim != 1:
+            raise ValueError("self_pcm_override must be mono float PCM")
 
     if world_speech_file.endswith(".npy"):
         world_pcm = np.load(world_speech_file)
@@ -426,6 +432,7 @@ def run_m2_trial(
         "seed": seed,
         "self_duration_ms": self_duration_ms,
         "self_amplitude": self_amplitude,
+        "self_pcm_override": self_pcm_override is not None,
         "self_only": self_only,
         "world_only": world_only,
         "similarity_threshold": similarity_threshold,
