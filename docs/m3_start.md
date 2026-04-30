@@ -544,3 +544,39 @@ negative set is still too small for promotion. Treat `0.188` as a candidate
 operational threshold for the current room/filter-bank scorer, not as a locked
 policy default. The next evidence gap is more negative coverage: world-only,
 silence, and mixed-overlap Broca captures scored by the same filter-bank path.
+
+Expanded cross-stimulus negative run:
+
+```bash
+./.venv/bin/python scripts/m3_broca_room_threshold_calibration.py \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial000_energy_lat300_tol75_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial001_energy_lat300_tol175_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial002_energy_lat400_tol75_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial003_energy_lat400_tol175_thr0p02 \
+  --negative data/m2_baseline/control_world-only_seed0_in3_out5_noise4_20260429_091828 \
+  --negative data/m2_policy/vowel_control_20260429_115524/captures/gain_1p0/seed0 \
+  --negative data/m2_policy/vowel_control_20260429_115524/captures/gain_1p0/seed1 \
+  --negative data/m2_policy/vowel_control_20260429_115524/captures/gain_1p0/seed2 \
+  --negative data/m2_policy/vowel_control_20260429_115524/captures/gain_1p0/seed3 \
+  --negative data/m2_policy/vowel_control2_20260429_120112/captures/gain_1p0/seed4 \
+  --negative data/m2_policy/vowel_control2_20260429_120112/captures/gain_1p0/seed5 \
+  --negative data/m2_policy/vowel_control2_20260429_120112/captures/gain_1p0/seed6 \
+  --negative data/m2_policy/vowel_control2_20260429_120112/captures/gain_1p0/seed7 \
+  --negative data/m2_policy/vowel_control2_20260429_120112/captures/gain_1p0/seed8 \
+  --negative data/m2_policy/vowel_control2_20260429_120112/captures/gain_1p0/seed9 \
+  --output data/m3_broca_room_threshold_calibration_expanded_20260430.json
+```
+
+Observed:
+
+```text
+positive scores: [0.392, 0.394, 0.357, 0.440]
+negative scores: [0.019, 0.009, 0.011, 0.013, 0.009, 0.015, 0.014, 0.022, 0.012, 0.013, 0.010]
+recommended threshold: 0.190
+max negative: 0.022
+```
+
+This strengthened the current threshold candidate against non-Broca/vowel
+controls, but it still does not replace true Broca-specific negatives. Before
+promotion, collect fresh Broca silence/world-only/overlap controls with the same
+TTS reference and device path.
