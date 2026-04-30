@@ -84,6 +84,36 @@ Observed: `12 passed`.
 The synthetic demo now prints two scenarios: pre-speech deferral and active-speech
 interruption.
 
+## Artifact-backed SPEAK interruption replay
+
+Added `scripts/m3_speak_interrupt_replay.py` to compose saved M2 evidence into
+the minimal M3 SPEAK-interruption path:
+
+1. a self-only M2 artifact supplies a `SELF` frame that represents active agent
+   speech,
+2. an overlap artifact supplies speech-bearing `WORLD`/`BOTH` evidence,
+3. synthetic silence closes the cooldown window.
+
+Default command:
+
+```bash
+./.venv/bin/python scripts/m3_speak_interrupt_replay.py
+```
+
+Observed behavior:
+
+```text
+t=1.00s verdict=SELF speech=False state=IDLE can_speak=True interrupt=False
+t=1.15s verdict=WORLD speech=True state=LISTEN can_speak=False interrupt=True
+t=1.50s verdict=SILENCE speech=False state=IDLE can_speak=True interrupt=False
+accepted_initial_output=True
+resumed_output='I was speaking, then paused.'
+```
+
+This is still a composed replay, not a fully live simultaneous speaking demo,
+but it proves the new M3 SPEAK lifecycle works against saved M2 artifact frames
+rather than purely synthetic frame fixtures.
+
 ## M2 artifact replay
 
 The next bridge from synthetic M3 frames to hardware-facing behavior is replaying

@@ -86,6 +86,45 @@ def frames_from_artifact(path: str | Path) -> list[M2Frame]:
     return frames_from_m2_summary(load_m2_summary(p))
 
 
+def frames_for_speak_interruption(
+    self_artifact: str | Path,
+    overlap_artifact: str | Path,
+    *,
+    start_s: float = 1.0,
+    frame_step_s: float = 0.15,
+    cooldown_gap_s: float = 0.35,
+) -> list[M2Frame]:
+    """Build an artifact-backed M3 SPEAK-interruption sequence.
+
+    This composes two saved M2 artifacts into the minimal sequence needed to
+    prove the M3 lifecycle path: first a `SELF` frame that represents active
+    agent speech, then speech-bearing `WORLD`/`BOTH` evidence from an overlap
+    artifact, then silence/cooldown.
+    """
+    self_frames = [
+        frame for frame in frames_from_artifact(self_artifact)
+        if frame.attribution.verdict == SourceVerdict.SELF
+    ]
+    if not self_frames:
+        raise ValueError(f"No SELF frame available in {self_artifact}")
+
+    overlap_frames = [
+        frame for frame in frames_from_artifact(overlap_artifact)
+        if frame.attribution.is_speech and frame.attribution.verdict in {SourceVerdict.WORLD, SourceVerdict.BOTH}
+    ]
+    if not overlap_frames:
+        raise ValueError(f"No speech-bearing WORLD/BOTH frame available in {overlap_artifact}")
+
+    return [
+        M2Frame(start_s, self_frames[0].attribution),
+        M2Frame(start_s + frame_step_s, overlap_frames[0].attribution),
+        M2Frame(
+            start_s + frame_step_s + cooldown_gap_s,
+            attribution(SourceVerdict.SILENCE, is_speech=False, energy_db=-70.0),
+        ),
+    ]
+
+
 def frames_from_m2_summary(
     summary: dict[str, Any],
     *,
