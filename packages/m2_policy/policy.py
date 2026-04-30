@@ -8,6 +8,7 @@ This encodes the first validated M2 policy split:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Mapping
 
 
 @dataclass(frozen=True)
@@ -33,24 +34,37 @@ def stimulus_family(self_stim: str) -> str:
     return "unknown"
 
 
-def select_family_policy(self_stim: str) -> BothPolicyDecision:
+def select_family_policy(
+    self_stim: str,
+    *,
+    family_gain_overrides: Mapping[str, float] | None = None,
+) -> BothPolicyDecision:
     """Select a conservative M2 BOTH-frame policy from stimulus family.
 
     Current evidence supports `gain=0.5` for `vowel_ah_var_nearfield` only.
     Repeated babble and unknown stimuli preserve BOTH because held-out policy
     selection regressed on repeated-babble stress captures.
+
+    `family_gain_overrides` allows controlled experiments to keep the same
+    family-policy structure while swapping the concrete gain used for a family.
     """
     family = stimulus_family(self_stim)
+    default_gain = 0.5 if family == "vowel_ah_var_nearfield" else 1.0
+    gain = default_gain
+    if family_gain_overrides and family in family_gain_overrides:
+        gain = float(family_gain_overrides[family])
+
     if family == "vowel_ah_var_nearfield":
-        return BothPolicyDecision(
-            mode="gain",
-            gain=0.5,
-            subtract_gain=0.0,
-            reason="vowel_ah_var_nearfield_promoted_gain_0p5",
-        )
+        reason = "vowel_ah_var_nearfield_promoted_gain_0p5"
+    else:
+        reason = f"{family}_preserve_both"
+
+    if gain != default_gain:
+        reason = f"{reason}_override_gain_{gain:.3f}"
+
     return BothPolicyDecision(
         mode="gain",
-        gain=1.0,
+        gain=gain,
         subtract_gain=0.0,
-        reason=f"{family}_preserve_both",
+        reason=reason,
     )

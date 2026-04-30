@@ -210,6 +210,7 @@ def run_m2_trial(
     both_mode: str = "gain",
     both_subtract_gain: float = 0.5,
     both_policy: str = "manual",
+    family_gain_overrides: dict[str, float] | None = None,
     self_duration_ms: int = 350,
     self_amplitude: float = 0.7,
     self_only: bool = False,
@@ -221,7 +222,7 @@ def run_m2_trial(
     causal_tolerance_ms: float = 25.0,
 ) -> dict[str, Any]:
     if both_policy == "family":
-        decision = select_family_policy(self_stim)
+        decision = select_family_policy(self_stim, family_gain_overrides=family_gain_overrides)
         both_mode = decision.mode
         both_gain = decision.gain
         both_subtract_gain = decision.subtract_gain
@@ -421,6 +422,7 @@ def run_m2_trial(
         "both_subtract_gain": both_subtract_gain,
         "both_policy": both_policy,
         "both_policy_reason": both_policy_reason,
+        "family_gain_overrides": family_gain_overrides,
         "seed": seed,
         "self_duration_ms": self_duration_ms,
         "self_amplitude": self_amplitude,

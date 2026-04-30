@@ -100,3 +100,31 @@ First 30-trial optimization run completed. Trial 14 achieved best loss of **0.24
 Key observation: our manual calibration was remarkably close to the optimizer's best. The optimizer found a ~15% improvement within the region we'd already identified.
 
 Convergence was fast: best at trial 14/30, later trials oscillated around 0.26-0.33 without beating it. TPE sampler learned the landscape efficiently.
+
+## Wiring note (2026-04-30)
+
+`scripts/m2_bayesian_optimizer_v2.py` now routes `vowel_gain` and `babble_gain`
+through the family-policy path instead of leaving them as dead search
+dimensions. The harness accepts `family_gain_overrides`, and saved artifacts
+record the effective override in `both_policy_reason`.
+
+That means optimizer v2 can honestly explore per-family gain changes while
+still preserving the same high-level family-policy structure.
+
+## Sanity run after wiring (2026-04-30)
+
+A small bounded run was used to confirm the gains were actually live:
+
+- command: `scripts/m2_bayesian_optimizer_v2.py --n-trials 3 --seeds 0,1,2`
+- best loss: `0.2818`
+- best gains: `vowel_gain=0.483`, `babble_gain=0.891`
+- artifacts: `data/m2_bayesian_v2_sanity_20260430/`
+
+The artifact summaries show the override path was exercised, for example:
+
+- `vowel_ah_var_nearfield_promoted_gain_0p5_override_gain_0.483`
+- `repeated_babble_preserve_both_override_gain_0.891`
+
+Caution: this sanity run verified wiring, not policy promotion. The ASR outputs
+in this pass were mostly blank/noisy, so promotion decisions should still rely
+on larger held-out validation rather than this bounded check.

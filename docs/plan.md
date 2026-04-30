@@ -141,7 +141,7 @@ corollary/
 2. measure speech-vs-non-speech stability with self overlap on the current hardware path
 3. verify external speech retention before tuning any stronger self suppression
 4. record baseline metrics and only then iterate on masking heuristics
-5. **Bayesian hyperparameter optimization**: use Optuna TPE to automatically search onset_latency_ms, causal_tolerance_ms, similarity_threshold, onset_method, and per-family gains. See `docs/m2_bayesian_optimization_design.md` and `scripts/m2_bayesian_optimizer.py`.
+5. **Bayesian hyperparameter optimization**: use Optuna TPE to automatically search onset_latency_ms, causal_tolerance_ms, similarity_threshold, onset_method, and per-family gains. `scripts/m2_bayesian_optimizer.py` covers the original single-seed pass; `scripts/m2_bayesian_optimizer_v2.py` adds multi-seed averaging plus family-gain override wiring for experimental gain sweeps. See `docs/m2_bayesian_optimization_design.md`.
 
 ### M3: Agentive Listening and Proto-Turn-Taking
 - 🧪 **Status:** INTEGRATED DEMO (ARTIFACT-BACKED)

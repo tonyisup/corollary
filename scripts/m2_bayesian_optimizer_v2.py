@@ -50,6 +50,10 @@ def _run_for_seed(
         seed=seed,
         expected_text=EXPECTED_TEXT,
         both_policy="family",
+        family_gain_overrides={
+            "vowel_ah_var_nearfield": params["vowel_gain"],
+            "repeated_babble": params["babble_gain"],
+        },
         self_duration_ms=int(params["self_duration_ms"]),
         self_amplitude=params["self_amplitude"],
         speech_override="vad",

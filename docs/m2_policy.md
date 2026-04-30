@@ -64,6 +64,12 @@ The optimizer also found adjusted gains: `vowel_gain 0.615` (vs 0.5) and
 `babble_gain 0.928` (vs 1.0). These suggest slightly less aggressive vowel
 suppression and a small babble attenuation benefit.
 
+Important boundary: these optimized gains now flow through the experimental
+`both_policy="family"` override path, but they are **not** automatically
+promoted as the default family policy. The promoted deterministic policy remains
+`gain_0p5` for `vowel_ah_var_nearfield` and preserve-`BOTH` for repeated
+babble until held-out validation says otherwise.
+
 ## Promotion criterion
 
 A strategy is only promotable for a stimulus family if it beats preserve-`BOTH`
@@ -78,6 +84,25 @@ all vowel seeds `0-9`:
 
 For repeated babble, the policy gate regressed on held-out seeds. Preserve
 `BOTH` remains the baseline.
+
+### Family-policy override sanity run (2026-04-30)
+
+After wiring the optimizer to pass per-family gain overrides into the family
+policy selector, a bounded 3-trial × 3-seed sanity run exercised real override
+values in saved artifacts:
+
+- best loss: `0.2818`
+- best `vowel_gain`: `0.483`
+- best `babble_gain`: `0.891`
+- artifacts: `data/m2_bayesian_v2_sanity_20260430/`
+
+Artifact summaries now explicitly show override usage, e.g.
+`vowel_ah_var_nearfield_promoted_gain_0p5_override_gain_0.483` and
+`repeated_babble_preserve_both_override_gain_0.891`.
+
+This confirms the gain parameters are live in optimizer v2. It does **not** yet
+count as M2 policy promotion evidence because the run was small and the ASR side
+was noisy/weak on this hardware pass.
 
 ## Reproduction commands
 
