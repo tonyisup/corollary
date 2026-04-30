@@ -366,3 +366,34 @@ latency is corrected from `400ms` to about `300ms` and the similarity threshold
 is lowered for room-colored TTS. The remaining low self-score confirms that a
 room-colored/learned self reference is still the likely next improvement, but
 basic timing calibration already recovers a meaningful self-present signal.
+
+## Room-colored Broca self-reference analysis
+
+Added `scripts/m3_broca_room_reference_analysis.py` to compare dry Broca PCM
+matching against a small learned FIR room-colored reference on saved self-only
+calibration artifacts.
+
+Command:
+
+```bash
+./.venv/bin/python scripts/m3_broca_room_reference_analysis.py \
+  data/m3_broca_self_calibration_20260430_quick/trial000_energy_lat300_tol75_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial001_energy_lat300_tol175_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial002_energy_lat400_tol75_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial003_energy_lat400_tol175_thr0p02 \
+  --output data/m3_broca_self_calibration_20260430_quick/room_reference_analysis.json
+```
+
+Observed proof-of-concept:
+
+```text
+trial002 ... dry_local=0.143 room_local=0.381 improvement=0.238
+trial003 ... dry_local=0.083 room_local=0.134 improvement=0.051
+```
+
+This is an offline same-artifact fit, so it is not held-out evidence yet. It
+still strongly supports the architectural direction: embodied Broca self
+attribution should compare mic capture against a room-colored forward reference,
+not dry TTS PCM. The next validation should fit on one self-only artifact and
+score on a held-out self-only artifact before using the room-colored score in
+live attribution.
