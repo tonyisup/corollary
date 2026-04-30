@@ -225,6 +225,12 @@ Example:
   --save-dir data/m3_live_m2_turn_demo_20260429_142110
 ```
 
+The demo now accepts explicit M2 calibration flags plus M3 controller flags such
+as `--request-at-s`, `--listen-threshold-ms`, and `--cooldown-ms`. Passing
+`--request-at-s 0` asks M3 to begin speaking at the first replayed M2 frame,
+which can exercise the active-SPEAK interruption path if later M2 frames contain
+speech-bearing `WORLD`/`BOTH` evidence.
+
 Observed run:
 
 ```text
@@ -240,3 +246,28 @@ During this work, an important replay-selector issue surfaced: selecting the
 first interesting frames could choose early non-speech `WORLD` frames and miss
 the actual speech-bearing segment. Timeline replay now prioritizes speech-bearing
 `WORLD`/`BOTH` frames before falling back to controls such as `SELF`.
+
+### Live-ish SPEAK interruption smoke run (2026-04-30)
+
+Command:
+
+```bash
+./.venv/bin/python scripts/m3_live_m2_turn_demo.py \
+  --request-at-s 0 \
+  --save-dir data/m3_live_m2_turn_interrupt_20260430_0945
+```
+
+Observed M2/M3 behavior:
+
+```text
+M2 frames self/both/world: 0/29/131
+M3 request_at_s=0.0
+M3 accepted_initial_output=True
+M3 resumed_output='I can respond now.'
+M3 interrupts: [False, True, False, ...]
+```
+
+This shows the live-ish path can now accept output, encounter M2 agentive speech
+evidence, interrupt, and resume. The run remains “live-ish” rather than fully
+embodied because the agent is not yet emitting real TTS while the M2 capture is
+running.
