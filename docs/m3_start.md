@@ -461,7 +461,51 @@ mean_room_score=0.152
 detected_pairs=2 vs dry_detected_pairs=0
 ```
 
-This makes the next code step fairly concrete: implement an optional local
+This made the next code step concrete: implement an optional local
 room-reference scoring path in M2 using `64` taps, ridge around `1e-4`, and a
 ~`250ms` search window, then evaluate whether it improves embodied Broca
 self-present attribution without increasing false positives.
+
+## Optional M2 self-match scorer modes
+
+M2 now supports explicit self-match modes while preserving the original default:
+
+- `global_xcorr` — original dry global waveform xcorr default,
+- `local_xcorr` — dry xcorr constrained to the expected motor window,
+- `room_local_oracle` — experimental same-capture room-colored local scorer.
+
+`room_local_oracle` is intentionally labeled as oracle/experimental because it
+fits the room filter on the same capture it scores. It is useful for measuring
+headroom and validating the optimized scoring path, but it is not production
+causal evidence.
+
+Embodied smoke command using the optimized offline scorer knobs:
+
+```bash
+./.venv/bin/python scripts/m3_embodied_tts_loop_demo.py \
+  --self-match-mode room_local_oracle \
+  --self-match-search-ms 256.4 \
+  --room-filter-taps 64 \
+  --room-filter-ridge 0.000112 \
+  --similarity-threshold 0.211 \
+  --onset-method score \
+  --causal-tolerance-ms 175 \
+  --onset-latency-ms 300 \
+  --save-dir data/m3_embodied_tts_room_local_20260430_1048
+```
+
+Observed:
+
+```text
+M2 self_score=0.155 dry_global=0.061 dry_local=0.069 room_local=0.155
+M2 frames self/both/world: 0/86/74
+M3 accepted_initial_output=True
+M3 resumed_output='I was speaking, then paused.'
+M3 interrupts: [False, True, False, ...]
+```
+
+The room-colored scorer improved the self score by ~2.5× over dry global on this
+embodied run, but the optimized threshold `0.211` was still too conservative for
+detection on this capture. Next step: validate a lower operational
+`self_present_threshold` separately from the optimization threshold, and avoid
+using same-capture fitting as anything more than a headroom probe.

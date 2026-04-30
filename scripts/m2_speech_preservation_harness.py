@@ -100,6 +100,72 @@ def normalized_xcorr(observed: np.ndarray, template: np.ndarray) -> tuple[float,
     return max(0.0, best_score), best_shift
 
 
+def local_xcorr(
+    observed: np.ndarray,
+    template: np.ndarray,
+    expected_shift: int,
+    search_ms: float = 250.0,
+) -> tuple[float, int]:
+    """Score a template near the expected motor-window shift."""
+    if len(observed) < len(template):
+        return 0.0, expected_shift
+    template_norm = float(np.linalg.norm(template))
+    if template_norm < 1e-9:
+        return 0.0, expected_shift
+    radius = int(search_ms * SR / 1000.0)
+    start = max(0, expected_shift - radius)
+    stop = min(len(observed) - len(template), expected_shift + radius)
+    if stop <= start:
+        return 0.0, expected_shift
+    best_score = -1.0
+    best_shift = start
+    step = max(len(template) // 160, 1)
+    for shift in range(start, stop + 1, step):
+        window = observed[shift:shift + len(template)]
+        denom = float(np.linalg.norm(window) * template_norm)
+        score = 0.0 if denom < 1e-9 else float(np.dot(window, template) / denom)
+        if score > best_score:
+            best_score = score
+            best_shift = shift
+    return max(0.0, best_score), best_shift
+
+
+def fit_room_filter(
+    observed: np.ndarray,
+    template: np.ndarray,
+    shift: int,
+    taps: int = 64,
+    ridge: float = 1e-4,
+) -> np.ndarray:
+    """Fit a small FIR mapping dry self PCM to observed mic capture."""
+    dry = np.zeros(len(observed), dtype=np.float32)
+    start = max(0, int(shift))
+    src_start = 0 if shift >= 0 else -int(shift)
+    n = min(len(template) - src_start, len(observed) - start)
+    if n > 0:
+        dry[start:start + n] = template[src_start:src_start + n]
+    fit_start = max(taps - 1, start + taps - 1)
+    fit_stop = min(len(observed), start + n)
+    if fit_stop <= fit_start + taps * 2:
+        return np.r_[1.0, np.zeros(taps - 1, dtype=np.float64)]
+    idx = np.arange(fit_start, fit_stop)
+    if len(idx) > 6000:
+        idx = idx[np.linspace(0, len(idx) - 1, 6000).astype(int)]
+    x = np.stack([dry[idx - k] for k in range(taps)], axis=1).astype(np.float64)
+    y = observed[idx].astype(np.float64)
+    xtx = x.T @ x + ridge * np.eye(taps)
+    xty = x.T @ y
+    try:
+        h = np.linalg.solve(xtx, xty)
+    except np.linalg.LinAlgError:
+        return np.r_[1.0, np.zeros(taps - 1, dtype=np.float64)]
+    return np.clip(h, -2.0, 2.0)
+
+
+def apply_room_filter(template: np.ndarray, h: np.ndarray) -> np.ndarray:
+    return np.convolve(template, h, mode="full").astype(np.float32)
+
+
 def build_gating_gain(
     verdicts: list[SourceVerdict],
     frame_samples: int,
@@ -221,6 +287,10 @@ def run_m2_trial(
     onset_method: str = "xcorr",
     causal_tolerance_ms: float = 25.0,
     self_pcm_override: np.ndarray | None = None,
+    self_match_mode: str = "global_xcorr",
+    self_match_search_ms: float = 250.0,
+    room_filter_taps: int = 64,
+    room_filter_ridge: float = 1e-4,
 ) -> dict[str, Any]:
     if both_policy == "family":
         decision = select_family_policy(self_stim, family_gain_overrides=family_gain_overrides)
@@ -315,10 +385,48 @@ def run_m2_trial(
     attributor = ThalamicAttributor(sr=SR, similarity_threshold=similarity_threshold, causal_tolerance_ms=causal_tolerance_ms)
     vad = SmoothedVAD()
 
-    self_score, xcorr_shift = normalized_xcorr(observed, self_pcm)
     self_expected_shift = int((self_start_s + onset_latency_ms / 1000.0) * SR)
+    dry_global_score, xcorr_shift = normalized_xcorr(observed, self_pcm)
+    dry_local_score, dry_local_shift = local_xcorr(
+        observed,
+        self_pcm,
+        self_expected_shift,
+        search_ms=self_match_search_ms,
+    )
+    room_local_score = None
+    room_local_shift = None
+    if self_match_mode == "global_xcorr":
+        self_score = dry_global_score
+        score_shift = xcorr_shift
+    elif self_match_mode == "local_xcorr":
+        self_score = dry_local_score
+        score_shift = dry_local_shift
+    elif self_match_mode == "room_local_oracle":
+        # Experimental/oracle mode: fit room color on this same capture, then
+        # score locally. Use only for analysis until held-out room filters are wired.
+        h = fit_room_filter(
+            observed,
+            self_pcm,
+            dry_local_shift,
+            taps=room_filter_taps,
+            ridge=room_filter_ridge,
+        )
+        room_ref = apply_room_filter(self_pcm, h)
+        room_local_score, room_local_shift = local_xcorr(
+            observed,
+            room_ref,
+            self_expected_shift,
+            search_ms=self_match_search_ms,
+        )
+        self_score = room_local_score
+        score_shift = room_local_shift
+    else:
+        raise ValueError(f"Unknown self_match_mode: {self_match_mode}")
+
     if onset_method == "energy":
         self_shift = energy_onset(observed, self_expected_shift)
+    elif onset_method == "score":
+        self_shift = score_shift
     else:
         self_shift = xcorr_shift
 
@@ -442,6 +550,15 @@ def run_m2_trial(
         "self_shift_samples": int(self_shift),
         "self_xcorr_shift_samples": int(xcorr_shift),
         "self_expected_shift_samples": int(self_expected_shift),
+        "self_match_mode": self_match_mode,
+        "self_match_search_ms": self_match_search_ms,
+        "dry_global_self_score": dry_global_score,
+        "dry_local_self_score": dry_local_score,
+        "dry_local_shift_samples": int(dry_local_shift),
+        "room_local_self_score": room_local_score,
+        "room_local_shift_samples": None if room_local_shift is None else int(room_local_shift),
+        "room_filter_taps": room_filter_taps,
+        "room_filter_ridge": room_filter_ridge,
         "self_onset_error_ms": float((self_shift - self_expected_shift) * 1000.0 / SR),
         "causal_tolerance_ms": causal_tolerance_ms,
     }
@@ -484,6 +601,15 @@ def save_trial_artifacts(save_dir: str, result: dict[str, Any]) -> None:
         "self_expected_shift_samples": result["self_expected_shift_samples"],
         "self_onset_error_ms": result["self_onset_error_ms"],
         "causal_tolerance_ms": result["causal_tolerance_ms"],
+        "self_match_mode": result["self_match_mode"],
+        "self_match_search_ms": result["self_match_search_ms"],
+        "dry_global_self_score": result["dry_global_self_score"],
+        "dry_local_self_score": result["dry_local_self_score"],
+        "dry_local_shift_samples": result["dry_local_shift_samples"],
+        "room_local_self_score": result["room_local_self_score"],
+        "room_local_shift_samples": result["room_local_shift_samples"],
+        "room_filter_taps": result["room_filter_taps"],
+        "room_filter_ridge": result["room_filter_ridge"],
         "frame_verdicts": "frame_verdicts.jsonl",
         "metrics": result["metrics"],
     }
@@ -512,8 +638,12 @@ def main():
     parser.add_argument("--similarity-threshold", type=float, default=0.45, help="Attributor acoustic-similarity threshold")
     parser.add_argument("--speech-override", choices=["vad", "true", "false"], default="vad", help="Override VAD speech flag for calibration")
     parser.add_argument("--onset-latency-ms", type=float, default=0.0, help="Playback/capture onset latency compensation in milliseconds")
-    parser.add_argument("--onset-method", choices=["xcorr", "energy"], default="xcorr", help="Observed onset estimator for causal attribution")
+    parser.add_argument("--onset-method", choices=["xcorr", "energy", "score"], default="xcorr", help="Observed onset estimator for causal attribution")
     parser.add_argument("--causal-tolerance-ms", type=float, default=25.0, help="Attributor causal timing tolerance in milliseconds")
+    parser.add_argument("--self-match-mode", choices=["global_xcorr", "local_xcorr", "room_local_oracle"], default="global_xcorr", help="Self-match scorer; room_local_oracle is experimental same-capture fitting")
+    parser.add_argument("--self-match-search-ms", type=float, default=250.0, help="Local search radius for self-match scorer")
+    parser.add_argument("--room-filter-taps", type=int, default=64, help="FIR taps for room_local_oracle self-match mode")
+    parser.add_argument("--room-filter-ridge", type=float, default=1e-4, help="Ridge regularization for room_local_oracle self-match mode")
     args = parser.parse_args()
 
     res = run_m2_trial(
@@ -537,6 +667,10 @@ def main():
         onset_latency_ms=args.onset_latency_ms,
         onset_method=args.onset_method,
         causal_tolerance_ms=args.causal_tolerance_ms,
+        self_match_mode=args.self_match_mode,
+        self_match_search_ms=args.self_match_search_ms,
+        room_filter_taps=args.room_filter_taps,
+        room_filter_ridge=args.room_filter_ridge,
     )
 
     if args.save_dir:

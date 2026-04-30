@@ -39,8 +39,12 @@ async def main_async() -> None:
     parser.add_argument("--both-gain", type=float, default=0.5)
     parser.add_argument("--similarity-threshold", type=float, default=0.20)
     parser.add_argument("--onset-latency-ms", type=float, default=400.0)
-    parser.add_argument("--onset-method", choices=["xcorr", "energy", "spectral_flux"], default="energy")
+    parser.add_argument("--onset-method", choices=["xcorr", "energy", "spectral_flux", "score"], default="energy")
     parser.add_argument("--causal-tolerance-ms", type=float, default=75.0)
+    parser.add_argument("--self-match-mode", choices=["global_xcorr", "local_xcorr", "room_local_oracle"], default="global_xcorr")
+    parser.add_argument("--self-match-search-ms", type=float, default=250.0)
+    parser.add_argument("--room-filter-taps", type=int, default=64)
+    parser.add_argument("--room-filter-ridge", type=float, default=1e-4)
     parser.add_argument("--request-at-s", type=float, default=0.0)
     parser.add_argument("--listen-threshold-ms", type=float, default=100.0)
     parser.add_argument("--cooldown-ms", type=float, default=200.0)
@@ -70,6 +74,10 @@ async def main_async() -> None:
         onset_latency_ms=args.onset_latency_ms,
         onset_method=args.onset_method,
         causal_tolerance_ms=args.causal_tolerance_ms,
+        self_match_mode=args.self_match_mode,
+        self_match_search_ms=args.self_match_search_ms,
+        room_filter_taps=args.room_filter_taps,
+        room_filter_ridge=args.room_filter_ridge,
     )
     if args.save_dir:
         save_trial_artifacts(args.save_dir, result)
@@ -88,7 +96,8 @@ async def main_async() -> None:
     )
 
     print(f"M2 frames self/both/world: {result['self_frames']}/{result['both_frames']}/{result['world_frames']}")
-    print(f"M2 self_score={result['self_score']:.3f} onset_error_ms={result['self_onset_error_ms']:.1f}")
+    print(f"M2 self_match_mode={result['self_match_mode']} search_ms={result['self_match_search_ms']}")
+    print(f"M2 self_score={result['self_score']:.3f} dry_global={result['dry_global_self_score']:.3f} dry_local={result['dry_local_self_score']:.3f} room_local={result['room_local_self_score']} onset_error_ms={result['self_onset_error_ms']:.1f}")
     if result["metrics"]:
         print(f"M2 world WER raw/gated: {result['metrics']['raw_wer']:.3f}/{result['metrics']['gated_wer']:.3f}")
     print(f"M3 request_at_s={args.request_at_s}")
