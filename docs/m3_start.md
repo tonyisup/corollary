@@ -31,7 +31,7 @@ voice may be present, the agent should avoid speaking over it.
 - `packages/pfc/m2_turn_bridge.py`
   - timestamped M2 frame bridge into the controller
 - `scripts/m3_turn_taking_demo.py`
-  - synthetic demo: overlapping speech causes deferral; silence/cooldown resumes
+  - synthetic demo: overlapping speech causes deferral, and overlap during active speech causes interrupt/defer/resume
 - `tests/unit/test_pfc_m2_turn_bridge.py`
   - validates BOTH-speech deferral and resume behavior
 
@@ -48,12 +48,41 @@ Expected behavior:
 3. Requested output is deferred.
 4. Silence/cooldown returns PFC to `IDLE`.
 5. Deferred output can resume.
+6. In the second scenario, accepted speech is interrupted by speech-bearing `BOTH`, queued, and resumed after cooldown.
 
 ## Current boundary
 
 This is an early controller integration, not a full social model. It validates
 turn-taking mechanics using M2 attribution events. Later M3 work should add
 richer agentive-other detection, timing policy, and live hardware demos.
+
+## SPEAK lifecycle slice
+
+M3 now treats `SPEAK` as an actual controller phase rather than only a transient
+accepted-output marker:
+
+1. `request_output(...)` from `IDLE` enters `SPEAK` and records the active
+   utterance.
+2. M2 `SELF` frames sustain the speaking phase.
+3. Speech-bearing `WORLD` or conservative speech-bearing `BOTH` frames during
+   `SPEAK` interrupt the active utterance, queue it as deferred output, and
+   transition to `LISTEN`.
+4. Silence/cooldown returns the controller to `IDLE`, where deferred output can
+   resume.
+
+Focused coverage:
+
+```bash
+./.venv/bin/python -m pytest \
+  tests/unit/test_pfc_agentive_controller.py \
+  tests/unit/test_pfc_m2_turn_bridge.py \
+  tests/unit/test_pfc_m2_artifact_replay.py
+```
+
+Observed: `12 passed`.
+
+The synthetic demo now prints two scenarios: pre-speech deferral and active-speech
+interruption.
 
 ## M2 artifact replay
 

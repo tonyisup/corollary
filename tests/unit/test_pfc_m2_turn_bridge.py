@@ -65,3 +65,20 @@ def test_m2_turn_bridge_accepts_output_when_no_agentive_speech() -> None:
     assert result.accepted_initial_output is True
     assert result.deferred_output is None
     assert result.resumed_output is None
+
+
+def test_m2_turn_bridge_interrupts_speaking_then_resumes_after_overlap() -> None:
+    ctrl = AgentiveController(listen_threshold_ms=100, cooldown_ms=200)
+    frames = [
+        M2Frame(1.00, attr(SourceVerdict.SELF, is_speech=False)),
+        M2Frame(1.15, attr(SourceVerdict.BOTH, is_speech=True)),
+        M2Frame(1.50, attr(SourceVerdict.SILENCE, is_speech=False)),
+    ]
+
+    result = run_turn_taking_bridge(frames, "speaking now", controller=ctrl, request_at_s=1.0)
+
+    assert result.accepted_initial_output is True
+    assert result.decisions[1].should_interrupt is True
+    assert result.decisions[1].state == AgentState.LISTEN
+    assert result.deferred_output is None
+    assert result.resumed_output == "speaking now"

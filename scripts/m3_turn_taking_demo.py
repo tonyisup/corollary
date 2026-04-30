@@ -25,23 +25,43 @@ def attribution(verdict: SourceVerdict, is_speech: bool) -> AttributionResult:
     )
 
 
-def main() -> None:
-    controller = AgentiveController(listen_threshold_ms=100, cooldown_ms=200)
-    frames = [
-        M2Frame(1.00, attribution(SourceVerdict.BOTH, is_speech=True)),
-        M2Frame(1.15, attribution(SourceVerdict.BOTH, is_speech=True)),
-        M2Frame(1.50, attribution(SourceVerdict.SILENCE, is_speech=False)),
-    ]
-    result = run_turn_taking_bridge(frames, "I can respond now.", controller=controller)
-
+def print_result(title: str, frames: list[M2Frame], result) -> None:
+    print(f"\n--- {title} ---")
     for frame, decision in zip(frames, result.decisions):
         print(
             f"t={frame.time_s:.2f}s verdict={frame.attribution.verdict.name} "
             f"speech={frame.attribution.is_speech} state={decision.state.name} "
-            f"can_speak={decision.can_speak}"
+            f"can_speak={decision.can_speak} interrupt={decision.should_interrupt}"
         )
     print(f"accepted_initial_output={result.accepted_initial_output}")
     print(f"resumed_output={result.resumed_output!r}")
+
+
+def main() -> None:
+    defer_frames = [
+        M2Frame(1.00, attribution(SourceVerdict.BOTH, is_speech=True)),
+        M2Frame(1.15, attribution(SourceVerdict.BOTH, is_speech=True)),
+        M2Frame(1.50, attribution(SourceVerdict.SILENCE, is_speech=False)),
+    ]
+    defer_result = run_turn_taking_bridge(
+        defer_frames,
+        "I can respond now.",
+        controller=AgentiveController(listen_threshold_ms=100, cooldown_ms=200),
+    )
+    print_result("M3 defers before speaking", defer_frames, defer_result)
+
+    interrupt_frames = [
+        M2Frame(2.00, attribution(SourceVerdict.SELF, is_speech=False)),
+        M2Frame(2.15, attribution(SourceVerdict.BOTH, is_speech=True)),
+        M2Frame(2.50, attribution(SourceVerdict.SILENCE, is_speech=False)),
+    ]
+    interrupt_result = run_turn_taking_bridge(
+        interrupt_frames,
+        "I was speaking, then paused.",
+        controller=AgentiveController(listen_threshold_ms=100, cooldown_ms=200),
+        request_at_s=2.0,
+    )
+    print_result("M3 interrupts active speech", interrupt_frames, interrupt_result)
 
 
 if __name__ == "__main__":

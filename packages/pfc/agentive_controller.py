@@ -46,6 +46,8 @@ class AgentiveController:
         
         self.last_speech_time: float = 0.0
         self.speech_start_time: float = 0.0
+        self.last_self_time: float = 0.0
+        self.active_utterance: Optional[str] = None
         self.deferred_utterance: Optional[str] = None
 
     @property
@@ -76,7 +78,7 @@ class AgentiveController:
         if current_time is None:
             current_time = time.time()
             
-        # 1. Update Speech Timing
+        # 1. Classify the frame for M3 policy.
         is_world_speech = res.is_speech and res.verdict == SourceVerdict.WORLD
         is_overlap_speech = (
             self.treat_both_speech_as_agentive
@@ -84,32 +86,59 @@ class AgentiveController:
             and res.verdict == SourceVerdict.BOTH
         )
         is_agentive_external_speech = is_world_speech or is_overlap_speech
-        
-        if is_agentive_external_speech:
-            if self.speech_start_time == 0:
-                self.speech_start_time = current_time
-            self.last_speech_time = current_time
-        else:
-            # Only reset if we were previously hearing speech and the cooldown has passed
-            if self.last_speech_time > 0 and (current_time - self.last_speech_time) > (self.cooldown_ms / 1000.0):
-                self.speech_start_time = 0
-                self.last_speech_time = 0
-            
-        # 2. State Transitions
-        is_hearing_agent = (self.speech_start_time > 0) and \
-                           (current_time - self.speech_start_time) > (self.listen_threshold_ms / 1000.0)
-        
-        if is_hearing_agent:
-            self.state = AgentState.LISTEN
-        elif self.state == AgentState.LISTEN:
-            # We were listening, now it's quiet. Return to IDLE.
-            self.state = AgentState.IDLE
-            
-        # 3. Decision Making
-        can_speak = (self.state != AgentState.LISTEN)
-        
-        # Simple policy: don't interrupt if we are in LISTEN state
+        is_self_activity = res.verdict == SourceVerdict.SELF or (
+            res.verdict == SourceVerdict.BOTH and not is_overlap_speech
+        )
+
         should_interrupt = False
+        just_interrupted = False
+
+        # 2. SPEAK is a real lifecycle: self frames sustain it; external speech
+        # interrupts it immediately and queues the active utterance for later.
+        if self.state == AgentState.SPEAK:
+            if is_agentive_external_speech:
+                should_interrupt = True
+                just_interrupted = True
+                if self.active_utterance is not None:
+                    self.deferred_utterance = self.active_utterance
+                self.active_utterance = None
+                self.state = AgentState.LISTEN
+                if self.speech_start_time == 0:
+                    self.speech_start_time = current_time
+                self.last_speech_time = current_time
+            elif is_self_activity:
+                self.last_self_time = current_time
+            else:
+                self.active_utterance = None
+                self.last_self_time = 0
+                self.state = AgentState.IDLE
+
+        # 3. Update external speech timing when not handled by SPEAK interrupt.
+        if self.state != AgentState.SPEAK:
+            if just_interrupted:
+                pass
+            elif is_agentive_external_speech:
+                if self.speech_start_time == 0:
+                    self.speech_start_time = current_time
+                self.last_speech_time = current_time
+            else:
+                # Only reset if we were previously hearing speech and the cooldown has passed.
+                if self.last_speech_time > 0 and (current_time - self.last_speech_time) > (self.cooldown_ms / 1000.0):
+                    self.speech_start_time = 0
+                    self.last_speech_time = 0
+
+            if not just_interrupted:
+                is_hearing_agent = (self.speech_start_time > 0) and \
+                                   (current_time - self.speech_start_time) > (self.listen_threshold_ms / 1000.0)
+
+                if is_hearing_agent:
+                    self.state = AgentState.LISTEN
+                elif self.state == AgentState.LISTEN:
+                    # We were listening, now it's quiet. Return to IDLE.
+                    self.state = AgentState.IDLE
+
+        # 4. Decision Making
+        can_speak = (self.state != AgentState.LISTEN)
         
         return ControllerDecision(
             state=self.state,
@@ -125,5 +154,6 @@ class AgentiveController:
             return False
         
         self.state = AgentState.SPEAK
+        self.active_utterance = text
         self.deferred_utterance = None
         return True

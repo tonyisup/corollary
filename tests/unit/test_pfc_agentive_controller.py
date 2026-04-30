@@ -93,3 +93,37 @@ def test_controller_pop_deferred_output_clears_queue():
     assert ctrl.pop_deferred_output() == "Queued response"
     assert ctrl.has_deferred_output is False
     assert ctrl.pop_deferred_output() is None
+
+
+def test_controller_interrupts_active_speech_on_external_overlap():
+    ctrl = AgentiveController(listen_threshold_ms=100, cooldown_ms=200)
+    self_res = AttributionResult(
+        verdict=SourceVerdict.SELF,
+        confidence=0.9,
+        self_match_score=0.8,
+        is_in_motor_window=True,
+        causal_score=0.9,
+        energy_db=-20.0,
+        is_speech=False,
+    )
+    overlap_res = AttributionResult(
+        verdict=SourceVerdict.BOTH,
+        confidence=0.9,
+        self_match_score=0.6,
+        is_in_motor_window=True,
+        causal_score=0.5,
+        energy_db=-20.0,
+        is_speech=True,
+    )
+
+    assert ctrl.request_output("speaking now") is True
+    assert ctrl.state == AgentState.SPEAK
+
+    ctrl.process_attribution(self_res, current_time=1.0)
+    decision = ctrl.process_attribution(overlap_res, current_time=1.15)
+
+    assert decision.state == AgentState.LISTEN
+    assert decision.can_speak is False
+    assert decision.should_interrupt is True
+    assert ctrl.has_deferred_output is True
+    assert ctrl.deferred_utterance == "speaking now"
