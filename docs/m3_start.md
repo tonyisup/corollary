@@ -394,6 +394,31 @@ trial003 ... dry_local=0.083 room_local=0.134 improvement=0.051
 This is an offline same-artifact fit, so it is not held-out evidence yet. It
 still strongly supports the architectural direction: embodied Broca self
 attribution should compare mic capture against a room-colored forward reference,
-not dry TTS PCM. The next validation should fit on one self-only artifact and
-score on a held-out self-only artifact before using the room-colored score in
-live attribution.
+not dry TTS PCM.
+
+## Held-out room-reference validation
+
+Added `scripts/m3_broca_room_reference_holdout.py` to fit a room filter on one
+self-only Broca artifact and score it on different held-out artifacts.
+
+Command:
+
+```bash
+./.venv/bin/python scripts/m3_broca_room_reference_holdout.py \
+  data/m3_broca_self_calibration_20260430_quick/trial000_energy_lat300_tol75_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial001_energy_lat300_tol175_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial002_energy_lat400_tol75_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial003_energy_lat400_tol175_thr0p02 \
+  --output data/m3_broca_self_calibration_20260430_quick/room_reference_holdout.json
+```
+
+Observed:
+
+```text
+pairs=12 improved=7 mean_improvement=0.031
+best: dry=0.143 room=0.354 improvement=0.210
+```
+
+This is modest but real held-out evidence. The next implementation step is to
+turn the room-colored score into an optional M2 attribution mode, probably as a
+local expected-window score rather than replacing global dry xcorr everywhere.
