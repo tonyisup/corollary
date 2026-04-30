@@ -509,3 +509,38 @@ embodied run, but the optimized threshold `0.211` was still too conservative for
 detection on this capture. Next step: validate a lower operational
 `self_present_threshold` separately from the optimization threshold, and avoid
 using same-capture fitting as anything more than a headroom probe.
+
+## Broca room-local threshold calibration
+
+Added `scripts/m3_broca_room_threshold_calibration.py` to separate scorer quality
+from operational threshold selection. The script fits a small bank of room
+filters from positive Broca self artifacts, then scores positives and explicit
+negative/control artifacts with a chosen score key.
+
+Command:
+
+```bash
+./.venv/bin/python scripts/m3_broca_room_threshold_calibration.py \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial000_energy_lat300_tol75_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial001_energy_lat300_tol175_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial002_energy_lat400_tol75_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial003_energy_lat400_tol175_thr0p02 \
+  --negative data/m2_baseline/control_world-only_seed0_in3_out5_noise4_20260429_091828 \
+  --output data/m3_broca_room_threshold_calibration_20260430.json
+```
+
+Observed with `score_key=max_room_score`, `taps=64`, `ridge=0.000112`, and
+`search_ms=256.4`:
+
+```text
+positive scores: [0.392, 0.394, 0.357, 0.440]
+negative scores: [0.019]
+recommended threshold: 0.188
+reason: midpoint_between_max_negative_and_min_positive
+```
+
+This result shows strong separation on the currently available controls, but the
+negative set is still too small for promotion. Treat `0.188` as a candidate
+operational threshold for the current room/filter-bank scorer, not as a locked
+policy default. The next evidence gap is more negative coverage: world-only,
+silence, and mixed-overlap Broca captures scored by the same filter-bank path.
