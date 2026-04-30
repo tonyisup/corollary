@@ -422,3 +422,46 @@ best: dry=0.143 room=0.354 improvement=0.210
 This is modest but real held-out evidence. The next implementation step is to
 turn the room-colored score into an optional M2 attribution mode, probably as a
 local expected-window score rather than replacing global dry xcorr everywhere.
+
+## Offline Bayesian optimization for Broca room scoring
+
+Added `scripts/m3_broca_room_reference_optimizer.py` to run Optuna TPE over the
+saved Broca self-only artifacts. This optimizes the room-reference scorer without
+rerunning hardware capture.
+
+Search space:
+
+- FIR taps: `32`, `64`, `128`, `256`
+- ridge regularization: `1e-5 .. 1e-1`
+- local expected-window search: `100ms .. 400ms`
+- self-present threshold: `0.03 .. 0.30`
+
+Bounded run:
+
+```bash
+./.venv/bin/python scripts/m3_broca_room_reference_optimizer.py \
+  data/m3_broca_self_calibration_20260430_quick/trial000_energy_lat300_tol75_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial001_energy_lat300_tol175_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial002_energy_lat400_tol75_thr0p02 \
+  data/m3_broca_self_calibration_20260430_quick/trial003_energy_lat400_tol175_thr0p02 \
+  --n-trials 24 \
+  --output data/m3_broca_room_reference_optimizer_20260430.json
+```
+
+Best result:
+
+```text
+taps=64
+ridge=1.12e-4
+search_ms=256.4
+self_present_threshold=0.211
+improved_pairs=10/12
+mean_improvement=0.080
+mean_room_score=0.152
+detected_pairs=2 vs dry_detected_pairs=0
+```
+
+This makes the next code step fairly concrete: implement an optional local
+room-reference scoring path in M2 using `64` taps, ridge around `1e-4`, and a
+~`250ms` search window, then evaluate whether it improves embodied Broca
+self-present attribution without increasing false positives.
