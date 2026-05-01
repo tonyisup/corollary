@@ -25,6 +25,9 @@ class SpeakerIdentifier:
     def _load_model(self):
         if self._model is not None:
             return
+        if not self._use_real:
+            self._model = "mock"
+            return
         try:
             from speechbrain.inference.speaker import SpeakerRecognition
             self._model = SpeakerRecognition.from_hparams(

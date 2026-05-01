@@ -45,6 +45,22 @@ generate the room-colored self template for M4 registration.
 4. Register M4 with the room-colored template
 5. Re-run M4-enabled benchmark
 
+### Newly wired helper path (2026-05-01 follow-up)
+The repo now has a reproducible bridge from a saved cerebellum model into M4/M2 experiments:
+- `packages/cerebellum/room_coloring.py`
+  - `predict_room_colored_self(dry_self_pcm, cerebellum_or_path)`
+  - `estimate_onset_samples(...)`
+  - `align_template_to_observed_onset(...)`
+- `scripts/m4_self_voice_prototype.py --cerebellum-model <room_ir.json>`
+  - registers room-colored predicted self instead of dry self
+- `scripts/m2_benchmark.py --mode offline --cerebellum-model <room_ir.json>`
+  - adds `predicted_subtract_0p25` and `predicted_subtract_0p5` to the fixed-capture offline comparison
+- `scripts/m2_benchmark.py --m4-enable [--cerebellum-model <room_ir.json>]`
+  - enables live M4 self-voice override inside the attribution loop
+  - `--m4-mock` gives a deterministic smoke-test path without SpeechBrain
+
+This does **not** prove the forward model is good enough yet. It only closes the tooling gap so the room-colored hypothesis can be tested directly against dry-subtract and preserve/gain baselines.
+
 ### Alternative (doesn't require forward model):
 - Skip M4 for now, focus on **room-colored spectral subtraction**
 - Use the learned room IR to predict the self component in BOTH frames

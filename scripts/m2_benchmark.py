@@ -58,6 +58,12 @@ except ImportError:
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 from cochlea.capture import SR
 from cochlea.vad import SmoothedVAD, VAD_FRAME_SAMPLES
+from cerebellum.room_coloring import (
+    align_template_to_observed_onset,
+    estimate_onset_samples,
+    predict_room_colored_self,
+)
+from stg.speaker import SelfVoiceDetector, SpeakerIdentifier
 from thalamus.attributor import ThalamicAttributor, SourceVerdict
 from stg.asr import transcribe
 
@@ -303,19 +309,17 @@ def subtract_self_template(
     observed: np.ndarray, self_pcm: np.ndarray,
     verdicts: list[SourceVerdict], frame_samples: int,
     self_shift: int, both_subtract_gain: float,
+    template_onset_samples: int = 0,
 ) -> np.ndarray:
     out = observed.astype(np.float32).copy()
     if len(self_pcm) == 0:
         return out
-    template = np.zeros_like(out)
-    start = max(0, int(self_shift))
-    src_start = 0
-    if self_shift < 0:
-        src_start = -int(self_shift)
-        start = 0
-    n = min(len(self_pcm) - src_start, len(out) - start)
-    if n <= 0:
-        return out
+    template = align_template_to_observed_onset(
+        self_pcm,
+        total_samples=len(out),
+        observed_onset_samples=self_shift,
+        template_onset_samples=template_onset_samples,
+    )
     both_mask = np.zeros(len(out), dtype=bool)
     for i, verdict in enumerate(verdicts):
         if verdict == SourceVerdict.BOTH:
@@ -324,7 +328,6 @@ def subtract_self_template(
             both_mask[a:b] = True
     if not np.any(both_mask):
         return out
-    template[start:start + n] = self_pcm[src_start:src_start + n]
     t = template[both_mask]
     y = out[both_mask]
     denom = float(np.dot(t, t))
@@ -381,6 +384,50 @@ def summarize_offline_results(all_results: list[dict[str, Any]]) -> dict[str, An
             "mean_insertions": float(np.mean(insertions)),
         }
     return aggregate
+
+
+def strategy_definitions_for_args(args: argparse.Namespace) -> list[dict[str, Any]]:
+    strategies = [
+        {"name": "preserve", "both_mode": "gain", "both_gain": 1.0, "template_source": "dry"},
+        {"name": "gain_0p5", "both_mode": "gain", "both_gain": 0.5, "template_source": "dry"},
+        {"name": "subtract_0p1", "both_mode": "subtract", "both_subtract_gain": 0.1, "template_source": "dry"},
+        {"name": "subtract_0p25", "both_mode": "subtract", "both_subtract_gain": 0.25, "template_source": "dry"},
+        {"name": "subtract_0p5", "both_mode": "subtract", "both_subtract_gain": 0.5, "template_source": "dry"},
+        {"name": "subtract_0p75", "both_mode": "subtract", "both_subtract_gain": 0.75, "template_source": "dry"},
+        {"name": "subtract_1p0", "both_mode": "subtract", "both_subtract_gain": 1.0, "template_source": "dry"},
+    ]
+    if getattr(args, "cerebellum_model", None):
+        strategies.extend([
+            {"name": "predicted_subtract_0p25", "both_mode": "subtract", "both_subtract_gain": 0.25, "template_source": "predicted"},
+            {"name": "predicted_subtract_0p5", "both_mode": "subtract", "both_subtract_gain": 0.5, "template_source": "predicted"},
+        ])
+    return strategies
+
+
+def build_m4_detector_for_self_pcm(
+    self_pcm: np.ndarray,
+    args: argparse.Namespace,
+) -> tuple[SelfVoiceDetector | None, dict[str, Any]]:
+    if not getattr(args, "m4_enable", False):
+        return None, {"enabled": False}
+
+    registration_pcm = np.asarray(self_pcm, dtype=np.float32)
+    registration_mode = "dry_self"
+    if getattr(args, "cerebellum_model", None):
+        registration_pcm = predict_room_colored_self(registration_pcm, args.cerebellum_model)
+        registration_mode = "room_colored_prediction"
+
+    identifier = SpeakerIdentifier(use_real=not getattr(args, "m4_mock", False))
+    detector = SelfVoiceDetector(identifier, threshold=getattr(args, "m4_registration_threshold", 0.4))
+    detector.register_self(registration_pcm)
+    return detector, {
+        "enabled": True,
+        "registration_mode": registration_mode,
+        "self_template_samples": int(len(registration_pcm)),
+        "registration_threshold": float(getattr(args, "m4_registration_threshold", 0.4)),
+        "self_decision_threshold": float(getattr(args, "m4_self_threshold", 0.4)),
+        "mock_embeddings": bool(getattr(args, "m4_mock", False)),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -580,9 +627,13 @@ def process_trial(
         self_shift = xcorr_shift
 
     # Attribution
+    m4_detector, m4_info = build_m4_detector_for_self_pcm(self_pcm, args)
     attributor = ThalamicAttributor(
-        sr=SR, similarity_threshold=args.similarity_threshold,
+        sr=SR,
+        similarity_threshold=args.similarity_threshold,
         causal_tolerance_ms=args.causal_tolerance_ms,
+        m4_detector=m4_detector,
+        m4_self_threshold=args.m4_self_threshold,
     )
     vad = SmoothedVAD()
 
@@ -631,6 +682,7 @@ def process_trial(
             "is_playing": bool(is_playing),
             "causal_score": float(res.causal_score),
             "onset_error_ms": res.onset_error_ms,
+            "m4_confidence": None if not res.metadata else res.metadata.get("m4_confidence"),
         })
 
     # Gating
@@ -685,6 +737,8 @@ def process_trial(
         "self_pcm": self_pcm,
         "self_shift": self_shift,
         "self_expected_shift": self_expected_shift,
+        "m4": m4_info,
+        "m4_triggered_frames": sum(1 for row in frame_records if row.get("m4_confidence") is not None),
     }
 
 
@@ -767,6 +821,8 @@ def run_calibration(args: argparse.Namespace) -> str:
             "self_frames": trial["self_frames"],
             "both_frames": trial["both_frames"],
             "world_frames": trial["world_frames"],
+            "m4": trial["m4"],
+            "m4_triggered_frames": trial["m4_triggered_frames"],
             "self_shift_samples": int(trial["self_shift"]),
             "self_expected_shift_samples": int(trial["self_expected_shift"]),
             "snr": trial["snr"],
@@ -905,6 +961,8 @@ def run_benchmark(args: argparse.Namespace) -> str:
             "self_frames": trial["self_frames"],
             "both_frames": trial["both_frames"],
             "world_frames": trial["world_frames"],
+            "m4": trial["m4"],
+            "m4_triggered_frames": trial["m4_triggered_frames"],
             "self_shift_samples": int(trial["self_shift"]),
             "self_expected_shift_samples": int(trial["self_expected_shift"]),
             "snr": trial["snr"],
@@ -990,17 +1048,7 @@ def run_offline(args: argparse.Namespace) -> str:
 
     print(f"Found {len(capture_dirs)} captures")
 
-    # Strategies to evaluate
-    strategies = [
-        {"name": "preserve", "both_mode": "gain", "both_gain": 1.0},
-        {"name": "gain_0p5", "both_mode": "gain", "both_gain": 0.5},
-        {"name": "subtract_0p1", "both_mode": "subtract", "both_subtract_gain": 0.1},
-        {"name": "subtract_0p25", "both_mode": "subtract", "both_subtract_gain": 0.25},
-        {"name": "subtract_0p5", "both_mode": "subtract", "both_subtract_gain": 0.5},
-        {"name": "subtract_0p75", "both_mode": "subtract", "both_subtract_gain": 0.75},
-        {"name": "subtract_1p0", "both_mode": "subtract", "both_subtract_gain": 1.0},
-    ]
-
+    strategies = strategy_definitions_for_args(args)
     all_results = []
 
     for cap_dir in capture_dirs:
@@ -1011,7 +1059,6 @@ def run_offline(args: argparse.Namespace) -> str:
         with open(os.path.join(cap_dir, "summary.json")) as f:
             cap_summary = json.load(f)
 
-        # Load saved verdicts
         verdicts = []
         frame_records = []
         if os.path.exists(os.path.join(cap_dir, "frame_verdicts.jsonl")):
@@ -1021,9 +1068,6 @@ def run_offline(args: argparse.Namespace) -> str:
                     verdicts.append(SourceVerdict[row["verdict"]])
                     frame_records.append(row)
 
-        # Load self_pcm and onset for subtraction strategies. Prefer the
-        # persisted measured onset; older captures did not save it, so fall back
-        # to the first motor-window frame only for backward compatibility.
         self_pcm = None
         self_shift = cap_summary.get("self_shift_samples")
         if os.path.exists(os.path.join(cap_dir, "self_pcm.npy")):
@@ -1034,33 +1078,51 @@ def run_offline(args: argparse.Namespace) -> str:
                         self_shift = int(fr["start_s"] * SR)
                         break
 
+        predicted_self_pcm = None
+        predicted_self_onset = 0
+        if self_pcm is not None and getattr(args, "cerebellum_model", None):
+            predicted_self_pcm = predict_room_colored_self(self_pcm, args.cerebellum_model)
+            predicted_self_onset = estimate_onset_samples(predicted_self_pcm)
+
         cap_results = {"capture": cap_name, "strategies": []}
 
         for strat in strategies:
             print(f"  Strategy: {strat['name']}")
 
-            if verdicts:
-                gain = build_gating_gain(
-                    verdicts, VAD_FRAME_SAMPLES, len(observed),
-                    strat.get("both_gain", 1.0),
-                )
-                mask = gain > 0.0
-                if strat["both_mode"] == "subtract":
-                    if self_pcm is None or self_shift is None:
-                        print(f"    SKIP: self_pcm not available in capture")
-                        continue
-                    processed = subtract_self_template(
-                        observed, self_pcm, verdicts,
-                        VAD_FRAME_SAMPLES, self_shift,
-                        strat.get("both_subtract_gain", 0.25),
-                    )
-                    asr_mask = mask.astype(np.float32)
-                else:
-                    processed = observed
-                    asr_mask = gain
-            else:
-                print(f"    SKIP: no frame verdicts found")
+            if not verdicts:
+                print("    SKIP: no frame verdicts found")
                 continue
+
+            gain = build_gating_gain(
+                verdicts, VAD_FRAME_SAMPLES, len(observed),
+                strat.get("both_gain", 1.0),
+            )
+            mask = gain > 0.0
+
+            if strat["both_mode"] == "subtract":
+                template_source = strat.get("template_source", "dry")
+                if template_source == "predicted":
+                    if predicted_self_pcm is None or self_shift is None:
+                        print("    SKIP: predicted self template not available")
+                        continue
+                    subtract_pcm = predicted_self_pcm
+                    template_onset_samples = predicted_self_onset
+                else:
+                    if self_pcm is None or self_shift is None:
+                        print("    SKIP: self_pcm not available in capture")
+                        continue
+                    subtract_pcm = self_pcm
+                    template_onset_samples = 0
+                processed = subtract_self_template(
+                    observed, subtract_pcm, verdicts,
+                    VAD_FRAME_SAMPLES, self_shift,
+                    strat.get("both_subtract_gain", 0.25),
+                    template_onset_samples=template_onset_samples,
+                )
+                asr_mask = mask.astype(np.float32)
+            else:
+                processed = observed
+                asr_mask = gain
 
             raw_res = transcribe(observed, model_size="base")
             gated_res = transcribe(processed, mask=asr_mask, model_size="base")
@@ -1070,11 +1132,9 @@ def run_offline(args: argparse.Namespace) -> str:
             raw_wer = word_error_rate(args.expected_text, raw_text)
             gated_wer = word_error_rate(args.expected_text, gated_text)
 
-            # Richer metrics
             retention = word_retention_rate(args.expected_text, gated_text)
             errors = error_breakdown(args.expected_text, gated_text)
 
-            # Energy retained in the overlap window
             overlap_start = None
             overlap_end = None
             for fr in frame_records:
@@ -1105,7 +1165,6 @@ def run_offline(args: argparse.Namespace) -> str:
 
         all_results.append(cap_results)
 
-    # Aggregate
     aggregate = summarize_offline_results(all_results)
     with open(os.path.join(save_root, "offline_summary.json"), "w") as f:
         json.dump({"results": all_results, "strategies": aggregate}, f, indent=2)
@@ -1165,6 +1224,17 @@ def main():
 
     # Offline mode
     parser.add_argument("--capture-root", default=None, help="Root directory containing capture subdirectories")
+    parser.add_argument(
+        "--cerebellum-model",
+        default=None,
+        help="Optional saved BabblingCerebellum JSON. When provided, offline mode also evaluates room-colored predicted-self subtraction.",
+    )
+
+    # M4 / self-voice override
+    parser.add_argument("--m4-enable", action="store_true", help="Enable M4 self-voice override inside the attribution loop")
+    parser.add_argument("--m4-self-threshold", type=float, default=0.4, help="Decision threshold applied by ThalamicAttributor to M4 similarity")
+    parser.add_argument("--m4-registration-threshold", type=float, default=0.4, help="Threshold stored on the SelfVoiceDetector during template registration")
+    parser.add_argument("--m4-mock", action="store_true", help="Force mock speaker embeddings for deterministic smoke tests")
 
     args = parser.parse_args()
 
