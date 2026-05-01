@@ -1,0 +1,44 @@
+{
+  "benchmark_command": "./.venv/bin/python scripts/m2_benchmark.py --mode benchmark --self-stim vowel_ah_var_nearfield --input-device 3 --output-device 5 --noise-device 4 --cerebellum-model packages/data/room_ir_1775340319.json --m4-enable --self-amplitude 0.2 --self-duration-ms 350 --similarity-threshold 0.2 --onset-latency-ms 400.0 --onset-method energy --causal-tolerance-ms 75.0 --m4-mock",
+  "eval_rows": [
+    {
+      "amplitude": 0.200736,
+      "captured_onset_samples": 36,
+      "dry_onset_error_samples": 9,
+      "dry_score": 0.9888419508934021,
+      "dry_shift_samples": 0,
+      "duration_ms": 351,
+      "predicted_onset_error_samples": 36,
+      "predicted_score": 0.0,
+      "predicted_shift_samples": 36,
+      "score_delta": -0.9888419508934021,
+      "seed": 3
+    },
+    {
+      "amplitude": 0.206227,
+      "captured_onset_samples": 99,
+      "dry_onset_error_samples": 0,
+      "dry_score": 0.9901254773139954,
+      "dry_shift_samples": 0,
+      "duration_ms": 342,
+      "predicted_onset_error_samples": 99,
+      "predicted_score": 0.0,
+      "predicted_shift_samples": 99,
+      "score_delta": -0.9901254773139954,
+      "seed": 4
+    }
+  ],
+  "mode": "synthetic",
+  "model_path": "packages/data/room_ir_1775340319.json",
+  "summary": {
+    "mean_dry_onset_error_samples": 4.5,
+    "mean_dry_score": 0.989484,
+    "mean_predicted_onset_error_samples": 67.5,
+    "mean_predicted_score": 0.0,
+    "mean_score_delta": -0.989484,
+    "predicted_better_count": 0,
+    "predicted_not_worse_count": 0,
+    "row_count": 2
+  },
+  "train_rows": []
+}
