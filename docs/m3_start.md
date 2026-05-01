@@ -580,3 +580,60 @@ This strengthened the current threshold candidate against non-Broca/vowel
 controls, but it still does not replace true Broca-specific negatives. Before
 promotion, collect fresh Broca silence/world-only/overlap controls with the same
 TTS reference and device path.
+
+## Broca-specific control capture helper
+
+Added `scripts/m3_broca_control_capture.py` to collect the missing Broca-path
+controls in a repeatable way. It captures three cases using the same Broca text
+and device path as the embodied loop:
+
+1. `silence` — no Broca playback and no external speech (`negative`)
+2. `world_only` — external speech without Broca playback (`negative`)
+3. `overlap` — Broca playback overlapped with external speech (`diagnostic`)
+
+Example:
+
+```bash
+./.venv/bin/python scripts/m3_broca_control_capture.py \
+  --input-device 3 \
+  --output-device 5 \
+  --noise-device 4 \
+  --repetitions 2 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial000_energy_lat300_tol75_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial001_energy_lat300_tol175_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial002_energy_lat400_tol75_thr0p02 \
+  --positive data/m3_broca_self_calibration_20260430_quick/trial003_energy_lat400_tol175_thr0p02 \
+  --save-root data/m3_broca_controls
+```
+
+The script writes per-case artifacts plus `data/m3_broca_controls/manifest.json`.
+If positive self artifacts are supplied, it also prints a follow-up threshold
+calibration command that includes only the true negative cases (`silence` and
+`world_only`) while keeping `overlap` as a scored diagnostic rather than folding
+it into the operating-threshold recommendation by default.
+
+Observed first hardware pass (5 total repetitions across two capture batches):
+
+- negatives used for calibration:
+  - `silence`: room-local scores `0.011`, `0.016`, `0.021`, `0.011`, `0.014`
+  - `world_only`: room-local scores `0.059`, `0.049`, `0.038`, `0.039`, `0.048`
+- combined negative max: `0.059`
+- self-only positive min from the existing Broca calibration set: `0.357`
+- resulting Broca-control threshold recommendation stayed conservative at about
+  `0.208`, with a perfect clean gap on the currently collected negatives
+- overlap diagnostic scores were meaningfully higher than pure negatives but more
+  variable than self-only positives: `0.123`, `0.129`, `0.243`, `0.279`, `0.279`
+
+Interpretation:
+
+- the current room-local scorer cleanly separates self-only Broca positives from
+  Broca-path silence/world-only negatives on this setup
+- overlap is not a good calibration negative, because it often carries a real
+  self-present signal
+- the midpoint threshold `~0.208` is very safe against current negatives, but it
+  only catches `3/5` of the overlap diagnostic runs; a lower operational
+  threshold around `0.10–0.12` would still stay comfortably above the collected
+  negatives while recovering all currently observed overlap runs
+- this suggests the next decision is no longer "is there any separation?" but
+  which operating point matters more for M2/M3 use: maximum clean-negative
+  precision or better overlap self-presence recall

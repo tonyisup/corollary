@@ -1,0 +1,57 @@
+{
+  "broca_text": "I was speaking, then paused.",
+  "world_speech": "data/world_speech_sample.npy",
+  "capture_devices": {
+    "input_device": 3,
+    "output_device": 5,
+    "noise_device": 4
+  },
+  "cases": [
+    {
+      "name": "silence",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_additional/silence_rep00"
+    },
+    {
+      "name": "world_only",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_additional/world_only_rep00"
+    },
+    {
+      "name": "overlap",
+      "threshold_role": "diagnostic",
+      "path": "data/m3_broca_controls_additional/overlap_rep00"
+    },
+    {
+      "name": "silence",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_additional/silence_rep01"
+    },
+    {
+      "name": "world_only",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_additional/world_only_rep01"
+    },
+    {
+      "name": "overlap",
+      "threshold_role": "diagnostic",
+      "path": "data/m3_broca_controls_additional/overlap_rep01"
+    },
+    {
+      "name": "silence",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_additional/silence_rep02"
+    },
+    {
+      "name": "world_only",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_additional/world_only_rep02"
+    },
+    {
+      "name": "overlap",
+      "threshold_role": "diagnostic",
+      "path": "data/m3_broca_controls_additional/overlap_rep02"
+    }
+  ],
+  "threshold_command": "./.venv/bin/python scripts/m3_broca_room_threshold_calibration.py --positive data/m3_broca_self_calibration_20260430_quick/trial000_energy_lat300_tol75_thr0p02 --positive data/m3_broca_self_calibration_20260430_quick/trial001_energy_lat300_tol175_thr0p02 --positive data/m3_broca_self_calibration_20260430_quick/trial002_energy_lat400_tol75_thr0p02 --positive data/m3_broca_self_calibration_20260430_quick/trial003_energy_lat400_tol175_thr0p02 --negative data/m3_broca_controls_additional/silence_rep00 --negative data/m3_broca_controls_additional/world_only_rep00 --negative data/m3_broca_controls_additional/silence_rep01 --negative data/m3_broca_controls_additional/world_only_rep01 --negative data/m3_broca_controls_additional/silence_rep02 --negative data/m3_broca_controls_additional/world_only_rep02 --output data/m3_broca_room_threshold_calibration_broca_controls.json"
+}
