@@ -1,0 +1,23 @@
+{
+  "seed": 4,
+  "raw_wer": 0.08695652173913043,
+  "gated_wer": 0.08695652173913043,
+  "wer_delta": 0.0,
+  "self_score": 0.6965817213058472,
+  "self_frames": 0,
+  "both_frames": 10,
+  "world_frames": 263,
+  "self_shift_samples": 61446,
+  "self_expected_shift_samples": 61446,
+  "snr": {
+    "self_rms": 0.016207117587327957,
+    "self_db": -35.80588433872159,
+    "world_rms": 0.008179697208106518,
+    "world_db": -41.74525545049136,
+    "overlap_rms": 0.016207117587327957,
+    "overlap_db": -35.80588433872159,
+    "world_only_rms": 0.009572765789926052,
+    "world_only_db": -40.37925133064079,
+    "self_to_world_ratio_db": 4.573366991919208
+  }
+}

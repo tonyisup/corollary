@@ -108,6 +108,97 @@ def word_error_rate(reference: str, hypothesis: str) -> float:
     return levenshtein(ref_words, hyp_words) / len(ref_words)
 
 
+def word_retention_rate(reference: str, hypothesis: str) -> float:
+    """Fraction of reference words that appear in the hypothesis (order-independent)."""
+    ref_words = set(normalize_text(reference).split())
+    hyp_words = set(normalize_text(hypothesis).split())
+    if not ref_words:
+        return 1.0
+    return len(ref_words & hyp_words) / len(ref_words)
+
+
+def error_breakdown(reference: str, hypothesis: str) -> dict:
+    """Compute deletion, substitution, and insertion counts.
+
+    Uses Levenshtein alignment to classify each edit operation.
+    Returns dict with deletions, substitutions, insertions, and total_errors.
+    """
+    ref_words = normalize_text(reference).split()
+    hyp_words = normalize_text(hypothesis).split()
+
+    if not ref_words:
+        return {"deletions": 0, "substitutions": 0, "insertions": len(hyp_words), "total": len(hyp_words)}
+    if not hyp_words:
+        return {"deletions": len(ref_words), "substitutions": 0, "insertions": 0, "total": len(ref_words)}
+
+    # Build full Levenshtein matrix for backtracking
+    n, m = len(ref_words), len(hyp_words)
+    dp = np.zeros((n + 1, m + 1), dtype=int)
+    dp[:, 0] = np.arange(n + 1)
+    dp[0, :] = np.arange(m + 1)
+
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            cost = 0 if ref_words[i - 1] == hyp_words[j - 1] else 1
+            dp[i, j] = min(dp[i - 1, j] + 1, dp[i, j - 1] + 1, dp[i - 1, j - 1] + cost)
+
+    # Backtrack to classify operations
+    deletions = 0
+    substitutions = 0
+    insertions = 0
+    i, j = n, m
+    while i > 0 or j > 0:
+        if i > 0 and j > 0 and ref_words[i - 1] == hyp_words[j - 1]:
+            i -= 1
+            j -= 1  # match
+        elif i > 0 and j > 0 and dp[i, j] == dp[i - 1, j - 1] + 1:
+            substitutions += 1
+            i -= 1
+            j -= 1
+        elif i > 0 and dp[i, j] == dp[i - 1, j] + 1:
+            deletions += 1
+            i -= 1
+        else:
+            insertions += 1
+            j -= 1
+
+    return {
+        "deletions": deletions,
+        "substitutions": substitutions,
+        "insertions": insertions,
+        "total": deletions + substitutions + insertions,
+    }
+
+
+def energy_retained_in_window(
+    observed: np.ndarray,
+    processed: np.ndarray,
+    window_start_s: float,
+    window_end_s: float,
+    sr: int = 16000,
+) -> float:
+    """Fraction of world-speech energy retained after processing.
+
+    Computes the ratio of processed energy to observed energy within a
+    specific time window (e.g., the overlap region). 1.0 = full preservation,
+    0.0 = complete suppression.
+    """
+    start_idx = int(window_start_s * sr)
+    end_idx = int(window_end_s * sr)
+    start_idx = max(0, start_idx)
+    end_idx = min(len(observed), end_idx)
+
+    if end_idx <= start_idx:
+        return 0.0
+
+    obs_energy = np.sum(observed[start_idx:end_idx] ** 2)
+    proc_energy = np.sum(processed[start_idx:end_idx] ** 2)
+
+    if obs_energy < 1e-20:
+        return 1.0  # No energy to preserve
+    return float(proc_energy / obs_energy)
+
+
 def db(x: float) -> float:
     return 20.0 * np.log10(max(x, 1e-10))
 
@@ -269,14 +360,25 @@ def summarize_offline_results(all_results: list[dict[str, Any]]) -> dict[str, An
         deltas = [float(row["wer_delta"]) for row in rows]
         if not deltas:
             continue
+        retentions = [float(row.get("retention", 0)) for row in rows]
+        energies = [float(row.get("energy_retained", 0)) for row in rows]
+        deletions = [int(row.get("errors", {}).get("deletions", 0)) for row in rows]
+        substitutions = [int(row.get("errors", {}).get("substitutions", 0)) for row in rows]
+        insertions = [int(row.get("errors", {}).get("insertions", 0)) for row in rows]
         aggregate[name] = {
             "trials": len(deltas),
             "mean_raw_wer": float(np.mean([row["raw_wer"] for row in rows])),
             "mean_gated_wer": float(np.mean([row["gated_wer"] for row in rows])),
             "mean_wer_delta": float(np.mean(deltas)),
-            "improved": sum(1 for delta in deltas if delta < 0),
-            "neutral": sum(1 for delta in deltas if delta == 0),
-            "regressed": sum(1 for delta in deltas if delta > 0),
+            "std_wer_delta": float(np.std(deltas)),
+            "improved": sum(1 for delta in deltas if delta < -0.01),
+            "neutral": sum(1 for delta in deltas if -0.01 <= delta <= 0.01),
+            "regressed": sum(1 for delta in deltas if delta > 0.01),
+            "mean_retention": float(np.mean(retentions)),
+            "mean_energy_retained": float(np.mean(energies)),
+            "mean_deletions": float(np.mean(deletions)),
+            "mean_substitutions": float(np.mean(substitutions)),
+            "mean_insertions": float(np.mean(insertions)),
         }
     return aggregate
 
@@ -890,9 +992,13 @@ def run_offline(args: argparse.Namespace) -> str:
 
     # Strategies to evaluate
     strategies = [
-        {"name": "preserve_both", "both_mode": "gain", "both_gain": 1.0},
+        {"name": "preserve", "both_mode": "gain", "both_gain": 1.0},
         {"name": "gain_0p5", "both_mode": "gain", "both_gain": 0.5},
+        {"name": "subtract_0p1", "both_mode": "subtract", "both_subtract_gain": 0.1},
         {"name": "subtract_0p25", "both_mode": "subtract", "both_subtract_gain": 0.25},
+        {"name": "subtract_0p5", "both_mode": "subtract", "both_subtract_gain": 0.5},
+        {"name": "subtract_0p75", "both_mode": "subtract", "both_subtract_gain": 0.75},
+        {"name": "subtract_1p0", "both_mode": "subtract", "both_subtract_gain": 1.0},
     ]
 
     all_results = []
@@ -959,18 +1065,42 @@ def run_offline(args: argparse.Namespace) -> str:
             raw_res = transcribe(observed, model_size="base")
             gated_res = transcribe(processed, mask=asr_mask, model_size="base")
 
-            raw_wer = word_error_rate(args.expected_text, raw_res.text)
-            gated_wer = word_error_rate(args.expected_text, gated_res.text)
+            raw_text = raw_res.text
+            gated_text = gated_res.text
+            raw_wer = word_error_rate(args.expected_text, raw_text)
+            gated_wer = word_error_rate(args.expected_text, gated_text)
 
-            print(f"    Raw WER:   {raw_wer:.3f}  (\"{raw_res.text[:60]}...\")")
-            print(f"    Gated WER: {gated_wer:.3f}  (\"{gated_res.text[:60]}...\")")
-            print(f"    Delta:     {gated_wer - raw_wer:+.3f}")
+            # Richer metrics
+            retention = word_retention_rate(args.expected_text, gated_text)
+            errors = error_breakdown(args.expected_text, gated_text)
+
+            # Energy retained in the overlap window
+            overlap_start = None
+            overlap_end = None
+            for fr in frame_records:
+                if fr.get("verdict") == "BOTH":
+                    if overlap_start is None:
+                        overlap_start = fr["start_s"]
+                    overlap_end = fr["end_s"]
+            energy_retained = 0.0
+            if overlap_start is not None and overlap_end is not None:
+                energy_retained = energy_retained_in_window(
+                    observed, processed, overlap_start, overlap_end, SR
+                )
+
+            print(f"    Raw WER:   {raw_wer:.3f}  (\"{raw_text[:50]}...\")")
+            print(f"    Gated WER: {gated_wer:.3f}  (\"{gated_text[:50]}...\")")
+            print(f"    Delta: {gated_wer - raw_wer:+.3f}  Retention: {retention:.2f}  Energy: {energy_retained:.2f}")
+            print(f"    Errors: D={errors['deletions']} S={errors['substitutions']} I={errors['insertions']}")
 
             cap_results["strategies"].append({
                 "name": strat["name"],
                 "raw_wer": raw_wer,
                 "gated_wer": gated_wer,
                 "wer_delta": gated_wer - raw_wer,
+                "retention": retention,
+                "errors": errors,
+                "energy_retained": energy_retained,
             })
 
         all_results.append(cap_results)
