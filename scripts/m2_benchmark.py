@@ -543,6 +543,8 @@ def process_trial(
         "gain": gain,
         "processed": processed,
         "verdicts": verdicts,
+        "self_pcm": self_pcm,
+        "self_shift": self_shift,
     }
 
 
@@ -609,6 +611,9 @@ def run_calibration(args: argparse.Namespace) -> str:
         np.save(os.path.join(amp_dir, "gating_mask.npy"), trial["mask"].astype(np.uint8))
         np.save(os.path.join(amp_dir, "gating_gain.npy"), trial["gain"].astype(np.float32))
         np.save(os.path.join(amp_dir, "processed.npy"), trial["processed"].astype(np.float32))
+        # Save self PCM and shift for offline subtraction replay
+        # (trial["self_pcm"] is the generated PCM; trial["self_shift"] is the onset)
+        np.save(os.path.join(amp_dir, "self_pcm.npy"), trial.get("self_pcm", np.zeros(1, dtype=np.float32)))
         with open(os.path.join(amp_dir, "frame_verdicts.jsonl"), "w") as f:
             for row in trial["frame_records"]:
                 f.write(json.dumps(row, sort_keys=True) + "\n")
@@ -744,6 +749,7 @@ def run_benchmark(args: argparse.Namespace) -> str:
         np.save(os.path.join(seed_dir, "gating_mask.npy"), trial["mask"].astype(np.uint8))
         np.save(os.path.join(seed_dir, "gating_gain.npy"), trial["gain"].astype(np.float32))
         np.save(os.path.join(seed_dir, "processed.npy"), trial["processed"].astype(np.float32))
+        np.save(os.path.join(seed_dir, "self_pcm.npy"), trial["self_pcm"])
         with open(os.path.join(seed_dir, "frame_verdicts.jsonl"), "w") as f:
             for row in trial["frame_records"]:
                 f.write(json.dumps(row, sort_keys=True) + "\n")
@@ -857,10 +863,7 @@ def run_offline(args: argparse.Namespace) -> str:
         with open(os.path.join(cap_dir, "summary.json")) as f:
             cap_summary = json.load(f)
 
-        # We need the self_pcm to run attribution. Try to load it from the
-        # capture summary or regenerate it.
-        # For now, re-run attribution on the saved observed audio.
-        # The frame_verdicts.jsonl has the verdicts already.
+        # Load saved verdicts
         verdicts = []
         frame_records = []
         if os.path.exists(os.path.join(cap_dir, "frame_verdicts.jsonl")):
@@ -870,22 +873,38 @@ def run_offline(args: argparse.Namespace) -> str:
                     verdicts.append(SourceVerdict[row["verdict"]])
                     frame_records.append(row)
 
+        # Load self_pcm for subtraction strategies
+        self_pcm = None
+        self_shift = None
+        if os.path.exists(os.path.join(cap_dir, "self_pcm.npy")):
+            self_pcm = np.load(os.path.join(cap_dir, "self_pcm.npy"))
+            # Reconstruct self_shift from frame_records
+            for fr in frame_records:
+                if fr.get("is_playing", False):
+                    self_shift = int(fr["start_s"] * SR)
+                    break
+
         cap_results = {"capture": cap_name, "strategies": []}
 
         for strat in strategies:
             print(f"  Strategy: {strat['name']}")
 
             if verdicts:
-                # Use saved verdicts
                 gain = build_gating_gain(
                     verdicts, VAD_FRAME_SAMPLES, len(observed),
                     strat.get("both_gain", 1.0),
                 )
                 mask = gain > 0.0
                 if strat["both_mode"] == "subtract":
-                    # Need self_pcm for subtraction — skip if not available
-                    print(f"    SKIP: subtract mode requires self_pcm (not saved in capture)")
-                    continue
+                    if self_pcm is None or self_shift is None:
+                        print(f"    SKIP: self_pcm not available in capture")
+                        continue
+                    processed = subtract_self_template(
+                        observed, self_pcm, verdicts,
+                        VAD_FRAME_SAMPLES, self_shift,
+                        strat.get("both_subtract_gain", 0.25),
+                    )
+                    asr_mask = mask.astype(np.float32)
                 else:
                     processed = observed
                     asr_mask = gain

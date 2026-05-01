@@ -112,6 +112,20 @@ similarity_threshold=0.20, onset_latency=400ms, energy onset, tolerance=75ms.
 4. After benchmark stabilizes, use it to evaluate M4 self-voice detector:
    does explicit self/world classification improve gating over VAD-only?
 
+## Next Steps
+
+1. **Evaluate spectral subtraction** in BOTH frames at amp=0.20 using offline replay.
+   The captures are saved; run `m2_benchmark.py --mode offline` to compare
+   gain vs subtract strategies.
+
+2. **Run babble_ba_var stimulus** at amp=0.20 with M2 Bayesian-optimized settings
+   (similarity_threshold=0.23, onset_latency=405ms, causal_tolerance=74ms).
+
+3. **Wire M4 self-voice detector** to enable hard SELF frames during speech,
+   which is the key to making gating outperform preservation.
+
+4. **Scale to 10+ seeds** for statistical confidence on the best condition.
+
 ## Reproduction
 
 ```bash
