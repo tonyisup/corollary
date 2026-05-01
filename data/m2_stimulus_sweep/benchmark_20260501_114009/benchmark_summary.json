@@ -1,0 +1,90 @@
+{
+  "config": {
+    "self_stim": "babble_ba_var",
+    "self_amplitude": 0.0,
+    "self_duration_ms": 350,
+    "num_seeds": 3,
+    "expected_text": "the quick brown fox jumps over the lazy dog and then runs through the forest to find a quiet place near the river",
+    "world_speech": "data/world_speech_benchmark.npy",
+    "similarity_threshold": 0.2,
+    "onset_latency_ms": 400.0,
+    "onset_method": "energy",
+    "causal_tolerance_ms": 75.0,
+    "both_gain": 0.5,
+    "both_mode": "gain"
+  },
+  "aggregate": {
+    "mean_raw_wer": 0.15942028985507248,
+    "mean_gated_wer": 0.2028985507246377,
+    "mean_wer_delta": 0.043478260869565216,
+    "improved": 1,
+    "neutral": 0,
+    "regressed": 2,
+    "mean_self_world_db": 1.735435749215979
+  },
+  "results": [
+    {
+      "seed": 0,
+      "raw_wer": 0.21739130434782608,
+      "gated_wer": 0.17391304347826086,
+      "wer_delta": -0.043478260869565216,
+      "self_score": 0.3935893177986145,
+      "self_frames": 0,
+      "both_frames": 12,
+      "world_frames": 248,
+      "snr": {
+        "self_rms": 0.007615895941853523,
+        "self_db": -42.365579969434734,
+        "world_rms": 0.00472604064270854,
+        "world_db": -46.51005095738171,
+        "overlap_rms": 0.007615895941853523,
+        "overlap_db": -42.365579969434734,
+        "world_only_rms": 0.004700860008597374,
+        "world_only_db": -46.5564536377918,
+        "self_to_world_ratio_db": 4.190873668357071
+      }
+    },
+    {
+      "seed": 1,
+      "raw_wer": 0.08695652173913043,
+      "gated_wer": 0.17391304347826086,
+      "wer_delta": 0.08695652173913043,
+      "self_score": 0.6996403336524963,
+      "self_frames": 0,
+      "both_frames": 11,
+      "world_frames": 245,
+      "snr": {
+        "self_rms": 0.008526461198925972,
+        "self_db": -41.384623598611256,
+        "world_rms": 0.00840485468506813,
+        "world_db": -41.509395817050844,
+        "overlap_rms": 0.008526461198925972,
+        "overlap_db": -41.384623598611256,
+        "world_only_rms": 0.008164310827851295,
+        "world_only_db": -41.76160938766674,
+        "self_to_world_ratio_db": 0.37698578905548696
+      }
+    },
+    {
+      "seed": 2,
+      "raw_wer": 0.17391304347826086,
+      "gated_wer": 0.2608695652173913,
+      "wer_delta": 0.08695652173913043,
+      "self_score": 0.5613841414451599,
+      "self_frames": 0,
+      "both_frames": 12,
+      "world_frames": 257,
+      "snr": {
+        "self_rms": 0.007718971464782953,
+        "self_db": -42.24881129102596,
+        "world_rms": 0.006982346531003714,
+        "world_db": -43.1199720225877,
+        "overlap_rms": 0.007718971464782953,
+        "overlap_db": -42.24881129102596,
+        "world_only_rms": 0.007171946577727795,
+        "world_only_db": -42.88725908126135,
+        "self_to_world_ratio_db": 0.6384477902353796
+      }
+    }
+  ]
+}

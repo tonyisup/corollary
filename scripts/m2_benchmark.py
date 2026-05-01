@@ -479,6 +479,7 @@ def process_trial(
             rms_db=rms_db,
             is_playing=is_playing,
             is_speech=is_speech,
+            frame_audio=frame,
         )
         verdicts.append(res.verdict)
         frame_records.append({

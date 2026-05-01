@@ -42,11 +42,18 @@ class ThalamicAttributor:
         energy_threshold_db: float = -55.0,
         causal_tolerance_ms: float = 25.0,
         sr: int = 16000,
+        m4_detector: Optional[Any] = None,
+        m4_self_threshold: float = 0.4,
+        m4_window_ms: float = 1000.0,
     ) -> None:
         self.similarity_threshold = similarity_threshold
         self.energy_threshold_db = energy_threshold_db
         self.causal_tolerance_ms = causal_tolerance_ms
         self.sr = sr
+        self.m4_detector = m4_detector
+        self.m4_self_threshold = m4_self_threshold
+        self.m4_window_samples = int(m4_window_ms * sr / 1000.0)
+        self._m4_buffer: Optional[np.ndarray] = None
 
     def attribute(
         self,
@@ -56,6 +63,7 @@ class ThalamicAttributor:
         rms_db: float,
         is_playing: bool,
         is_speech: bool = False,
+        frame_audio: Optional[np.ndarray] = None,
     ) -> AttributionResult:
         """Assign source attribution to an acoustic event.
 
@@ -105,9 +113,39 @@ class ThalamicAttributor:
         is_timely = causal_score > 0.0
         
         if is_playing and is_self_like and is_timely and is_speech:
-            # M2 conservatism: speech during playback can contain world speech
-            # even when the self template also matches, so preserve it for a
-            # soft downstream gate instead of making a hard SELF decision.
+            # M4 override: use speaker embedding to distinguish self from world
+            # speech. Requires accumulating audio into a buffer since ECAPA-TDNN
+            # needs ~500ms+ for reliable classification.
+            if self.m4_detector is not None and frame_audio is not None:
+                # Accumulate frame into M4 buffer
+                if self._m4_buffer is None:
+                    self._m4_buffer = frame_audio.copy()
+                else:
+                    self._m4_buffer = np.concatenate([self._m4_buffer, frame_audio])
+                # Keep only the last m4_window_samples
+                if len(self._m4_buffer) > self.m4_window_samples:
+                    self._m4_buffer = self._m4_buffer[-self.m4_window_samples:]
+                # Only run M4 when we have enough audio
+                if len(self._m4_buffer) >= int(0.5 * self.sr):
+                    try:
+                        is_self_voice, m4_confidence = self.m4_detector.is_self(self._m4_buffer)
+                        if is_self_voice and m4_confidence > self.m4_self_threshold:
+                            confidence = (match_score + causal_score + m4_confidence) / 3.0
+                            return AttributionResult(
+                                verdict=SourceVerdict.SELF,
+                                confidence=confidence,
+                                self_match_score=match_score,
+                                is_in_motor_window=is_playing,
+                                causal_score=causal_score,
+                                energy_db=rms_db,
+                                is_speech=is_speech,
+                                onset_error_ms=onset_error_ms,
+                                metadata={'m4_confidence': m4_confidence},
+                            )
+                    except Exception:
+                        pass  # M4 classification failed, fall through to conservative BOTH
+            # M2 conservatism (fallback): speech during playback can contain
+            # world speech even when the self template matches.
             confidence = (match_score + causal_score) / 2.0
             return AttributionResult(
                 verdict=SourceVerdict.BOTH,
