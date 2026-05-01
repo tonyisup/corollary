@@ -1,0 +1,179 @@
+{
+  "eval_rows": [
+    {
+      "amplitude": 0.200736,
+      "captured_onset_samples": 9288,
+      "dry_onset_error_samples": 400,
+      "dry_score": 0.567859947681427,
+      "dry_shift_samples": 8843,
+      "duration_ms": 351,
+      "predicted_onset_error_samples": 89,
+      "predicted_score": 0.3839907646179199,
+      "predicted_shift_samples": 9068,
+      "score_delta": -0.18386918306350708,
+      "seed": 3
+    },
+    {
+      "amplitude": 0.206227,
+      "captured_onset_samples": 9199,
+      "dry_onset_error_samples": 192,
+      "dry_score": 0.6103280782699585,
+      "dry_shift_samples": 9292,
+      "duration_ms": 342,
+      "predicted_onset_error_samples": 524,
+      "predicted_score": 0.5989071726799011,
+      "predicted_shift_samples": 9594,
+      "score_delta": -0.011420905590057373,
+      "seed": 4
+    }
+  ],
+  "mode": "hardware",
+  "model_path": "data/m4_forward_model_optimizer5/forward_model_1777675112.json",
+  "summary": {
+    "mean_dry_onset_error_samples": 296,
+    "mean_dry_score": 0.589094,
+    "mean_predicted_onset_error_samples": 306.5,
+    "mean_predicted_score": 0.491449,
+    "mean_score_delta": -0.097645,
+    "predicted_better_count": 0,
+    "predicted_not_worse_count": 0,
+    "row_count": 2
+  },
+  "train_rows": [
+    {
+      "amplitude": 0.201396,
+      "cycle": 1,
+      "duration_ms": 355,
+      "prediction_error": 0.004149210639297962,
+      "prediction_error_db": -47.64069034336892,
+      "seed": 0,
+      "trust": 0.55
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 1,
+      "duration_ms": 315,
+      "prediction_error": 0.004836020525544882,
+      "prediction_error_db": -46.31023729058444,
+      "seed": 1,
+      "trust": 0.6
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 1,
+      "duration_ms": 353,
+      "prediction_error": 0.00896576326340437,
+      "prediction_error_db": -40.948254653046085,
+      "seed": 2,
+      "trust": 0.65
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 2,
+      "duration_ms": 355,
+      "prediction_error": 0.004773004446178675,
+      "prediction_error_db": -46.424163221537626,
+      "seed": 0,
+      "trust": 0.7
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 2,
+      "duration_ms": 315,
+      "prediction_error": 0.02463763952255249,
+      "prediction_error_db": -32.16801806605878,
+      "seed": 1,
+      "trust": 0.75
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 2,
+      "duration_ms": 353,
+      "prediction_error": 0.01923437975347042,
+      "prediction_error_db": -34.31843627447195,
+      "seed": 2,
+      "trust": 0.8
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 3,
+      "duration_ms": 355,
+      "prediction_error": 0.0038373612333089113,
+      "prediction_error_db": -48.31934632383448,
+      "seed": 0,
+      "trust": 0.85
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 3,
+      "duration_ms": 315,
+      "prediction_error": 0.0038238854613155127,
+      "prediction_error_db": -48.349902496661564,
+      "seed": 1,
+      "trust": 0.9
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 3,
+      "duration_ms": 353,
+      "prediction_error": 0.017171364277601242,
+      "prediction_error_db": -35.30390396900512,
+      "seed": 2,
+      "trust": 0.91
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 4,
+      "duration_ms": 355,
+      "prediction_error": 0.004579310305416584,
+      "prediction_error_db": -46.78399853209268,
+      "seed": 0,
+      "trust": 0.92
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 4,
+      "duration_ms": 315,
+      "prediction_error": 0.0038885590620338917,
+      "prediction_error_db": -48.20422600607833,
+      "seed": 1,
+      "trust": 0.93
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 4,
+      "duration_ms": 353,
+      "prediction_error": 0.021650725975632668,
+      "prediction_error_db": -33.29055073270172,
+      "seed": 2,
+      "trust": 0.94
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 5,
+      "duration_ms": 355,
+      "prediction_error": 0.0036937901750206947,
+      "prediction_error_db": -48.650555564048844,
+      "seed": 0,
+      "trust": 0.95
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 5,
+      "duration_ms": 315,
+      "prediction_error": 0.00316464900970459,
+      "prediction_error_db": -49.99348900899157,
+      "seed": 1,
+      "trust": 0.96
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 5,
+      "duration_ms": 353,
+      "prediction_error": 0.0225183367729187,
+      "prediction_error_db": -32.94927380129742,
+      "seed": 2,
+      "trust": 0.97
+    }
+  ]
+}

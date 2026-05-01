@@ -1,0 +1,260 @@
+{
+  "eval_rows": [
+    {
+      "amplitude": 0.200736,
+      "captured_onset_samples": 9223,
+      "dry_onset_error_samples": 1438,
+      "dry_score": 0.569590151309967,
+      "dry_shift_samples": 7740,
+      "duration_ms": 351,
+      "predicted_onset_error_samples": 610,
+      "predicted_score": 0.48428305983543396,
+      "predicted_shift_samples": 8490,
+      "score_delta": -0.08530709147453308,
+      "seed": 3
+    },
+    {
+      "amplitude": 0.206227,
+      "captured_onset_samples": 9281,
+      "dry_onset_error_samples": 495,
+      "dry_score": 0.6952643990516663,
+      "dry_shift_samples": 9677,
+      "duration_ms": 342,
+      "predicted_onset_error_samples": 523,
+      "predicted_score": 0.5458818674087524,
+      "predicted_shift_samples": 9675,
+      "score_delta": -0.14938253164291382,
+      "seed": 4
+    }
+  ],
+  "mode": "hardware",
+  "model_path": "data/m4_forward_model_optimizer_final/forward_model_1777675770.json",
+  "summary": {
+    "mean_dry_onset_error_samples": 966.5,
+    "mean_dry_score": 0.632427,
+    "mean_predicted_onset_error_samples": 566.5,
+    "mean_predicted_score": 0.515082,
+    "mean_score_delta": -0.117345,
+    "predicted_better_count": 0,
+    "predicted_not_worse_count": 0,
+    "row_count": 2
+  },
+  "train_rows": [
+    {
+      "amplitude": 0.201396,
+      "cycle": 1,
+      "duration_ms": 355,
+      "prediction_error": 0.003167894436046481,
+      "prediction_error_db": -49.98458597729706,
+      "seed": 0,
+      "trust": 0.55
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 1,
+      "duration_ms": 315,
+      "prediction_error": 0.00367561774328351,
+      "prediction_error_db": -48.693393213481286,
+      "seed": 1,
+      "trust": 0.6
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 1,
+      "duration_ms": 353,
+      "prediction_error": 0.004372460767626762,
+      "prediction_error_db": -47.18548157171252,
+      "seed": 2,
+      "trust": 0.65
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 2,
+      "duration_ms": 355,
+      "prediction_error": 0.003077472560107708,
+      "prediction_error_db": -50.23611621421682,
+      "seed": 0,
+      "trust": 0.7
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 2,
+      "duration_ms": 315,
+      "prediction_error": 0.002824033610522747,
+      "prediction_error_db": -50.982602775792074,
+      "seed": 1,
+      "trust": 0.75
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 2,
+      "duration_ms": 353,
+      "prediction_error": 0.02015163190662861,
+      "prediction_error_db": -33.91379556678882,
+      "seed": 2,
+      "trust": 0.8
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 3,
+      "duration_ms": 355,
+      "prediction_error": 0.0025533658917993307,
+      "prediction_error_db": -51.85773894556385,
+      "seed": 0,
+      "trust": 0.85
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 3,
+      "duration_ms": 315,
+      "prediction_error": 0.002436793874949217,
+      "prediction_error_db": -52.263624112720564,
+      "seed": 1,
+      "trust": 0.9
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 3,
+      "duration_ms": 353,
+      "prediction_error": 0.021837498992681503,
+      "prediction_error_db": -33.2159420408423,
+      "seed": 2,
+      "trust": 0.91
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 4,
+      "duration_ms": 355,
+      "prediction_error": 0.014474332332611084,
+      "prediction_error_db": -36.788029202719116,
+      "seed": 0,
+      "trust": 0.92
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 4,
+      "duration_ms": 315,
+      "prediction_error": 0.002026431728154421,
+      "prediction_error_db": -53.86536046697046,
+      "seed": 1,
+      "trust": 0.93
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 4,
+      "duration_ms": 353,
+      "prediction_error": 0.02225171960890293,
+      "prediction_error_db": -33.052728423728496,
+      "seed": 2,
+      "trust": 0.94
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 5,
+      "duration_ms": 355,
+      "prediction_error": 0.0025574953760951757,
+      "prediction_error_db": -51.84370285623132,
+      "seed": 0,
+      "trust": 0.95
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 5,
+      "duration_ms": 315,
+      "prediction_error": 0.0020096886437386274,
+      "prediction_error_db": -53.937424431494286,
+      "seed": 1,
+      "trust": 0.96
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 5,
+      "duration_ms": 353,
+      "prediction_error": 0.022284258157014847,
+      "prediction_error_db": -33.04003638002143,
+      "seed": 2,
+      "trust": 0.97
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 6,
+      "duration_ms": 355,
+      "prediction_error": 0.0036144203040748835,
+      "prediction_error_db": -48.83922693518676,
+      "seed": 0,
+      "trust": 0.98
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 6,
+      "duration_ms": 315,
+      "prediction_error": 0.0030359160155057907,
+      "prediction_error_db": -50.354204935550236,
+      "seed": 1,
+      "trust": 0.99
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 6,
+      "duration_ms": 353,
+      "prediction_error": 0.021725108847022057,
+      "prediction_error_db": -33.26076077947993,
+      "seed": 2,
+      "trust": 1.0
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 7,
+      "duration_ms": 355,
+      "prediction_error": 0.0026416967157274485,
+      "prediction_error_db": -51.56234087482791,
+      "seed": 0,
+      "trust": 1.0
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 7,
+      "duration_ms": 315,
+      "prediction_error": 0.0019738783594220877,
+      "prediction_error_db": -54.093592286210026,
+      "seed": 1,
+      "trust": 1.0
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 7,
+      "duration_ms": 353,
+      "prediction_error": 0.02257448434829712,
+      "prediction_error_db": -32.92764322316561,
+      "seed": 2,
+      "trust": 1.0
+    },
+    {
+      "amplitude": 0.201396,
+      "cycle": 8,
+      "duration_ms": 355,
+      "prediction_error": 0.002378699369728565,
+      "prediction_error_db": -52.47320885003339,
+      "seed": 0,
+      "trust": 1.0
+    },
+    {
+      "amplitude": 0.215009,
+      "cycle": 8,
+      "duration_ms": 315,
+      "prediction_error": 0.0019228205783292651,
+      "prediction_error_db": -54.32122477260877,
+      "seed": 1,
+      "trust": 1.0
+    },
+    {
+      "amplitude": 0.20197,
+      "cycle": 8,
+      "duration_ms": 353,
+      "prediction_error": 0.021121088415384293,
+      "prediction_error_db": -33.50567410854503,
+      "seed": 2,
+      "trust": 1.0
+    }
+  ]
+}
