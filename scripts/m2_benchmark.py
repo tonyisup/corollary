@@ -245,6 +245,42 @@ def subtract_self_template(
     return out
 
 
+def summarize_offline_results(all_results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate offline replay rows by strategy.
+
+    Offline replay is most useful when it compares processing strategies against
+    the same captures. Keep the per-capture rows, but also emit a compact
+    strategy-level view so we can tell whether a strategy is consistently helping
+    or just winning one noisy seed.
+    """
+    aggregate: dict[str, Any] = {}
+    strategy_names = sorted({
+        strategy["name"]
+        for capture in all_results
+        for strategy in capture.get("strategies", [])
+    })
+    for name in strategy_names:
+        rows = [
+            strategy
+            for capture in all_results
+            for strategy in capture.get("strategies", [])
+            if strategy["name"] == name
+        ]
+        deltas = [float(row["wer_delta"]) for row in rows]
+        if not deltas:
+            continue
+        aggregate[name] = {
+            "trials": len(deltas),
+            "mean_raw_wer": float(np.mean([row["raw_wer"] for row in rows])),
+            "mean_gated_wer": float(np.mean([row["gated_wer"] for row in rows])),
+            "mean_wer_delta": float(np.mean(deltas)),
+            "improved": sum(1 for delta in deltas if delta < 0),
+            "neutral": sum(1 for delta in deltas if delta == 0),
+            "regressed": sum(1 for delta in deltas if delta > 0),
+        }
+    return aggregate
+
+
 # ---------------------------------------------------------------------------
 # Signal-level analysis
 # ---------------------------------------------------------------------------
@@ -546,6 +582,7 @@ def process_trial(
         "verdicts": verdicts,
         "self_pcm": self_pcm,
         "self_shift": self_shift,
+        "self_expected_shift": self_expected_shift,
     }
 
 
@@ -628,6 +665,8 @@ def run_calibration(args: argparse.Namespace) -> str:
             "self_frames": trial["self_frames"],
             "both_frames": trial["both_frames"],
             "world_frames": trial["world_frames"],
+            "self_shift_samples": int(trial["self_shift"]),
+            "self_expected_shift_samples": int(trial["self_expected_shift"]),
             "snr": trial["snr"],
         }
         with open(os.path.join(amp_dir, "summary.json"), "w") as f:
@@ -764,6 +803,8 @@ def run_benchmark(args: argparse.Namespace) -> str:
             "self_frames": trial["self_frames"],
             "both_frames": trial["both_frames"],
             "world_frames": trial["world_frames"],
+            "self_shift_samples": int(trial["self_shift"]),
+            "self_expected_shift_samples": int(trial["self_expected_shift"]),
             "snr": trial["snr"],
         }
         with open(os.path.join(seed_dir, "summary.json"), "w") as f:
@@ -874,16 +915,18 @@ def run_offline(args: argparse.Namespace) -> str:
                     verdicts.append(SourceVerdict[row["verdict"]])
                     frame_records.append(row)
 
-        # Load self_pcm for subtraction strategies
+        # Load self_pcm and onset for subtraction strategies. Prefer the
+        # persisted measured onset; older captures did not save it, so fall back
+        # to the first motor-window frame only for backward compatibility.
         self_pcm = None
-        self_shift = None
+        self_shift = cap_summary.get("self_shift_samples")
         if os.path.exists(os.path.join(cap_dir, "self_pcm.npy")):
             self_pcm = np.load(os.path.join(cap_dir, "self_pcm.npy"))
-            # Reconstruct self_shift from frame_records
-            for fr in frame_records:
-                if fr.get("is_playing", False):
-                    self_shift = int(fr["start_s"] * SR)
-                    break
+            if self_shift is None:
+                for fr in frame_records:
+                    if fr.get("is_playing", False):
+                        self_shift = int(fr["start_s"] * SR)
+                        break
 
         cap_results = {"capture": cap_name, "strategies": []}
 
@@ -933,9 +976,17 @@ def run_offline(args: argparse.Namespace) -> str:
         all_results.append(cap_results)
 
     # Aggregate
+    aggregate = summarize_offline_results(all_results)
     with open(os.path.join(save_root, "offline_summary.json"), "w") as f:
-        json.dump({"results": all_results}, f, indent=2)
+        json.dump({"results": all_results, "strategies": aggregate}, f, indent=2)
 
+    if aggregate:
+        print("\nStrategy aggregate:")
+        for name, row in aggregate.items():
+            print(
+                f"  {name}: mean delta {row['mean_wer_delta']:+.3f} "
+                f"({row['improved']}/{row['neutral']}/{row['regressed']} I/N/R)"
+            )
     print(f"\nOffline results saved to: {save_root}")
     return save_root
 
