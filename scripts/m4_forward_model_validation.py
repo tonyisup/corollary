@@ -23,6 +23,7 @@ import argparse
 import json
 import os
 import shlex
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, asdict
@@ -317,6 +318,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--benchmark-onset-method", choices=["energy", "score", "xcorr"], default="energy")
     parser.add_argument("--benchmark-causal-tolerance-ms", type=float, default=75.0)
     parser.add_argument("--m4-mock", action="store_true")
+    parser.add_argument("--run-benchmark", action="store_true", help="If set, run benchmark command after validation succeeds.")
+
     return parser.parse_args()
 
 
@@ -374,6 +377,14 @@ def main() -> None:
     if args.emit_benchmark_command:
         print("\nBenchmark handoff:")
         print(payload["benchmark_command"])
+    if args.run_benchmark and summary.get("mean_predicted_score", 0) > summary.get("mean_dry_score", 0):
+        cmd = payload.get("benchmark_command")
+        if cmd:
+            print("\n=> Running benchmark handoff command:", file=sys.stderr)
+            print(cmd, file=sys.stderr)
+            subprocess.run(cmd, shell=True, check=False)
+        else:
+            print("\n=> No benchmark_command available; skipping.", file=sys.stderr)
     print(f"\nSaved: {out}")
 
 
