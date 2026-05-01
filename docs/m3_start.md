@@ -637,3 +637,211 @@ Interpretation:
 - this suggests the next decision is no longer "is there any separation?" but
   which operating point matters more for M2/M3 use: maximum clean-negative
   precision or better overlap self-presence recall
+
+## Operational threshold smoke runs in the embodied loop
+
+Ran the embodied Broca → M2 → M3 loop again with the optimized room-local scorer
+and several candidate thresholds:
+
+- `0.059115` — highest zero-FP threshold from the Broca negative set
+- `0.10`
+- `0.12`
+- `0.208152` — conservative midpoint recommendation from the clean-negative gap
+
+Commands followed the existing embodied path with:
+
+- `--self-match-mode room_local_oracle`
+- `--self-match-search-ms 256.4`
+- `--room-filter-taps 64`
+- `--room-filter-ridge 0.000112`
+- `--onset-method score`
+- `--causal-tolerance-ms 175`
+- `--onset-latency-ms 300`
+
+Observed summaries:
+
+| Threshold | self_score | SELF frames | BOTH frames | WORLD frames |
+| --- | ---: | ---: | ---: | ---: |
+| `0.059115` | `0.436` | `3` | `56` | `21` |
+| `0.10` | `0.440` | `2` | `56` | `48` |
+| `0.12` | `0.415` | `1` | `56` | `27` |
+| `0.208152` | `0.127` | `0` | `58` | `20` |
+
+Across all four runs:
+
+- M3 still interrupted and resumed correctly in every case
+- the world-speech WER remained poor (`1.0`) because the overlap condition is
+  still dominated by Broca speech in this embodied setup, so these runs are more
+  informative about self-presence detection than about external speech retention
+- the conservative midpoint threshold `0.208152` again failed to produce any hard
+  `SELF` frames on the tested embodied run
+- all lower candidate thresholds (`0.059`, `0.10`, `0.12`) recovered at least
+  some hard `SELF` frames without collapsing the controller behavior
+
+Targeted false-positive smoke checks at `0.12`:
+
+- Broca-path `world_only` run: `self_score=0.0`, `SELF frames=0`
+- Broca-path `silence` run: `self_score=0.0`, `SELF frames=0`
+
+Current practical read:
+
+- `0.208` remains a good calibration/reporting threshold for separating clean
+  self-only positives from clean negatives
+- `0.12` is a better current operational candidate for embodied M2/M3 work,
+  because it preserves a strong safety margin above the collected negatives while
+  recovering real self-present detections in overlap-bearing embodied runs
+- `0.059` may be too permissive to promote immediately, while `0.10–0.12`
+  appears to be the more defensible first operational band
+
+To make that operational path easy to reuse, `scripts/m3_embodied_tts_loop_demo.py`
+now accepts:
+
+```bash
+--broca-room-local-operating-point
+```
+
+which applies the current experimental defaults unless explicitly overridden:
+
+- `similarity_threshold=0.10`
+- `onset_latency_ms=300`
+- `onset_method=score`
+- `causal_tolerance_ms=175`
+- `self_match_mode=room_local_oracle`
+- `self_match_search_ms=256.4`
+- `room_filter_taps=64`
+- `room_filter_ridge=0.000112`
+
+## Repeated stability comparison: `0.10` vs `0.12`
+
+Ran three additional embodied overlap repetitions at each threshold on the same
+Broca/M2/M3 path.
+
+Artifacts:
+
+- `data/m3_embodied_tts_room_local_stability_0p10_rep00..02`
+- `data/m3_embodied_tts_room_local_stability_0p12_rep00..02`
+
+Per-run summary:
+
+| Threshold | Rep | self_score | SELF frames | BOTH frames | WORLD frames | onset error ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `0.10` | 0 | `0.420` | `1` | `58` | `20` | `-141.8` |
+| `0.10` | 1 | `0.444` | `4` | `59` | `28` | `-141.8` |
+| `0.10` | 2 | `0.436` | `5` | `59` | `29` | `-141.8` |
+| `0.12` | 0 | `0.316` | `0` | `64` | `24` | `-190.9` |
+| `0.12` | 1 | `0.448` | `3` | `56` | `19` | `-141.8` |
+| `0.12` | 2 | `0.465` | `4` | `56` | `24` | `-141.8` |
+
+Aggregate view:
+
+- `0.10`
+  - mean self score: `0.433`
+  - self frames: mean `3.33`, range `1..5`
+- `0.12`
+  - mean self score: `0.410`
+  - self frames: mean `2.33`, range `0..4`
+
+Interpretation:
+
+- `0.10` was more stable across these three repetitions: every run produced hard
+  `SELF` frames and the self-score stayed tightly clustered
+- `0.12` still looks viable, but one repetition dropped to `0` hard `SELF`
+  frames together with a worse onset error (`-190.9 ms`), suggesting it is more
+  sensitive to timing/capture variance at the current operating margin
+- because the Broca-path clean negatives are still far below both thresholds
+  (`max negative ≈ 0.059`), the present tradeoff no longer looks like
+  `0.10 = risky` versus `0.12 = safe`; on the current evidence it looks more like
+  `0.10 = stronger overlap recall and better repeat stability`, while both remain
+  comfortably above the observed clean-negative range
+
+Current recommendation has therefore tightened further:
+
+- keep `0.208` as the conservative calibration/reporting threshold
+- promote `0.10` above `0.12` as the current embodied operational candidate for
+  Broca room-local self-presence experiments
+- continue to treat this as an experimental default, not a globally locked
+  policy, until more overlap and adversarial-negative repetitions are collected
+
+Post-wiring confirmation run using `--broca-room-local-operating-point`:
+
+- artifact: `data/m3_embodied_tts_room_local_operating_default_0p10`
+- observed `self_score=0.473`
+- observed `SELF/BOTH/WORLD = 30/56/74`
+- M3 still interrupted and resumed correctly
+
+That confirmation run suggests the new operational flag is not merely setting a
+more permissive threshold on paper; on at least one fresh embodied run it
+substantially strengthened explicit self-present detection.
+
+## Adversarial follow-up checks on the `0.10` operating point
+
+### World-speech gain ladder
+
+Generated scaled versions of the current world speech sample at gains `0.5`,
+`1.0`, `1.5`, and `2.0`, then reran the embodied loop with
+`--broca-room-local-operating-point`.
+
+Artifacts:
+
+- `data/m3_embodied_tts_world_gain_0p5_operating_0p10`
+- `data/m3_embodied_tts_world_gain_1p0_operating_0p10`
+- `data/m3_embodied_tts_world_gain_1p5_operating_0p10`
+- `data/m3_embodied_tts_world_gain_2p0_operating_0p10`
+
+Observed summary:
+
+| World gain | self_score | SELF frames | BOTH frames | WORLD frames | raw/gated WER |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `0.5` | `0.454` | `31` | `55` | `74` | `1.0 / 1.0` |
+| `1.0` | `0.431` | `28` | `56` | `73` | `1.0 / 1.0` |
+| `1.5` | `0.431` | `31` | `55` | `74` | `1.0 / 1.0` |
+| `2.0` | `0.449` | `31` | `55` | `74` | `1.0 / 1.0` |
+
+Interpretation:
+
+- on the current hardware path, the `0.10` operational threshold appears fairly
+  insensitive to moderate world-gain changes for self-present detection
+- this is reassuring for the self-presence side of the metric
+- however, the external-speech retention metric remains saturated and unhelpful
+  here (`WER=1.0` throughout), which means this overlap condition is still not a
+  good benchmark for asking whether the current M2 path preserves world speech
+  while Broca is active
+
+### Same-text imitation check
+
+Synthesized an external male-voice (`en-US-GuyNeural`) version of the exact same
+utterance, `"I was speaking, then paused."`, and used it as the world signal.
+This is not a clean retention benchmark, but it is a useful imitation-style
+stress check.
+
+Artifacts:
+
+- `data/m3_embodied_tts_world_same_text_guy_operating_0p10`
+- `data/m3_embodied_tts_world_same_text_guy_threshold_0p208152`
+
+Observed:
+
+| Condition | Threshold | self_score | SELF frames | BOTH frames | WORLD frames | raw/gated WER |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| same-text external male voice | `0.10` | `0.435` | `30` | `56` | `49` | `0.0 / 0.0` |
+| same-text external male voice | `0.208152` | `0.472` | `30` | `56` | `49` | `0.0 / 0.0` |
+
+Interpretation:
+
+- this imitation-style overlap did not expose an obvious weakness in the `0.10`
+  threshold; self-present detection remained strong
+- it also showed that the earlier `0.208` failure mode was not a universal
+  property of the threshold itself, but depended on the weaker-scoring embodied
+  run conditions from the earlier sweep
+- because the self and world content are lexically identical here, this check is
+  useful for source-confusability stress but not for speech-preservation scoring
+
+Current sharpened read:
+
+- `0.10` remains the best current embodied operational candidate
+- the present embodied overlap bench still does not give a trustworthy measure of
+  world-speech preservation; it mainly measures whether self-present detection
+  survives under different overlap conditions
+- the next meaningful experiment should therefore shift from threshold tuning to
+  benchmark design: build a more diagnostic overlap condition where external
+  speech is genuinely recoverable and not immediately swamped by the Broca path

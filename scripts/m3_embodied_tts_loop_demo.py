@@ -26,6 +26,36 @@ from m2_speech_preservation_harness import run_m2_trial, save_trial_artifacts
 WORLD_TEXT = "this is a test of world speech conservation"
 DEFAULT_AGENT_TEXT = "I was speaking, then paused."
 
+ROOM_LOCAL_OPERATING_DEFAULTS = {
+    "similarity_threshold": 0.10,
+    "onset_latency_ms": 300.0,
+    "onset_method": "score",
+    "causal_tolerance_ms": 175.0,
+    "self_match_mode": "room_local_oracle",
+    "self_match_search_ms": 256.4,
+    "room_filter_taps": 64,
+    "room_filter_ridge": 0.000112,
+}
+
+LEGACY_DEFAULTS = {
+    "similarity_threshold": 0.20,
+    "onset_latency_ms": 400.0,
+    "onset_method": "energy",
+    "causal_tolerance_ms": 75.0,
+    "self_match_mode": "global_xcorr",
+    "self_match_search_ms": 250.0,
+    "room_filter_taps": 64,
+    "room_filter_ridge": 1e-4,
+}
+
+
+def apply_broca_room_local_operating_defaults(args: argparse.Namespace) -> argparse.Namespace:
+    defaults = ROOM_LOCAL_OPERATING_DEFAULTS if args.broca_room_local_operating_point else LEGACY_DEFAULTS
+    for key, value in defaults.items():
+        if getattr(args, key) is None:
+            setattr(args, key, value)
+    return args
+
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser(description="Embodied Broca->M2->M3 TTS loop demo")
@@ -37,19 +67,20 @@ async def main_async() -> None:
     parser.add_argument("--noise-device", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--both-gain", type=float, default=0.5)
-    parser.add_argument("--similarity-threshold", type=float, default=0.20)
-    parser.add_argument("--onset-latency-ms", type=float, default=400.0)
-    parser.add_argument("--onset-method", choices=["xcorr", "energy", "spectral_flux", "score"], default="energy")
-    parser.add_argument("--causal-tolerance-ms", type=float, default=75.0)
-    parser.add_argument("--self-match-mode", choices=["global_xcorr", "local_xcorr", "room_local_oracle"], default="global_xcorr")
-    parser.add_argument("--self-match-search-ms", type=float, default=250.0)
-    parser.add_argument("--room-filter-taps", type=int, default=64)
-    parser.add_argument("--room-filter-ridge", type=float, default=1e-4)
+    parser.add_argument("--broca-room-local-operating-point", action="store_true", help="Apply current experimental Broca room-local operating defaults (threshold 0.10, score onset, 300ms latency, 175ms tolerance, room_local_oracle scorer)")
+    parser.add_argument("--similarity-threshold", type=float, default=None)
+    parser.add_argument("--onset-latency-ms", type=float, default=None)
+    parser.add_argument("--onset-method", choices=["xcorr", "energy", "spectral_flux", "score"], default=None)
+    parser.add_argument("--causal-tolerance-ms", type=float, default=None)
+    parser.add_argument("--self-match-mode", choices=["global_xcorr", "local_xcorr", "room_local_oracle"], default=None)
+    parser.add_argument("--self-match-search-ms", type=float, default=None)
+    parser.add_argument("--room-filter-taps", type=int, default=None)
+    parser.add_argument("--room-filter-ridge", type=float, default=None)
     parser.add_argument("--request-at-s", type=float, default=0.0)
     parser.add_argument("--listen-threshold-ms", type=float, default=100.0)
     parser.add_argument("--cooldown-ms", type=float, default=200.0)
     parser.add_argument("--save-dir", default=None)
-    args = parser.parse_args()
+    args = apply_broca_room_local_operating_defaults(parser.parse_args())
 
     print("\n--- M3 Embodied TTS Loop Demo ---")
     print(f"Synthesizing agent text: {args.agent_text!r}")
