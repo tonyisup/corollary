@@ -117,11 +117,21 @@ Current Mac mini + Fifine observation:
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
 | M2 | Speech-aware self/world separation | 🧪 Prototype / early hardware harness |
 | M3 | Agentive listening and proto-turn-taking | 🧪 Prototype / early controller demo |
-| M4 | Self-voice detector / explicit attribution classifier | 🧩 Interface stub / prototype |
-| M5 | Multi-speaker world model + memory | ⏳ Planned |
-| M6 | Self-model and introspection | ⏳ Planned |
+|| M4 | Self-voice detector / explicit attribution classifier | 🧩 Interface stub / prototype |
+|| M5 | Multi-speaker world model + memory | ⏳ Planned |
+|| M6 | Self-model and introspection | ⏳ Planned |
 
 Immediate next steps: lock an M2 eval set, measure overlap stability, verify external speech retention, then tune masking heuristics.
+
+### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
+
+M2/M4 results are saved as JSON summaries (under `data/m2_benchmark/.../benchmark_summary.json` and `data/m2_benchmark/.../calibration_summary.json`).  Each summary contains a top-level `config` object with all attribution and gating parameters used to produce that run.  Since the M4 integration sweep, summaries now include the following additional M4 fields in `config`:
+
+- `m4_min_buffer_ms` — minimum audio buffer (ms) before M4 can trigger
+- `m4_self_threshold`   — confidence threshold for M4 self-voice classification
+- `m4_registration_threshold` — threshold used when registering the self template
+
+Per-seed results also contain an `m4` block (enabled, registration_mode, self_template_samples, registration_threshold, self_decision_threshold, mock_embeddings) and a counter `m4_triggered_frames` (how many frames M4 classified as self).  Note that M4 is only invoked when enough audio has been accumulated and the system is in a speech+playback window.
 
 ### 2026-04-20 debrief lessons
 
