@@ -1,3 +1,13 @@
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Tuple
+try:
+    from transformers import Wav2Vec2Model, Wav2Vec2FeatureExtractor
+    import torch
+    _HAS_EMBED = True
+except Exception:
+    _HAS_EMBED = False
+
 #!/usr/bin/env python3
 """M2 Benchmark — Controlled speech-preservation measurement.
 
@@ -36,7 +46,6 @@ Usage:
       --capture-root data/m2_benchmark/calibration_20260501_120000/captures
 """
 
-from __future__ import annotations
 
 import argparse
 import json
@@ -273,6 +282,55 @@ def local_xcorr(
             best_shift = shift
     return max(0.0, best_score), best_shift
 
+
+
+
+def embedding_similarity(
+    observed: np.ndarray, template: np.ndarray,
+    expected_shift: int, search_ms: float = 250.0,
+    model=None, feature_extractor=None,
+) -> Tuple[float, int]:
+    """
+    Cosine similarity between Wav2Vec2 embeddings of template and
+    windows in observed.
+    """
+    if not _HAS_EMBED:
+        return 0.0, expected_shift
+    if model is None or feature_extractor is None:
+        return 0.0, expected_shift
+    if len(observed) < len(template):
+        return 0.0, expected_shift
+
+    sr = 16000
+    radius = int(search_ms * sr / 1000.0)
+    start = max(0, expected_shift - radius)
+    stop = min(len(observed) - len(template), expected_shift + radius)
+    if stop <= start:
+        return 0.0, expected_shift
+
+    # embed template (single)
+    with torch.no_grad():
+        t_in = feature_extractor(template, sampling_rate=sr, return_tensors="pt")
+        t_out = model(**t_in).last_hidden_state  # (1, T, D)
+        t_emb = t_out.mean(dim=1).squeeze(0).cpu().numpy()  # (D,)
+        t_emb = t_emb / (np.linalg.norm(t_emb) + 1e-12)
+
+    best_score = -1.0
+    best_shift = start
+    step = max(len(template) // 160, 1)
+
+    for shift in range(start, stop + 1, step):
+        w = observed[shift:shift + len(template)]
+        with torch.no_grad():
+            w_in = feature_extractor(w, sampling_rate=sr, return_tensors="pt")
+            w_out = model(**w_in).last_hidden_state
+            w_emb = w_out.mean(dim=1).squeeze(0).cpu().numpy()
+            w_emb = w_emb / (np.linalg.norm(w_emb) + 1e-12)
+        score = float(np.clip(np.dot(w_emb, t_emb), -1.0, 1.0))
+        if score > best_score:
+            best_score = score
+            best_shift = shift
+    return max(0.0, best_score), best_shift
 
 def energy_onset(
     observed: np.ndarray, start_hint_samples: int,
@@ -625,6 +683,27 @@ def process_trial(
     elif args.self_match_mode == "local_xcorr":
         self_score = dry_local_score
         score_shift = dry_local_shift
+    elif args.self_match_mode == "embedding":
+        # compute embedding similarity once per trial
+        if not hasattr(process_trial, "_embed_model"):
+            if _HAS_EMBED:
+                from transformers import Wav2Vec2Model, Wav2Vec2FeatureExtractor
+                process_trial._embed_model = Wav2Vec2Model.from_pretrained(args.embedding_model)
+                process_trial._embed_fe = Wav2Vec2FeatureExtractor.from_pretrained(args.embedding_model)
+            else:
+                process_trial._embed_model = None
+        if getattr(process_trial, "_embed_model", None) is not None:
+            sim, _ = embedding_similarity(
+                observed, self_pcm,
+                self_expected_shift,
+                search_ms=args.self_match_search_ms,
+                model=process_trial._embed_model,
+                feature_extractor=process_trial._embed_fe,
+            )
+            self_score = sim
+        else:
+            self_score = dry_local_score  # fallback
+        score_shift = self_expected_shift
     else:
         raise ValueError(f"Unknown self_match_mode: {args.self_match_mode}")
 
@@ -670,8 +749,30 @@ def process_trial(
         rms_db = db(rms)
         is_playing = (start >= self_expected_shift) and (end <= self_expected_shift + len(self_pcm))
 
+        if args.self_match_mode == "embedding" and is_playing:
+            # compute embedding similarity once for expected window
+            if not hasattr(process_trial, "_embed_model"):
+                if _HAS_EMBED:
+                    from transformers import Wav2Vec2Model, Wav2Vec2FeatureExtractor
+                    process_trial._embed_model = Wav2Vec2Model.from_pretrained(args.embedding_model)
+                    process_trial._embed_fe = Wav2Vec2FeatureExtractor.from_pretrained(args.embedding_model)
+                else:
+                    process_trial._embed_model = None
+            if getattr(process_trial, "_embed_model", None) is not None:
+                sim, _ = embedding_similarity(
+                    observed, self_pcm,
+                    self_expected_shift,
+                    search_ms=args.self_match_search_ms,
+                    model=process_trial._embed_model,
+                    feature_extractor=process_trial._embed_fe,
+                )
+                match_score = sim
+            else:
+                match_score = self_score
+        else:
+            match_score = self_score if is_playing else 0.0
         res = attributor.attribute(
-            match_score=self_score if is_playing else 0.0,
+            match_score=match_score,
             observed_onset_samples=self_shift,
             expected_onset_samples=self_expected_shift if is_playing else None,
             rms_db=rms_db,
@@ -1221,7 +1322,8 @@ def main():
     parser.add_argument("--onset-latency-ms", type=float, default=400.0)
     parser.add_argument("--onset-method", choices=["xcorr", "energy", "score"], default="energy")
     parser.add_argument("--causal-tolerance-ms", type=float, default=75.0)
-    parser.add_argument("--self-match-mode", choices=["global_xcorr", "local_xcorr"], default="global_xcorr")
+    parser.add_argument("--self-match-mode", choices=["global_xcorr", "local_xcorr", "embedding"], default="global_xcorr")
+    parser.add_argument("--embedding-model", default="facebook/wav2vec2-base")
     parser.add_argument("--self-match-search-ms", type=float, default=250.0)
 
     # Gating params
