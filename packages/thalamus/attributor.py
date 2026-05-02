@@ -118,6 +118,12 @@ class ThalamicAttributor:
             # M4 override: use speaker embedding to distinguish self from world
             # speech. Requires accumulating audio into a buffer since ECAPA-TDNN
             # needs ~500ms+ for reliable classification.
+            m4_metadata = {
+                'm4_attempted': False,
+                'm4_outcome': 'not_attempted',
+                'm4_confidence': None,
+                'm4_buffer_length': 0,
+            }
             if self.m4_detector is not None and frame_audio is not None:
                 # Accumulate frame into M4 buffer
                 if self._m4_buffer is None:
@@ -127,11 +133,15 @@ class ThalamicAttributor:
                 # Keep only the last m4_window_samples
                 if len(self._m4_buffer) > self.m4_window_samples:
                     self._m4_buffer = self._m4_buffer[-self.m4_window_samples:]
+                m4_metadata['m4_buffer_length'] = len(self._m4_buffer)
                 # Only run M4 when we have enough audio
-                if len(self._m4_buffer) >= self.m4_min_buffer_samples:
+                m4_metadata['m4_attempted'] = len(self._m4_buffer) >= self.m4_min_buffer_samples
+                if m4_metadata['m4_attempted']:
                     try:
                         is_self_voice, m4_confidence = self.m4_detector.is_self(self._m4_buffer)
+                        m4_metadata['m4_confidence'] = m4_confidence
                         if is_self_voice and m4_confidence > self.m4_self_threshold:
+                            m4_metadata['m4_outcome'] = 'accepted'
                             confidence = (match_score + causal_score + m4_confidence) / 3.0
                             return AttributionResult(
                                 verdict=SourceVerdict.SELF,
@@ -142,10 +152,14 @@ class ThalamicAttributor:
                                 energy_db=rms_db,
                                 is_speech=is_speech,
                                 onset_error_ms=onset_error_ms,
-                                metadata={'m4_confidence': m4_confidence},
+                                metadata=m4_metadata,
                             )
+                        else:
+                            m4_metadata['m4_outcome'] = 'below_threshold'
                     except Exception:
-                        pass  # M4 classification failed, fall through to conservative BOTH
+                        m4_metadata['m4_outcome'] = 'exception'
+                else:
+                    m4_metadata['m4_outcome'] = 'buffer_too_short'
             # M2 conservatism (fallback): speech during playback can contain
             # world speech even when the self template matches.
             confidence = (match_score + causal_score) / 2.0
@@ -158,6 +172,7 @@ class ThalamicAttributor:
                 energy_db=rms_db,
                 is_speech=is_speech,
                 onset_error_ms=onset_error_ms,
+                metadata=m4_metadata,
             )
 
         if is_playing and is_self_like and is_timely:
