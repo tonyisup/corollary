@@ -87,6 +87,9 @@ def test_attributor_m4_override_promotes_self_under_speech() -> None:
     assert res.verdict == SourceVerdict.SELF
     assert res.metadata is not None
     assert res.metadata["m4_confidence"] == 0.9
+    assert res.metadata["m4_attempted"] is True
+    assert res.metadata["m4_outcome"] == "accepted"
+    assert res.metadata["m4_buffer_length"] > 0
 
 
 def test_attributor_m4_falls_back_to_both_when_not_self() -> None:
@@ -108,6 +111,95 @@ def test_attributor_m4_falls_back_to_both_when_not_self() -> None:
     )
 
     assert res.verdict == SourceVerdict.BOTH
+    assert res.metadata is not None
+    assert res.metadata["m4_attempted"] is True
+    assert res.metadata["m4_outcome"] == "below_threshold"
+    assert res.metadata["m4_confidence"] == 0.2
+
+
+def test_attributor_m4_exception_returns_both() -> None:
+    """Test that M4 exceptions result in BOTH with outcome='exception'."""
+    class FailingDetector:
+        def is_self(self, pcm):
+            raise RuntimeError("M4 failed")
+
+    attributor = ThalamicAttributor(
+        m4_detector=FailingDetector(),
+        m4_self_threshold=0.4,
+        sr=16000,
+    )
+    frame = np.ones(16000 // 30, dtype=np.float32)
+
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=800,
+        expected_onset_samples=800,
+        rms_db=-30.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=np.tile(frame, 20),
+    )
+
+    assert res.verdict == SourceVerdict.BOTH
+    assert res.metadata is not None
+    assert res.metadata["m4_attempted"] is True
+    assert res.metadata["m4_outcome"] == "exception"
+    assert res.metadata["m4_confidence"] is None
+
+
+def test_attributor_m4_buffer_too_short() -> None:
+    """Test that M4 is not attempted when buffer is too short."""
+    detector = DummyDetector(True, 0.9)
+    attributor = ThalamicAttributor(
+        m4_detector=detector,
+        m4_self_threshold=0.4,
+        sr=16000,
+        m4_min_buffer_ms=500,  # Need 500ms
+    )
+    frame = np.ones(16000 // 30, dtype=np.float32)  # ~33ms frame
+
+    # First call - buffer too short
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=800,
+        expected_onset_samples=800,
+        rms_db=-30.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=frame,  # Only one frame, not enough
+    )
+
+    assert res.verdict == SourceVerdict.BOTH
+    assert res.metadata is not None
+    assert res.metadata["m4_attempted"] is False
+    assert res.metadata["m4_outcome"] == "buffer_too_short"
+    assert res.metadata["m4_buffer_length"] < 500 * 16000 / 1000
+
+
+def test_attributor_m4_not_attempted_no_detector() -> None:
+    """Test that M4 is not attempted when no detector is provided."""
+    attributor = ThalamicAttributor(
+        m4_detector=None,
+        m4_self_threshold=0.4,
+        sr=16000,
+    )
+    frame = np.ones(16000 // 30, dtype=np.float32)
+
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=800,
+        expected_onset_samples=800,
+        rms_db=-30.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=np.tile(frame, 20),
+    )
+
+    assert res.verdict == SourceVerdict.BOTH
+    assert res.metadata is not None
+    assert res.metadata["m4_attempted"] is False
+    assert res.metadata["m4_outcome"] == "not_attempted"
+    assert res.metadata["m4_confidence"] is None
 
 
 def test_attributor_m4_buffer_accumulation_and_gating():
