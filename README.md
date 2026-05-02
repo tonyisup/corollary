@@ -117,9 +117,9 @@ Current Mac mini + Fifine observation:
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
 | M2 | Speech-aware self/world separation | 🧪 Prototype / early hardware harness |
 | M3 | Agentive listening and proto-turn-taking | 🧪 Prototype / early controller demo |
-|| M4 | Self-voice detector / explicit attribution classifier | 🧩 Interface stub / prototype |
-|| M5 | Multi-speaker world model + memory | ⏳ Planned |
-|| M6 | Self-model and introspection | ⏳ Planned |
+| M4 | Self-voice detector / explicit attribution classifier | 🧩 Interface stub / prototype |
+| M5 | Multi-speaker world model + memory | ⏳ Planned |
+| M6 | Self-model and introspection | ⏳ Planned |
 
 Immediate next steps: lock an M2 eval set, measure overlap stability, verify external speech retention, then tune masking heuristics.
 

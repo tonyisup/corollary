@@ -794,7 +794,9 @@ def process_trial(
             "is_playing": bool(is_playing),
             "causal_score": float(res.causal_score),
             "onset_error_ms": res.onset_error_ms,
+            "m4_attempted": bool(res.metadata and res.metadata.get("m4_attempted", False)),
             "m4_confidence": None if not res.metadata else res.metadata.get("m4_confidence"),
+            "m4_buffer_length": None if not res.metadata else res.metadata.get("m4_buffer_length"),
         })
 
     # Gating
