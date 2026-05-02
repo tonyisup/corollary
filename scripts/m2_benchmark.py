@@ -797,6 +797,7 @@ def process_trial(
             "m4_attempted": bool(res.metadata and res.metadata.get("m4_attempted", False)),
             "m4_confidence": None if not res.metadata else res.metadata.get("m4_confidence"),
             "m4_buffer_length": None if not res.metadata else res.metadata.get("m4_buffer_length"),
+            "m4_outcome": None if not res.metadata else res.metadata.get("m4_outcome"),
         })
 
     # Gating
