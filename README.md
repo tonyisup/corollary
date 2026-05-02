@@ -133,6 +133,21 @@ M2/M4 results are saved as JSON summaries (under `data/m2_benchmark/.../benchmar
 
 Per-seed results also contain an `m4` block (enabled, registration_mode, self_template_samples, registration_threshold, self_decision_threshold, mock_embeddings) and a counter `m4_triggered_frames` (how many frames M4 classified as self).  Note that M4 is only invoked when enough audio has been accumulated and the system is in a speech+playback window.
 
+### Bayesian-optimized parameters (50 trials)
+
+A short Bayesian optimization run (Optuna TPE, 50 trials) produced the following parameters that minimize a combined loss of WER + self-attribution penalty.  These values improve self-identification while keeping WER neutral.
+
+| Parameter                | Optimized |
+|--------------------------|-----------|
+| onset_latency_ms         | 328       |
+| causal_tolerance_ms      | 56        |
+| similarity_threshold     | 0.17      |
+| onset_method             | energy    |
+| vowel_gain               | 0.75      |
+| babble_gain              | 0.89      |
+
+Best loss: **0.263**.  See `data/m2_bayesian_v2/best_params.json` and `scripts/m2_bayesian_optimizer.py` for full details.
+
 ### 2026-04-20 debrief lessons
 
 - **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` exposes the single-channel speech-aware attribution primitive, and M1c now adds `dual_input_fusion` for geometry-aware two-mic SELF/WORLD/BOTH evidence fusion.
