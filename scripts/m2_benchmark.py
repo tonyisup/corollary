@@ -661,7 +661,7 @@ def process_trial(
 ) -> dict[str, Any]:
     """Run attribution, gating, and ASR on a captured observation."""
 
-    self_expected_shift = int((self_start_s + args.onset_latency_ms / 1000.0) * SR)
+    self_expected_shift = int((self_start_s + (args.onset_latency_ms + args.calibrated_offset_ms) / 1000.0) * SR)
     world_start_samples = int(world_start_s * SR)
     world_end_samples = int((world_start_s + world_duration_s) * SR)
 
@@ -964,6 +964,7 @@ def run_calibration(args: argparse.Namespace) -> str:
                 "world_speech": args.world_speech,
                 "similarity_threshold": args.similarity_threshold,
                 "onset_latency_ms": args.onset_latency_ms,
+                "calibrated_offset_ms": args.calibrated_offset_ms,
                 "onset_method": args.onset_method,
                 "causal_tolerance_ms": args.causal_tolerance_ms,
                 "both_gain": args.both_gain,
@@ -1119,6 +1120,7 @@ def run_benchmark(args: argparse.Namespace) -> str:
                 "world_speech": args.world_speech,
                 "similarity_threshold": args.similarity_threshold,
                 "onset_latency_ms": args.onset_latency_ms,
+                "calibrated_offset_ms": args.calibrated_offset_ms,
                 "onset_method": args.onset_method,
                 "causal_tolerance_ms": args.causal_tolerance_ms,
                 "both_gain": args.both_gain,
@@ -1330,6 +1332,10 @@ def main():
     # Attribution params (defaults from calibrated M2 settings)
     parser.add_argument("--similarity-threshold", type=float, default=0.20)
     parser.add_argument("--onset-latency-ms", type=float, default=400.0)
+    parser.add_argument(
+        "--calibrated-offset-ms", type=float, default=0.0,
+        help="Additional offset (ms) from calibration to add to onset_latency_ms",
+    )
     parser.add_argument("--onset-method", choices=["xcorr", "energy", "score"], default="energy")
     parser.add_argument("--causal-tolerance-ms", type=float, default=75.0)
     parser.add_argument("--self-match-mode", choices=["global_xcorr", "local_xcorr", "embedding"], default="global_xcorr")

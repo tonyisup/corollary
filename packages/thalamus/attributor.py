@@ -142,7 +142,7 @@ class ThalamicAttributor:
                                 energy_db=rms_db,
                                 is_speech=is_speech,
                                 onset_error_ms=onset_error_ms,
-                                metadata={"m4_attempted": True, "m4_confidence": m4_confidence, "m4_buffer_length": len(self._m4_buffer)},
+                                metadata={'m4_confidence': m4_confidence},
                             )
                     except Exception:
                         pass  # M4 classification failed, fall through to conservative BOTH
