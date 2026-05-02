@@ -244,9 +244,13 @@ def local_xcorr(
 ) -> tuple[float, int]:
     if len(observed) < len(template):
         return 0.0, expected_shift
-    template_norm = float(np.linalg.norm(template))
-    if template_norm < 1e-9:
+    # z-normalize template
+    t = template.astype(np.float64)
+    t = t - np.mean(t)
+    t_std = np.std(t)
+    if t_std < 1e-9:
         return 0.0, expected_shift
+    t = t / t_std
     radius = int(search_ms * SR / 1000.0)
     start = max(0, expected_shift - radius)
     stop = min(len(observed) - len(template), expected_shift + radius)
@@ -256,9 +260,14 @@ def local_xcorr(
     best_shift = start
     step = max(len(template) // 160, 1)
     for shift in range(start, stop + 1, step):
-        window = observed[shift:shift + len(template)]
-        denom = float(np.linalg.norm(window) * template_norm)
-        score = 0.0 if denom < 1e-9 else float(np.dot(window, template) / denom)
+        w = observed[shift:shift + len(template)].astype(np.float64)
+        w = w - np.mean(w)
+        w_std = np.std(w)
+        if w_std < 1e-9:
+            score = 0.0
+        else:
+            w = w / w_std
+            score = float(np.clip(np.dot(w, t) / len(t), -1.0, 1.0))
         if score > best_score:
             best_score = score
             best_shift = shift
