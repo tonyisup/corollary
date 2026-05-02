@@ -146,8 +146,28 @@ A short Bayesian optimization run (Optuna TPE, 50 trials) produced the following
 | vowel_gain               | 0.75      |
 | babble_gain              | 0.89      |
 
-Best loss: **0.263**.  See `data/m2_bayesian_v2/best_params.json` and `scripts/m2_bayesian_optimizer.py` for full details.
+Best loss: **0.263**.  See  for full details.  (The small sanity run produced best parameters inline; full artifact file was not preserved.)
 
+### M4 diagnostics and buffer sizing
+
+M4 classification is only invoked when the accumulated self-audio buffer reaches .  In practice this means:
+
+- With short self-stimuli (<= 350 ms) and buffers >= 200 ms, M4 never triggers because the buffer never fills within the playback window.
+- With longer self-stimuli (>= 700 ms) and buffers <= 300-400 ms, M4 can fire and produce non-zero  counts.  A micro test (buffer = 10 ms) confirms the plumbing works and yields triggers.
+
+**Recommended safe envelope for sweeps**
+-  >= 700-1000
+-  <= 300-500
+-  <= 0.3-0.4
+
+**Telemetry fields added**  (see  and )
+-  (bool) — M4 classification was invoked on this frame
+-  (float|None) — confidence if attempted
+-  (int|None) — buffer length at classification time
+
+The 50-trial Bayesian optimization (Optuna TPE) is tagged .  A CSV dump of trials is available (if generated) under .
+
+### 2026-04-20 debrief lessons
 ### 2026-04-20 debrief lessons
 
 - **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` exposes the single-channel speech-aware attribution primitive, and M1c now adds `dual_input_fusion` for geometry-aware two-mic SELF/WORLD/BOTH evidence fusion.

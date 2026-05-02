@@ -1,0 +1,63 @@
+{
+  "config": {
+    "self_stim": "vowel_ah_var_nearfield",
+    "self_amplitude": 0.15,
+    "self_duration_ms": 350,
+    "num_seeds": 1,
+    "expected_text": "the quick brown fox jumps over the lazy dog and then runs through the forest to find a quiet place near the river",
+    "world_speech": "data/world_speech_sample.npy",
+    "similarity_threshold": 0.2,
+    "onset_latency_ms": 328.0,
+    "onset_method": "energy",
+    "causal_tolerance_ms": 56.0,
+    "both_gain": 0.5,
+    "both_mode": "gain",
+    "m4_min_buffer_ms": 10,
+    "m4_self_threshold": 0.15,
+    "m4_registration_threshold": 0.15
+  },
+  "aggregate": {
+    "mean_raw_wer": 0.9565217391304348,
+    "mean_gated_wer": 0.9565217391304348,
+    "mean_wer_delta": 0.0,
+    "improved": 0,
+    "neutral": 1,
+    "regressed": 0,
+    "mean_self_world_db": 2.9748525670825883
+  },
+  "results": [
+    {
+      "seed": 0,
+      "raw_wer": 0.9565217391304348,
+      "gated_wer": 0.9565217391304348,
+      "wer_delta": 0.0,
+      "self_score": 0.7006226181983948,
+      "self_frames": 2,
+      "both_frames": 9,
+      "world_frames": 69,
+      "m4": {
+        "enabled": true,
+        "registration_mode": "dry_self",
+        "self_template_samples": 5680,
+        "registration_threshold": 0.15,
+        "self_decision_threshold": 0.15,
+        "min_buffer_ms": 10.0,
+        "mock_embeddings": false
+      },
+      "m4_triggered_frames": 2,
+      "self_shift_samples": 37355,
+      "self_expected_shift_samples": 36875,
+      "snr": {
+        "self_rms": 0.015409787185490131,
+        "self_db": -36.24406717995414,
+        "world_rms": 0.009645963087677956,
+        "world_db": -40.313088086616645,
+        "overlap_rms": 0.015409787185490131,
+        "overlap_db": -36.24406717995414,
+        "world_only_rms": 0.010940924286842346,
+        "world_only_db": -39.21891974703673,
+        "self_to_world_ratio_db": 2.9748525670825883
+      }
+    }
+  ]
+}
