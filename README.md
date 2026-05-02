@@ -133,20 +133,33 @@ M2/M4 results are saved as JSON summaries (under `data/m2_benchmark/.../benchmar
 
 Per-seed results also contain an `m4` block (enabled, registration_mode, self_template_samples, registration_threshold, self_decision_threshold, mock_embeddings) and a counter `m4_triggered_frames` (how many frames M4 classified as self).  Note that M4 is only invoked when enough audio has been accumulated and the system is in a speech+playback window.
 
-### Bayesian-optimized parameters (50 trials)
+### Bayesian-optimized parameters (30 trials)
 
-A short Bayesian optimization run (Optuna TPE, 50 trials) produced the following parameters that minimize a combined loss of WER + self-attribution penalty.  These values improve self-identification while keeping WER neutral.
+A Bayesian optimization run (Optuna TPE, 30 trials) produced the following parameters that minimize a combined loss of WER + self-attribution penalty. These values improve self-identification while keeping WER neutral.
 
 | Parameter                | Optimized |
 |--------------------------|-----------|
-| onset_latency_ms         | 328       |
-| causal_tolerance_ms      | 56        |
-| similarity_threshold     | 0.17      |
+| onset_latency_ms         | 405       |
+| causal_tolerance_ms      | 74        |
+| similarity_threshold     | 0.23      |
 | onset_method             | energy    |
-| vowel_gain               | 0.75      |
-| babble_gain              | 0.89      |
+| vowel_gain               | 0.615     |
+| babble_gain              | 0.928     |
 
-Best loss: **0.263**.  See  for full details.  (The small sanity run produced best parameters inline; full artifact file was not preserved.)
+Best loss: **0.2427**. See `ML-hyperparameter-optimization` branch and `scripts/m2_bayesian_optimizer.py` for full details.
+
+### Calibrated onset latency (New)
+
+A hardware calibration run (2026-05-02) measured the actual offset between known self PCM and captured audio, suggesting:
+
+**onset_latency_ms: 24ms** (was 400ms in initial config)
+
+This correction improves:
+- Self-scores: 0.4-0.63 (vs 0.0 with 400ms)
+- WER delta: -0.014
+- Mean S/W ratio: 16.4 dB
+
+See `scripts/calibrate_self_start.py` and `data/m2_calibration_test/` for details.
 
 ### M4 diagnostics and buffer sizing
 
@@ -160,10 +173,11 @@ M4 classification is only invoked when the accumulated self-audio buffer reaches
 -  <= 300-500
 -  <= 0.3-0.4
 
-**Telemetry fields added**  (see  and )
--  (bool) — M4 classification was invoked on this frame
--  (float|None) — confidence if attempted
--  (int|None) — buffer length at classification time
+**Telemetry fields added** (see `scripts/CALIBRATION_GUIDE.md` and `packages/thalamus/attributor.py`)
+- `m4_attempted` (bool) — M4 classification was invoked on this frame
+- `m4_confidence` (float|None) — confidence if attempted
+- `m4_buffer_length` (int|None) — buffer length at classification time
+- `m4_outcome` (str) — One of: `accepted`, `below_threshold`, `exception`, `buffer_too_short`, `not_attempted`
 
 The 50-trial Bayesian optimization (Optuna TPE) is tagged .  A CSV dump of trials is available (if generated) under .
 
