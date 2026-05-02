@@ -493,6 +493,7 @@ def build_m4_detector_for_self_pcm(
         "self_template_samples": int(len(registration_pcm)),
         "registration_threshold": float(getattr(args, "m4_registration_threshold", 0.4)),
         "self_decision_threshold": float(getattr(args, "m4_self_threshold", 0.4)),
+        "min_buffer_ms": float(getattr(args, "m4_min_buffer_ms", 500)),
         "mock_embeddings": bool(getattr(args, "m4_mock", False)),
     }
 
@@ -722,6 +723,7 @@ def process_trial(
         causal_tolerance_ms=args.causal_tolerance_ms,
         m4_detector=m4_detector,
         m4_self_threshold=args.m4_self_threshold,
+        m4_min_buffer_ms=args.m4_min_buffer_ms,
     )
     vad = SmoothedVAD()
 
@@ -1346,6 +1348,7 @@ def main():
     parser.add_argument("--m4-self-threshold", type=float, default=0.4, help="Decision threshold applied by ThalamicAttributor to M4 similarity")
     parser.add_argument("--m4-registration-threshold", type=float, default=0.4, help="Threshold stored on the SelfVoiceDetector during template registration")
     parser.add_argument("--m4-mock", action="store_true", help="Force mock speaker embeddings for deterministic smoke tests")
+    parser.add_argument("--m4-min-buffer-ms", type=int, default=500, help="Minimum buffer size (ms) for M4 accumulation before classification")
 
     args = parser.parse_args()
 

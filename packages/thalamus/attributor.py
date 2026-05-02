@@ -45,6 +45,7 @@ class ThalamicAttributor:
         m4_detector: Optional[Any] = None,
         m4_self_threshold: float = 0.4,
         m4_window_ms: float = 1000.0,
+        m4_min_buffer_ms: float = 500.0,
     ) -> None:
         self.similarity_threshold = similarity_threshold
         self.energy_threshold_db = energy_threshold_db
@@ -53,6 +54,7 @@ class ThalamicAttributor:
         self.m4_detector = m4_detector
         self.m4_self_threshold = m4_self_threshold
         self.m4_window_samples = int(m4_window_ms * sr / 1000.0)
+        self.m4_min_buffer_samples = int(m4_min_buffer_ms * sr / 1000.0)
         self._m4_buffer: Optional[np.ndarray] = None
 
     def attribute(
@@ -126,7 +128,7 @@ class ThalamicAttributor:
                 if len(self._m4_buffer) > self.m4_window_samples:
                     self._m4_buffer = self._m4_buffer[-self.m4_window_samples:]
                 # Only run M4 when we have enough audio
-                if len(self._m4_buffer) >= int(0.5 * self.sr):
+                if len(self._m4_buffer) >= self.m4_min_buffer_samples:
                     try:
                         is_self_voice, m4_confidence = self.m4_detector.is_self(self._m4_buffer)
                         if is_self_voice and m4_confidence > self.m4_self_threshold:

@@ -148,3 +148,29 @@ See `docs/plan.md` for full details.
 ## License
 
 Private — personal research project
+
+
+
+## M4 forward-model findings (May 2026)
+
+- A forward-model validation harness was built and successfully identified a promoted model configuration (nlms_mu≈0.107, cycles=4, search_ms≈69) that improves predicted vs dry self similarity and reduces onset error in the validator.
+- Benchmark and offline replay showed neutral WER (no regressions), but M4 **self-frame detection was consistently 0** across stimuli and thresholds.
+- Diagnostic investigation revealed:
+  - Per-frame M4 embedding similarity scores can reach ~0.6, but the M4 detector requires longer accumulated audio (>~500 ms) before it can produce a stable self-voice classification.
+  - The 350 ms default stimulus and 30 ms frame-level evaluation window are too short for M4 to trigger, even when thresholds are lowered.
+  - The causal-timing logic and per-frame classification pipeline in ThalamicAttributor only invokes M4 after accumulating sufficient buffer; short frames are never classified as “self” by M4.
+
+Conclusion: M4 is **not ineffective** — it is **structurally unable** to fire on 30 ms frames. Humans do not operate at 30 ms either; the real system should buffer longer windows before invoking M4.
+
+## Next: autoresearch loops
+
+To find minimal viable conditions for M4 self-attribution we added a sweep/autoresearch driver (`src/autoresearch/m4_buffer_search.py`) that sweeps:
+
+- m4_min_buffer_ms [200, 250, 300, 350, 400, 500, 700, 1000]
+- m4_[registration,self]_threshold [0.15, 0.2, 0.25, 0.3, 0.4]
+- self_duration_ms [350, 500, 700, 1000]
+
+The driver runs repeated M2 benchmarks, records self_frame counts, and saves the best configuration to `data/autoresearch_m4/best_config.json`.
+
+This will reveal whether longer buffers + relaxed thresholds allow M4 to register self frames, and if so, the minimal conditions needed to integrate M4 into the real-time loop.
+
