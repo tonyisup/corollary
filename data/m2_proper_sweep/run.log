@@ -1,0 +1,159 @@
+
+=== Trial 0: buf=200ms, th=0.15, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 1: buf=200ms, th=0.15, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 2: buf=200ms, th=0.15, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 3: buf=200ms, th=0.15, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 4: buf=200ms, th=0.2, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 5: buf=200ms, th=0.2, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 6: buf=200ms, th=0.2, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 7: buf=200ms, th=0.2, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 8: buf=200ms, th=0.25, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 9: buf=200ms, th=0.25, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 10: buf=200ms, th=0.25, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 11: buf=200ms, th=0.25, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 12: buf=200ms, th=0.3, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 13: buf=200ms, th=0.3, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 14: buf=200ms, th=0.3, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 15: buf=200ms, th=0.3, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 16: buf=200ms, th=0.4, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 17: buf=200ms, th=0.4, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 18: buf=200ms, th=0.4, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 19: buf=200ms, th=0.4, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 20: buf=250ms, th=0.15, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 21: buf=250ms, th=0.15, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 22: buf=250ms, th=0.15, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 23: buf=250ms, th=0.15, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 24: buf=250ms, th=0.2, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 25: buf=250ms, th=0.2, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 26: buf=250ms, th=0.2, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 27: buf=250ms, th=0.2, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 28: buf=250ms, th=0.25, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 29: buf=250ms, th=0.25, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 30: buf=250ms, th=0.25, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 31: buf=250ms, th=0.25, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 32: buf=250ms, th=0.3, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 33: buf=250ms, th=0.3, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 34: buf=250ms, th=0.3, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 35: buf=250ms, th=0.3, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 36: buf=250ms, th=0.4, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 37: buf=250ms, th=0.4, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 38: buf=250ms, th=0.4, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 39: buf=250ms, th=0.4, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 40: buf=300ms, th=0.15, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 41: buf=300ms, th=0.15, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 42: buf=300ms, th=0.15, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 43: buf=300ms, th=0.15, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 44: buf=300ms, th=0.2, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 45: buf=300ms, th=0.2, dur=500ms ===
+  -> self_frames = 0
+
+=== Trial 46: buf=300ms, th=0.2, dur=700ms ===
+  -> self_frames = 0
+
+=== Trial 47: buf=300ms, th=0.2, dur=1000ms ===
+  -> self_frames = 0
+
+=== Trial 48: buf=300ms, th=0.25, dur=350ms ===
+  -> self_frames = 0
+
+=== Trial 49: buf=300ms, th=0.25, dur=500ms ===
+  -> self_frames = 0
+
+=== Best config ===
+{
+  "buffer_ms": 200,
+  "threshold": 0.15,
+  "duration_ms": 350,
+  "self_frames": 0,
+  "returncode": 0
+}

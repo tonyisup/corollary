@@ -19,9 +19,9 @@ from itertools import product
 from pathlib import Path
 
 # Config search space
-BUFFER_MS   = [200, 250, 300, 350, 400, 500, 700, 1000]
-THRESHOLDS  = [0.15, 0.2, 0.25, 0.3, 0.4]
-DURATIONS   = [350, 500, 700, 1000]
+BUFFER_MS   = [300, 400, 500, 700]
+THRESHOLDS  = [0.15, 0.2, 0.25, 0.3]
+DURATIONS   = [700, 1000]
 
 BASE_CMD = [
     sys.executable, "scripts/m2_benchmark.py",

@@ -1,0 +1,7 @@
+{
+  "buffer_ms": 200,
+  "threshold": 0.15,
+  "duration_ms": 350,
+  "self_frames": 0,
+  "returncode": 0
+}

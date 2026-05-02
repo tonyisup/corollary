@@ -1,0 +1,33 @@
+{
+  "seed": 1,
+  "raw_wer": 1.0,
+  "gated_wer": 1.0,
+  "wer_delta": 0.0,
+  "self_score": 0.6754144430160522,
+  "self_frames": 1,
+  "both_frames": 19,
+  "world_frames": 111,
+  "m4": {
+    "enabled": true,
+    "registration_mode": "room_colored_prediction",
+    "self_template_samples": 15439,
+    "registration_threshold": 0.15,
+    "self_decision_threshold": 0.15,
+    "min_buffer_ms": 200.0,
+    "mock_embeddings": false
+  },
+  "m4_triggered_frames": 1,
+  "self_shift_samples": 35547,
+  "self_expected_shift_samples": 35547,
+  "snr": {
+    "self_rms": 0.025225665420293808,
+    "self_db": -31.963147376310516,
+    "world_rms": 0.015794025734066963,
+    "world_db": -36.03014317405418,
+    "overlap_rms": 0.025225665420293808,
+    "overlap_db": -31.963147376310516,
+    "world_only_rms": 0.015007722191512585,
+    "world_only_db": -36.47370436262882,
+    "self_to_world_ratio_db": 4.510556986318307
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "config": {
+    "self_stim": "vowel_ah_var_nearfield",
+    "self_amplitude": 0.2,
+    "self_duration_ms": 700,
+    "num_seeds": 5,
+    "expected_text": "the quick brown fox jumps over the lazy dog and then runs through the forest to find a quiet place near the river",
+    "world_speech": "data/world_speech_sample.npy",
+    "similarity_threshold": 0.2,
+    "onset_latency_ms": 400.0,
+    "onset_method": "energy",
+    "causal_tolerance_ms": 75.0,
+    "both_gain": 0.5,
+    "both_mode": "gain",
+    "m4_min_buffer_ms": 200,
+    "m4_self_threshold": 0.25,
+    "m4_registration_threshold": 0.25
+  },
+  "aggregate": {
+    "mean_raw_wer": 0.9565217391304348,
+    "mean_gated_wer": 0.9565217391304348,
+    "mean_wer_delta": 0.0,
+    "improved": 0,
+    "neutral": 5,
+    "regressed": 0,
+    "mean_self_world_db": 4.486990988713439
+  },
+  "results": [
+    {
+      "seed": 0,
+      "raw_wer": 0.9565217391304348,
+      "gated_wer": 0.9565217391304348,
+      "wer_delta": 0.0,
+      "self_score": 0.4790099859237671,
+      "self_frames": 0,
+      "both_frames": 18,
+      "world_frames": 47,
+      "m4": {
+        "enabled": true,
+        "registration_mode": "room_colored_prediction",
+        "self_template_samples": 16079,
+        "registration_threshold": 0.25,
+        "self_decision_threshold": 0.25,
+        "min_buffer_ms": 200.0,
+        "mock_embeddings": false
+      },
+      "m4_triggered_frames": 0,
+      "self_shift_samples": 35227,
+      "self_expected_shift_samples": 35227,
+      "snr": {
+        "self_rms": 0.023599369451403618,
+        "self_db": -32.54199201469477,
+        "world_rms": 0.014751838520169258,
+        "world_db": -36.62307700469078,
+        "overlap_rms": 0.023599369451403618,
+        "overlap_db": -32.54199201469477,
+        "world_only_rms": 0.013853352516889572,
+        "world_only_db": -37.168902288817236,
+        "self_to_world_ratio_db": 4.626910274122462
+      }
+    },
+    {
+      "seed": 1,
+      "raw_wer": 0.9565217391304348,
+      "gated_wer": 0.9565217391304348,
+      "wer_delta": 0.0,
+      "self_score": 0.6171133518218994,
+      "self_frames": 0,
+      "both_frames": 17,
+      "world_frames": 50,
+      "m4": {
+        "enabled": true,
+        "registration_mode": "room_colored_prediction",
+        "self_template_samples": 15439,
+        "registration_threshold": 0.25,
+        "self_decision_threshold": 0.25,
+        "min_buffer_ms": 200.0,
+        "mock_embeddings": false
+      },
+      "m4_triggered_frames": 0,
+      "self_shift_samples": 35547,
+      "self_expected_shift_samples": 35547,
+      "snr": {
+        "self_rms": 0.02382715977728367,
+        "self_db": -32.458554458624384,
+        "world_rms": 0.014820779673755169,
+        "world_db": -36.582578978277056,
+        "overlap_rms": 0.02382715977728367,
+        "overlap_db": -32.458554458624384,
+        "world_only_rms": 0.014222838915884495,
+        "world_only_db": -36.94027417276154,
+        "self_to_world_ratio_db": 4.481719714137158
+      }
+    },
+    {
+      "seed": 2,
+      "raw_wer": 0.9565217391304348,
+      "gated_wer": 0.9565217391304348,
+      "wer_delta": 0.0,
+      "self_score": 0.5751508474349976,
+      "self_frames": 0,
+      "both_frames": 19,
+      "world_frames": 96,
+      "m4": {
+        "enabled": true,
+        "registration_mode": "room_colored_prediction",
+        "self_template_samples": 16047,
+        "registration_threshold": 0.25,
+        "self_decision_threshold": 0.25,
+        "min_buffer_ms": 200.0,
+        "mock_embeddings": false
+      },
+      "m4_triggered_frames": 0,
+      "self_shift_samples": 35243,
+      "self_expected_shift_samples": 35243,
+      "snr": {
+        "self_rms": 0.01847918890416622,
+        "self_db": -34.666341898438844,
+        "world_rms": 0.011581925675272942,
+        "world_db": -38.72438452786019,
+        "overlap_rms": 0.01847918890416622,
+        "overlap_db": -34.666341898438844,
+        "world_only_rms": 0.010874759405851364,
+        "world_only_db": -39.27160685273911,
+        "self_to_world_ratio_db": 4.6052649543002655
+      }
+    },
+    {
+      "seed": 3,
+      "raw_wer": 0.9565217391304348,
+      "gated_wer": 0.9565217391304348,
+      "wer_delta": 0.0,
+      "self_score": 0.3444434702396393,
+      "self_frames": 0,
+      "both_frames": 20,
+      "world_frames": 52,
+      "m4": {
+        "enabled": true,
+        "registration_mode": "room_colored_prediction",
+        "self_template_samples": 16015,
+        "registration_threshold": 0.25,
+        "self_decision_threshold": 0.25,
+        "min_buffer_ms": 200.0,
+        "mock_embeddings": false
+      },
+      "m4_triggered_frames": 0,
+      "self_shift_samples": 35259,
+      "self_expected_shift_samples": 35259,
+      "snr": {
+        "self_rms": 0.02243022620677948,
+        "self_db": -32.983326931496485,
+        "world_rms": 0.013884198851883411,
+        "world_db": -37.14958349831668,
+        "overlap_rms": 0.02243022620677948,
+        "overlap_db": -32.983326931496485,
+        "world_only_rms": 0.012911851517856121,
+        "world_only_db": -37.78022953680584,
+        "self_to_world_ratio_db": 4.796902605309353
+      }
+    },
+    {
+      "seed": 4,
+      "raw_wer": 0.9565217391304348,
+      "gated_wer": 0.9565217391304348,
+      "wer_delta": 0.0,
+      "self_score": 0.37282413244247437,
+      "self_frames": 1,
+      "both_frames": 17,
+      "world_frames": 47,
+      "m4": {
+        "enabled": true,
+        "registration_mode": "room_colored_prediction",
+        "self_template_samples": 15871,
+        "registration_threshold": 0.25,
+        "self_decision_threshold": 0.25,
+        "min_buffer_ms": 200.0,
+        "mock_embeddings": false
+      },
+      "m4_triggered_frames": 1,
+      "self_shift_samples": 35810,
+      "self_expected_shift_samples": 35330,
+      "snr": {
+        "self_rms": 0.02177712693810463,
+        "self_db": -33.239988347648975,
+        "world_rms": 0.014154397882521152,
+        "world_db": -36.98217200935498,
+        "overlap_rms": 0.02177712693810463,
+        "overlap_db": -33.239988347648975,
+        "world_only_rms": 0.013860940933227539,
+        "world_only_db": -37.16414574334693,
+        "self_to_world_ratio_db": 3.9241573956979563
+      }
+    }
+  ]
+}
