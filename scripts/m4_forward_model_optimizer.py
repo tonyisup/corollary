@@ -12,9 +12,9 @@ REPO_ROOT = SCRIPT_DIR.parent
 
 def build_arg_string(trial, args):
     params = {
-        "nlms_mu": trial.suggest_float("nlms_mu", 0.05, 0.25),
-        "train_cycles": trial.suggest_int("train_cycles", 2, 8),
-        "search_ms": trial.suggest_float("search_ms", 50.0, 150.0),
+        "nlms_mu": trial.suggest_float("nlms_mu", args.nlms_mu_range[0], args.nlms_mu_range[1]),
+        "train_cycles": trial.suggest_int("train_cycles", args.train_cycles_range[0], args.train_cycles_range[1]),
+        "search_ms": trial.suggest_float("search_ms", args.search_ms_range[0], args.search_ms_range[1]),
     }
     cmd = [
         sys.executable, str(SCRIPT_DIR / "m4_forward_model_validation.py"),
@@ -103,6 +103,9 @@ def main():
     parser.add_argument("--noise-device", type=int, default=4)
     parser.add_argument("--cerebellum-model", default=None)
     parser.add_argument("--n-trials", type=int, default=30)
+    parser.add_argument("--nlms-mu-range", nargs=2, type=float, default=[0.05, 0.25])
+    parser.add_argument("--train-cycles-range", nargs=2, type=int, default=[2, 8])
+    parser.add_argument("--search-ms-range", nargs=2, type=float, default=[50.0, 150.0])
     parser.add_argument("--study-name", default="m4_forward_model_study")
     parser.add_argument("--storage", default="sqlite:///data/m4_forward_model_optimizer_study.db")
     args = parser.parse_args()
