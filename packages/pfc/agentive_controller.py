@@ -80,10 +80,14 @@ class AgentiveController:
             
         # 1. Classify the frame for M3 policy.
         is_world_speech = res.is_speech and res.verdict == SourceVerdict.WORLD
+        # BOTH frames during self-playback (is_in_motor_window) are self-activity,
+        # not external speech. The motor window means Corollary is actively emitting,
+        # so any BOTH attribution is self-speech that couldn't be fully separated.
         is_overlap_speech = (
             self.treat_both_speech_as_agentive
             and res.is_speech
             and res.verdict == SourceVerdict.BOTH
+            and not res.is_in_motor_window
         )
         is_agentive_external_speech = is_world_speech or is_overlap_speech
         is_self_activity = res.verdict == SourceVerdict.SELF or (
