@@ -166,14 +166,16 @@ async def run_turn(
     metrics.world_detected = any(f.attribution.verdict.name == "WORLD" for f in frames)
     metrics.interrupted = bridge.accepted_initial_output and any(d.should_interrupt for d in bridge.decisions)
     
-    # Calculate response latency (simplified: time from world detection to response)
+    # Calculate response latency (use M2 frame timing)
     world_frames = [f for f in frames if f.attribution.verdict.name == "WORLD"]
     if world_frames and bridge.accepted_initial_output:
         first_world_s = world_frames[0].time_s
-        # Response starts after cooldown
+        # Response starts after cooldown from first world detection
         metrics.listen_start_s = first_world_s
         metrics.response_start_s = first_world_s + (args.cooldown_ms / 1000.0)
-        metrics.response_latency_ms = (metrics.response_start_s - prev_turn_end_s) * 1000.0
+        # Latency = time from world detected to agent's next turn start
+        # (simplified: use frame timing)
+        metrics.response_latency_ms = (metrics.response_start_s - metrics.listen_start_s) * 1000.0
     
     print(f"M3 accepted_initial_output={bridge.accepted_initial_output}")
     print(f"M3 states: {' -> '.join(d.state.name for d in bridge.decisions)}")
