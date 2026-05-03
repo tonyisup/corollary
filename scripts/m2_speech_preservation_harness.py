@@ -38,7 +38,7 @@ from thalamus.attributor import ThalamicAttributor, SourceVerdict
 from stg.asr import transcribe
 from m2_policy.policy import select_family_policy
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from m1_tone_attribution import generate_stimulus_with_metadata
 
 
