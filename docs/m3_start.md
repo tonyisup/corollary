@@ -3,6 +3,11 @@
 > Status: first M2→M3 integration slice  
 > Date: 2026-04-29
 
+## Milestone framing (2026-05-03)
+
+**M3 is the primary milestone**: agentive listening, turn-taking, and the PFC controller bridge.  
+**M4 is optional**: the speaker-embedding detector can be enabled via `--m4-enable` in M3 demos, but defaults to off. M4 is a tool M3 *may* use, not the driver of the milestone.
+
 ## Purpose
 
 M3 begins once M2 can provide a conservative enough auditory gate. M3 does not
