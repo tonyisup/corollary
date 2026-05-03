@@ -319,7 +319,10 @@ def run_m2_trial(
         from scripts.m2_benchmark import build_m4_detector_for_self_pcm
         args_ns = argparse.Namespace(
             m4_registration_threshold=getattr(locals(), 'm4_registration_threshold', 0.05),
-            m4_enable=True,  # Add this so build_m4_detector_for_self_pcm knows M4 is enabled
+            m4_enable=True,
+            m4_mock=getattr(locals(), 'm4_mock', False),
+            m4_min_buffer_ms=getattr(locals(), 'm4_min_buffer_ms', 60.0),
+            m4_self_threshold=getattr(locals(), 'm4_self_threshold', 0.10),
         )
         m4_detector, m4_info = build_m4_detector_for_self_pcm(self_pcm, args_ns)
     
@@ -347,6 +350,8 @@ def run_m2_trial(
     noise_sr = int(sd.query_devices(noise_device)["default_samplerate"] or SR)
 
     def get_padded_pcm(pcm: np.ndarray, start_s: float, total_s: float, target_sr: float) -> np.ndarray:
+        # Clamp start_s to non-negative to avoid negative padding
+        start_s = max(0.0, start_s)
         padded = np.zeros(int(total_s * target_sr), dtype=np.float32)
         start_idx = int(start_s * target_sr)
         if abs(target_sr - SR) > 1:

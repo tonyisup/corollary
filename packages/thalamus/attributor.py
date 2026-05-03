@@ -43,7 +43,7 @@ class ThalamicAttributor:
         causal_tolerance_ms: float = 25.0,
         sr: int = 16000,
         m4_detector: Optional[Any] = None,
-        m4_self_threshold: float = 0.4,
+        m4_self_threshold: float = 0.1,
         m4_window_ms: float = 1000.0,
         m4_min_buffer_ms: float = 500.0,
     ) -> None:
@@ -68,7 +68,7 @@ class ThalamicAttributor:
         frame_audio: Optional[np.ndarray] = None,
     ) -> AttributionResult:
         """Assign source attribution to an acoustic event.
-
+        
         Parameters
         ----------
         match_score : float
@@ -83,12 +83,20 @@ class ThalamicAttributor:
             True if Corollary was actively emitting sound during the window.
         is_speech : bool
             True if VAD detects speech in this window (M2).
-
+        
         Returns
         -------
         AttributionResult
             The source verdict and supporting metrics.
         """
+        # Initialize M4 metadata at the start so all return paths can use it
+        m4_metadata = {
+            'm4_attempted': False,
+            'm4_outcome': 'not_attempted',
+            'm4_confidence': None,
+            'm4_buffer_length': 0,
+        }
+        
         # 1. Check for silence
         if rms_db < self.energy_threshold_db:
             return AttributionResult(
@@ -98,7 +106,8 @@ class ThalamicAttributor:
                 is_in_motor_window=is_playing,
                 causal_score=0.0,
                 energy_db=rms_db,
-                is_speech=is_speech
+                is_speech=is_speech,
+                metadata=m4_metadata,
             )
 
         # 2. Compute causal score (timing alignment)
@@ -107,25 +116,17 @@ class ThalamicAttributor:
         if expected_onset_samples is not None:
             onset_error_ms = abs(observed_onset_samples - expected_onset_samples) * 1000.0 / self.sr
             causal_score = max(0.0, 1.0 - (onset_error_ms / self.causal_tolerance_ms))
-
-        # 3. Decision Logic
         
         # Candidate for SELF
         is_self_like = match_score >= self.similarity_threshold
         is_timely = causal_score > 0.0
         
-        if is_playing and is_self_like and is_timely and is_speech:
-            # M4 override: use speaker embedding to distinguish self from world
-            # speech. Requires accumulating audio into a buffer since ECAPA-TDNN
-            # needs ~500ms+ for reliable classification.
-            m4_metadata = {
-                'm4_attempted': False,
-                'm4_outcome': 'not_attempted',
-                'm4_confidence': None,
-                'm4_buffer_length': 0,
-            }
-            if self.m4_detector is not None and frame_audio is not None:
-                # Accumulate frame into M4 buffer
+        # M4 attempt: attempt when playing + speech (the "maybe self, maybe world" zone)
+        # M4 attempt: attempt when playing + speech (the "maybe self, maybe world" zone)
+        # M4 helps distinguish self from world speech when timing/similarity is uncertain
+        if is_playing and is_speech and self.m4_detector is not None:
+            # Accumulate frame into M4 buffer
+            if frame_audio is not None:
                 if self._m4_buffer is None:
                     self._m4_buffer = frame_audio.copy()
                 else:
@@ -142,24 +143,45 @@ class ThalamicAttributor:
                         m4_metadata['m4_confidence'] = m4_confidence
                         if is_self_voice and m4_confidence > self.m4_self_threshold:
                             m4_metadata['m4_outcome'] = 'accepted'
-                            confidence = (match_score + causal_score + m4_confidence) / 3.0
-                            return AttributionResult(
-                                verdict=SourceVerdict.SELF,
-                                confidence=confidence,
-                                self_match_score=match_score,
-                                is_in_motor_window=is_playing,
-                                causal_score=causal_score,
-                                energy_db=rms_db,
-                                is_speech=is_speech,
-                                onset_error_ms=onset_error_ms,
-                                metadata=m4_metadata,
-                            )
                         else:
                             m4_metadata['m4_outcome'] = 'below_threshold'
                     except Exception:
                         m4_metadata['m4_outcome'] = 'exception'
                 else:
                     m4_metadata['m4_outcome'] = 'buffer_too_short'
+        
+        # 1. Check M4 first (if available and attempted)
+        # M4 helps distinguish self from world speech regardless of timing
+        if is_playing and is_speech and m4_metadata.get('m4_outcome') == 'accepted':
+            confidence = (match_score + causal_score + m4_metadata.get('m4_confidence', 0.0)) / 3.0
+            return AttributionResult(
+                verdict=SourceVerdict.SELF,
+                confidence=confidence,
+                self_match_score=match_score,
+                is_in_motor_window=is_playing,
+                causal_score=causal_score,
+                energy_db=rms_db,
+                is_speech=is_speech,
+                onset_error_ms=onset_error_ms,
+                metadata=m4_metadata,
+            )
+        
+        # 2. M2 logic (fallback when M4 not available or below threshold)
+        if is_playing and is_self_like and is_timely and is_speech:
+            # Check if M4 already confirmed this as SELF
+            if m4_metadata.get('m4_outcome') == 'accepted':
+                confidence = (match_score + causal_score + m4_metadata.get('m4_confidence', 0.0)) / 3.0
+                return AttributionResult(
+                    verdict=SourceVerdict.SELF,
+                    confidence=confidence,
+                    self_match_score=match_score,
+                    is_in_motor_window=is_playing,
+                    causal_score=causal_score,
+                    energy_db=rms_db,
+                    is_speech=is_speech,
+                    onset_error_ms=onset_error_ms,
+                    metadata=m4_metadata,
+                )
             # M2 conservatism (fallback): speech during playback can contain
             # world speech even when the self template matches.
             confidence = (match_score + causal_score) / 2.0
@@ -207,7 +229,8 @@ class ThalamicAttributor:
                 causal_score=causal_score,
                 energy_db=rms_db,
                 is_speech=is_speech,
-                onset_error_ms=onset_error_ms
+                onset_error_ms=onset_error_ms,
+                metadata=m4_metadata,
             )
 
         if not is_playing:
@@ -222,7 +245,8 @@ class ThalamicAttributor:
                 causal_score=causal_score,
                 energy_db=rms_db,
                 is_speech=is_speech,
-                onset_error_ms=onset_error_ms
+                onset_error_ms=onset_error_ms,
+                metadata=m4_metadata,
             )
 
         # Fallback
@@ -233,5 +257,6 @@ class ThalamicAttributor:
             is_in_motor_window=is_playing,
             causal_score=causal_score,
             energy_db=rms_db,
-            is_speech=is_speech
+            is_speech=is_speech,
+            metadata=m4_metadata,
         )
