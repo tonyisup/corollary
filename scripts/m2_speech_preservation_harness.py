@@ -314,7 +314,6 @@ def run_m2_trial(
             raise ValueError("self_pcm_override must be mono float PCM")
     
     # Build M4 detector if enabled
-    print(f"DEBUG: m4_enable parameter = {m4_enable}")
     m4_detector, m4_info = None, {}
     if m4_enable:  # Directly use parameter, not locals()
         from scripts.m2_benchmark import build_m4_detector_for_self_pcm
