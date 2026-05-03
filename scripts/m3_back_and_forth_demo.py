@@ -62,7 +62,7 @@ class TurnMetrics:
     """Metrics for a single turn."""
     turn_num: int
     agent_text: str
-    agent_pcm_samples: int
+    agent_pcm_samples: int = 0
     world_detected: bool = False
     listen_start_s: float | None = None
     response_start_s: float | None = None
