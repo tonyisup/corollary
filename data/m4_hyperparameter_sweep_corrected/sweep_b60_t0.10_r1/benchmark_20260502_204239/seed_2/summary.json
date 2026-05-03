@@ -1,0 +1,33 @@
+{
+  "seed": 2,
+  "raw_wer": 0.9565217391304348,
+  "gated_wer": 0.9565217391304348,
+  "wer_delta": 0.0,
+  "self_score": 0.40658512711524963,
+  "self_frames": 12,
+  "both_frames": 11,
+  "world_frames": 57,
+  "m4": {
+    "enabled": true,
+    "registration_mode": "dry_self",
+    "self_template_samples": 11248,
+    "registration_threshold": 0.05,
+    "self_decision_threshold": 0.1,
+    "min_buffer_ms": 60.0,
+    "mock_embeddings": false
+  },
+  "m4_triggered_frames": 22,
+  "self_shift_samples": 30667,
+  "self_expected_shift_samples": 29227,
+  "snr": {
+    "self_rms": 0.02042010799050331,
+    "self_db": -33.79883931005986,
+    "world_rms": 0.009730460122227669,
+    "world_db": -40.23733245707946,
+    "overlap_rms": 0.02042010799050331,
+    "overlap_db": -33.79883931005986,
+    "world_only_rms": 0.003475254401564598,
+    "world_only_db": -49.180267958734156,
+    "self_to_world_ratio_db": 15.381428648674284
+  }
+}
