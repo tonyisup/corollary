@@ -294,7 +294,8 @@ def run_m2_trial(
     # M4 self-voice detection
     m4_enable: bool = False,
     m4_min_buffer_ms: float = 60.0,
-    m4_self_threshold: float = 0.10,
+    m4_self_threshold: float = 0.50,
+    cerebellum_model: str | None = None,
 ) -> dict[str, Any]:
     if both_policy == "family":
         decision = select_family_policy(self_stim, family_gain_overrides=family_gain_overrides)
@@ -322,7 +323,8 @@ def run_m2_trial(
             m4_enable=True,
             m4_mock=getattr(locals(), 'm4_mock', False),
             m4_min_buffer_ms=getattr(locals(), 'm4_min_buffer_ms', 60.0),
-            m4_self_threshold=getattr(locals(), 'm4_self_threshold', 0.10),
+            m4_self_threshold=getattr(locals(), 'm4_self_threshold', 0.50),
+            cerebellum_model=cerebellum_model,
         )
         m4_detector, m4_info = build_m4_detector_for_self_pcm(self_pcm, args_ns)
     
@@ -407,9 +409,9 @@ def run_m2_trial(
         sr=SR,
         similarity_threshold=similarity_threshold,
         causal_tolerance_ms=causal_tolerance_ms,
-        m4_detector=m4_detector,  # Use the detector from lines 316-323
-        m4_self_threshold=locals().get('m4_self_threshold',0.05),
-        m4_min_buffer_ms=locals().get('m4_min_buffer_ms',60.0),
+        m4_detector=m4_detector,  # Use the detector from lines 316-327 if m4_enable=True
+        m4_self_threshold=m4_self_threshold,
+        m4_min_buffer_ms=m4_min_buffer_ms,
     )
     vad = SmoothedVAD()
 

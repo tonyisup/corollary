@@ -83,7 +83,8 @@ async def main_async() -> None:
     # M4 self-voice detection
     parser.add_argument("--m4-enable", action="store_true", help="Enable M4 speaker embedding detector")
     parser.add_argument("--m4-min-buffer-ms", type=float, default=60.0, help="M4 minimum buffer ms")
-    parser.add_argument("--m4-self-threshold", type=float, default=0.10, help="M4 self-decision threshold")
+    parser.add_argument("--m4-self-threshold", type=float, default=0.50, help="M4 self-decision threshold")
+    parser.add_argument("--cerebellum-model", default=None, help="Path to trained BabblingCerebellum JSON for room-colored self registration")
 
     args = apply_broca_room_local_operating_defaults(parser.parse_args())
 
@@ -118,6 +119,7 @@ async def main_async() -> None:
         m4_enable=args.m4_enable,
         m4_min_buffer_ms=args.m4_min_buffer_ms,
         m4_self_threshold=args.m4_self_threshold,
+        cerebellum_model=args.cerebellum_model,
     )
     if args.save_dir:
         save_trial_artifacts(args.save_dir, result)

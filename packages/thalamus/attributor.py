@@ -150,27 +150,14 @@ class ThalamicAttributor:
                 else:
                     m4_metadata['m4_outcome'] = 'buffer_too_short'
         
-        # 1. Check M4 first (if available and attempted)
-        # M4 helps distinguish self from world speech regardless of timing
+        # 1. M4-assisted SELF attribution (requires both M2 and M4 evidence)
+        # M4 can upgrade BOTH to SELF when speaker embedding is confident,
+        # but cannot assign SELF on its own without M2 support.
         if is_playing and is_speech and m4_metadata.get('m4_outcome') == 'accepted':
-            confidence = (match_score + causal_score + m4_metadata.get('m4_confidence', 0.0)) / 3.0
-            return AttributionResult(
-                verdict=SourceVerdict.SELF,
-                confidence=confidence,
-                self_match_score=match_score,
-                is_in_motor_window=is_playing,
-                causal_score=causal_score,
-                energy_db=rms_db,
-                is_speech=is_speech,
-                onset_error_ms=onset_error_ms,
-                metadata=m4_metadata,
-            )
-        
-        # 2. M2 logic (fallback when M4 not available or below threshold)
-        if is_playing and is_self_like and is_timely and is_speech:
-            # Check if M4 already confirmed this as SELF
-            if m4_metadata.get('m4_outcome') == 'accepted':
-                confidence = (match_score + causal_score + m4_metadata.get('m4_confidence', 0.0)) / 3.0
+            m4_conf = m4_metadata.get('m4_confidence', 0.0)
+            if is_self_like and m4_conf >= self.m4_self_threshold:
+                # M2 similarity + M4 speaker evidence both support SELF
+                confidence = (match_score + causal_score + m4_conf) / 3.0
                 return AttributionResult(
                     verdict=SourceVerdict.SELF,
                     confidence=confidence,
@@ -182,8 +169,14 @@ class ThalamicAttributor:
                     onset_error_ms=onset_error_ms,
                     metadata=m4_metadata,
                 )
-            # M2 conservatism (fallback): speech during playback can contain
-            # world speech even when the self template matches.
+            # M4 accepted but M2 weak → still BOTH (conservative)
+            # Fall through to M2 logic below
+
+        # 2. M2 logic (fallback when M4 not available or M4 didn't confirm)
+        if is_playing and is_self_like and is_timely and is_speech:
+            # M2 conservatism: speech during playback can contain world speech
+            # even when the self template matches. Without strong M4 evidence,
+            # classify as BOTH to avoid false SELF attribution.
             confidence = (match_score + causal_score) / 2.0
             return AttributionResult(
                 verdict=SourceVerdict.BOTH,
