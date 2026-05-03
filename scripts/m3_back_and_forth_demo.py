@@ -72,6 +72,7 @@ class TurnMetrics:
     m2_self_frames: int = 0
     m2_both_frames: int = 0
     m2_world_frames: int = 0
+    asr_transcript: str = ""  # ASR result from this turn
 
 
 @dataclass
@@ -150,6 +151,9 @@ async def run_turn(
     
     print(f"M2 frames self/both/world: {metrics.m2_self_frames}/{metrics.m2_both_frames}/{metrics.m2_world_frames}")
     print(f"M2 self_score={result['self_score']:.3f}")
+    
+    # Capture ASR transcript for contingent responses
+    metrics.asr_transcript = result.get('gated_text', result.get('raw_text', ''))
     
     # Feed M2 frames into M3 controller
     from pfc.m2_artifact_replay import frames_from_frame_records
@@ -246,14 +250,20 @@ async def main_async() -> None:
     conversation_metrics = ConversationMetrics()
     start_time = time.time()
     prev_turn_end_s = 0.0
+    prev_asr = ''  # Track previous turn's ASR transcript
     
     for turn_num in range(1, args.turns + 1):
         # For turn 1, use provided agent_text. For subsequent turns, generate contingent response
         if turn_num == 1:
             agent_text = args.agent_text
         else:
-            # Contingent response (keep it short to avoid timing issues)
-            agent_text = f"Turn {turn_num}: Heard you!"
+            # Contingent response based on ASR transcript
+            if prev_asr:
+                # Use ASR transcript in response (truncate to avoid timing issues)
+                truncated = prev_asr[:50] if len(prev_asr) > 50 else prev_asr
+                agent_text = f"You said: {truncated}"
+            else:
+                agent_text = f"Turn {turn_num}: Heard you!"
         
         metrics = await run_turn(
             turn_num=turn_num,
@@ -265,6 +275,7 @@ async def main_async() -> None:
         )
         conversation_metrics.turns.append(metrics)
         prev_turn_end_s = time.time()  # Simplified: use wall-clock time
+        prev_asr = metrics.asr_transcript  # Update for next turn's contingent response
         
         # Brief pause between turns
         if turn_num < args.turns:
