@@ -218,24 +218,25 @@ Private — personal research project
 
 M4 self-voice detection is now functional with these key findings:
 
-**Optimal Configuration:**
+**Optimal Configuration (Sweep Winner):**
 - `--self-duration-ms 700` (350ms too short for M4 buffer)
 - `--causal-tolerance-ms 100` (default 25ms too low; typical onset error ~90ms)
-- `--m4-min-buffer-ms 90` (good balance of speed vs accuracy)
-- `--m4-self-threshold 0.10` (registration threshold fixed to 0.05 cap)
+- `--m4-min-buffer-ms 60` (**winner**: best Self% performance)
+- `--m4-self-threshold 0.05` (**winner**: optimal decision threshold)
+- `--m4-registration-threshold 0.05` (capped, real decision in ThalamicAttributor)
 - `--onset-latency-ms 24` (single-trial calibration; 67ms mean from 3 trials)
 
-**Performance:**
-- M4 triggered frames: 21 per seed (buffer=90ms)
-- Self% (accepted as SELF): **76.2%** (with registration threshold fix)
-- WER impact: **0.000** (no speech recognition regression)
+**Performance (Buffer=60ms, Threshold=0.05):**
+- M4 triggered frames: **21.3 per seed**
+- Self% (accepted as SELF): **79.1%** (with registration threshold fix)
+- WER impact: **-0.002** (negligible, no speech recognition regression)
 
 ### Bugs Found & Fixed
 
 1. **Registration threshold bug** (commit `b2dcdf0`):
    - Old: `m4_registration_threshold=0.15` filtered out valid frames
    - New: Capped at 0.05 (real decision in ThalamicAttributor)
-   - Result: Self% improved from 0% to 76.2%
+   - Result: Self% improved from 0% to 79.1%
 
 2. **Causal tolerance too low**:
    - Old: 25ms (onset error ~90ms → causal_score=0)
@@ -245,14 +246,20 @@ M4 self-voice detection is now functional with these key findings:
    - Old: 350ms (M4 buffer needs >=500ms)
    - New: 700ms (reliable M4 triggering)
 
-### Hyperparameter Sweep Results
+### Hyperparameter Sweep Results (Final)
 
-See `data/m4_hyperparameter_sweep_corrected/` for full sweep (48 configs).
+Full sweep completed: 4 buffers × 4 thresholds × 1-3 seeds = 48 benchmark runs.
 
-**Best configs (Self%):**
-- Buffer 90ms, Threshold 0.10: ~76% Self%
-- Buffer 60ms, Threshold 0.05: ~48% Self%
-- Buffer 200ms, Threshold 0.20: ~14% Self% (too conservative)
+See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
+
+**Top 3 Configs (Self%):**
+| Buffer | Threshold | Avg Trig | Avg Self | Self% | WERΔ |
+|--------|-----------|----------|----------|-------|------|
+| 60ms | 0.05 | 21.3 | 16.9 | **79.1%** | -0.002 |
+| 90ms | 0.05 | 20.3 | 14.9 | 73.1% | -0.006 |
+| 200ms | 0.05 | 17.0 | 12.0 | 70.6% | 0.000 |
+
+**Key Finding:** Smaller buffer (60ms) outperforms larger buffers. Threshold 0.05 is optimal; 0.20 essentially kills M4 (0% Self).
 
 ### Next Steps
 - Integrate M4 into real-time loop (currently benchmark-only)
