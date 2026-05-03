@@ -251,11 +251,16 @@ async def main_async() -> None:
     start_time = time.time()
     prev_turn_end_s = 0.0
     prev_asr = ''  # Track previous turn's ASR transcript
+    prev_interrupted = False  # Track if previous turn was interrupted
+    prev_agent_text = ''  # Track previous turn's agent text
     
     for turn_num in range(1, args.turns + 1):
         # For turn 1, use provided agent_text. For subsequent turns, generate contingent response
         if turn_num == 1:
             agent_text = args.agent_text
+        elif prev_interrupted:
+            # Recovery: repeat the interrupted message
+            agent_text = f"As I said: {prev_agent_text[:40]}"
         else:
             # Contingent response based on ASR transcript
             if prev_asr:
@@ -276,6 +281,12 @@ async def main_async() -> None:
         conversation_metrics.turns.append(metrics)
         prev_turn_end_s = time.time()  # Simplified: use wall-clock time
         prev_asr = metrics.asr_transcript  # Update for next turn's contingent response
+        
+        # Update interruption tracking
+        if prev_interrupted and not metrics.interrupted:
+            metrics.recovered = True  # Successfully recovered
+        prev_interrupted = metrics.interrupted
+        prev_agent_text = metrics.agent_text
         
         # Brief pause between turns
         if turn_num < args.turns:
