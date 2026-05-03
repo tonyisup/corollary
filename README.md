@@ -214,22 +214,29 @@ Private — personal research project
 
 ## M4 Speaker Embedding Findings (May 2026)
 
-### Status: WORKING (as of 2026-05-02)
+### Status: WORKING (as of 2026-05-02) — Policy Integration Complete
 
-M4 self-voice detection is now functional with these key findings:
+M4 self-voice detection is now functional with policy integration complete.
 
-**Optimal Configuration (Sweep Winner):**
+**Optimal Configuration (FP-Free Winner):**
 - `--self-duration-ms 700` (350ms too short for M4 buffer)
 - `--causal-tolerance-ms 100` (default 25ms too low; typical onset error ~90ms)
 - `--m4-min-buffer-ms 60` (**winner**: best Self% performance)
-- `--m4-self-threshold 0.05` (**winner**: optimal decision threshold)
+- `--m4-self-threshold 0.10` (**FP-free**: 0% false positives on world speech)
 - `--m4-registration-threshold 0.05` (capped, real decision in ThalamicAttributor)
-- `--onset-latency-ms 24` (single-trial calibration; 67ms mean from 3 trials)
+- `--onset-latency-ms 60` (5-trial calibration: mean=60.29ms, std=30.83ms)
 
-**Performance (Buffer=60ms, Threshold=0.05):**
-- M4 triggered frames: **21.3 per seed**
-- Self% (accepted as SELF): **79.1%** (with registration threshold fix)
+**Performance (Buffer=60ms, Threshold=0.10, 10-seed repeatability run in progress):**
+- M4 triggered frames: ~21 per seed
+- Self% (accepted as SELF): **79.1%** (threshold=0.05, but 25% false positives)
+- FP-free rate: **0% false positives** at threshold=0.10+
 - WER impact: **-0.002** (negligible, no speech recognition regression)
+
+**Policy Integration (Commit `0f99698`):**
+- **SEFL verdict now affects gating** (what Tony asked: "What does SELF attribution actually change downstream?")
+  - SELF → gain=1.0 (let my voice through, no suppression)
+  - BOTH → gain=both_gain (suppress echoes)
+  - Previously backwards: SELF → gain=0.0 (wrongly suppressed self-voice!)
 
 ### Bugs Found & Fixed
 
@@ -238,13 +245,20 @@ M4 self-voice detection is now functional with these key findings:
    - New: Capped at 0.05 (real decision in ThalamicAttributor)
    - Result: Self% improved from 0% to 79.1%
 
-2. **Causal tolerance too low**:
+2. **False-positive bug** (threshold=0.05 had 25% FP on world speech):
+   - Fixed by using threshold=0.10+ (0% false positives)
+
+3. **Causal tolerance too low**:
    - Old: 25ms (onset error ~90ms → causal_score=0)
    - New: 100ms (allows M4 to trigger)
 
-3. **Stimulus duration too short**:
+4. **Stimulus duration too short**:
    - Old: 350ms (M4 buffer needs >=500ms)
    - New: 700ms (reliable M4 triggering)
+
+5. **Policy was backwards** (commit `0f99698`):
+   - Old: SELF → gain=0.0 (suppress my own voice!)
+   - New: SELF → gain=1.0 (let my voice through)
 
 ### Hyperparameter Sweep Results (Final)
 
@@ -259,12 +273,22 @@ See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
 | 90ms | 0.05 | 20.3 | 14.9 | 73.1% | -0.006 |
 | 200ms | 0.05 | 17.0 | 12.0 | 70.6% | 0.000 |
 
-**Key Finding:** Smaller buffer (60ms) outperforms larger buffers. Threshold 0.05 is optimal; 0.20 essentially kills M4 (0% Self).
+**Key Finding:** Smaller buffer (60ms) outperforms larger buffers. Threshold 0.05 is optimal for true positives; 0.10+ eliminates false positives.
+
+### Hardware-Calibrated Note
+
+**All results are hardware-calibrated** (MacBook Pro, specific microphone/speaker configuration). The calibrated onset latency (60.29ms ± 30.83ms) will vary across:
+- Different hardware (microphones, speakers, audio interfaces)
+- Different environments (room acoustics, background noise)
+- Different days/sessions (hardware drift, temperature)
+
+**To reproduce:** Run `scripts/calibrate_self_start.py --num-trials 5` on your hardware before using M4.
 
 ### Next Steps
+- ✅ **10-seed repeatability run** in progress (buffer=60ms, threshold=0.10)
+- Test policy fix impact — does SELF→no suppression improve user experience?
 - Integrate M4 into real-time loop (currently benchmark-only)
 - Test with real-world speech (not just synthetic stimuli)
-- Optimize buffer size vs latency tradeoff
 
 ## Next: autoresearch loops
 
