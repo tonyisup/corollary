@@ -200,7 +200,7 @@ async def run_turn(
 async def main_async() -> None:
     parser = argparse.ArgumentParser(description="M3 Back-and-Forth Embodied Loop Demo")
     parser.add_argument("--turns", type=int, default=3, help="Number of turns (default: 3)")
-    parser.add_argument("--agent-text", default="Hello! I'm Corollary, an AI assistant.")
+    parser.add_argument("--agent-text", default="I'm Corollary.")
     parser.add_argument("--world-speech", default="data/world_speech_sample.npy")
     parser.add_argument("--expected-world-text", default=WORLD_TEXT)
     parser.add_argument("--input-device", type=int, default=3)
