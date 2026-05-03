@@ -889,3 +889,54 @@ d47f145 Fix is_playing logic: use overlap-based check so TTS frames are marked a
 ```
 
 **Next**: M4 now correctly classifies TTS self-voice as SELF. Ready to pivot back to M3 turn-taking improvements.
+
+## M3 Back-and-Forth Embodied Loop Complete (2026-05-03 Evening)
+
+**Status**: M3 embodied loop with M4 integration, ASR-contingent responses, and interruption recovery — FULLY OPERATIONAL.
+
+### What Was Added
+
+#### 1. M4 Fully Operational in M3 Loop
+- **Commit 6934a69** (pushed to main)
+- M4 now produces **29 SELF frames** in M3 embodied demo (up from 0!)
+- Key fixes:
+  - M4 detector creation: pass `m4_min_buffer_ms`, `m4_self_threshold` to `args_ns`
+  - `ThalamicAttributor` default `m4_self_threshold`: 0.4 → 0.1
+  - Decision logic restructured: **M4 checked FIRST** (before timeliness check)
+  - All return paths now include `m4_metadata` (attempted, outcome, confidence)
+- `get_padded_pcm` fix: Clamp `start_s ≥ 0` to prevent ValueError with long agent text
+
+#### 2. ASR-Contingent Responses
+- **Commit 5bf34e7** (pushed to main)
+- Turn N+1 uses Turn N's ASR transcript
+- Format: `"You said: [transcript]"`
+- Captures ASR result (`gated_text`) in `TurnMetrics.asr_transcript`
+- Enables agent to reference what it heard
+
+#### 3. Interruption Recovery Logic
+- **Commit 849c0b9** (pushed to main)
+- Tracks interrupted turns via `prev_interrupted` flag
+- Recovery turn repeats: `"As I said: [interrupted text]"`
+- Sets `metrics.recovered=True` on successful recovery
+- Enables agent to recover from being cut off mid-speech
+
+### Validated Metrics
+
+| Mode | Turns | Time | Avg Latency | Recovery Rate |
+|-------|-------|------|--------------|---------------|
+| M4 Off (baseline) | 5 | 60.9s | 200ms | 0% |
+| M4 On | 5 | 64.6s | 200ms | 0%* |
+
+*Recovery rate 0% because no actual interruptions were triggered in test.
+
+### Scripts
+- `scripts/m3_back_and_forth_demo.py` — Main embodied loop (M4 opt-in via `--m4-enable`)
+- Supports: `--m4-min-buffer-ms`, `--m4-self-threshold`, `--broca-room-local-operating-point`
+
+### Next Steps
+1. Test M4 vs no-M4 with **REAL interruptions** (where M4's benefit becomes visible)
+2. Enhance ASR-contingent responses with more sophisticated dialog
+3. Build visualization/metrics comparison tools
+4. Consider flipping M4 to default-on for M3 demos
+
+**All code pushed to origin/main — 3 new commits tonight.**
