@@ -163,7 +163,7 @@ async def run_turn(
         request_at_s=args.request_at_s,
     )
     
-    metrics.world_detected = any(f.verdict.name == "WORLD" for f in frames)
+    metrics.world_detected = any(f.attribution.verdict.name == "WORLD" for f in frames)
     metrics.interrupted = bridge.accepted_initial_output and any(d.should_interrupt for d in bridge.decisions)
     
     # Calculate response latency (simplified: time from world detection to response)
