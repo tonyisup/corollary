@@ -485,7 +485,9 @@ def build_m4_detector_for_self_pcm(
         registration_mode = "room_colored_prediction"
 
     identifier = SpeakerIdentifier(use_real=not getattr(args, "m4_mock", False))
-    detector = SelfVoiceDetector(identifier, threshold=getattr(args, "m4_registration_threshold", 0.4))
+    # Registration threshold is just a noise filter; real decision is in ThalamicAttributor
+    registration_threshold = min(getattr(args, "m4_registration_threshold", 0.4), 0.05)
+    detector = SelfVoiceDetector(identifier, threshold=registration_threshold)
     detector.register_self(registration_pcm)
     return detector, {
         "enabled": True,
