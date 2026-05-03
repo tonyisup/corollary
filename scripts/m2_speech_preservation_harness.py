@@ -396,10 +396,7 @@ def run_m2_trial(
         observed = captured_audio
 
     # Build ThalamicAttributor with optional M4 support
-    m4_det = None
-    if m4_enable:
-        from stg.speaker import SpeakerIdentifier
-        m4_det = SpeakerIdentifier(use_real=True)
+    m4_det = locals().get('m4_detector', None)  # Will be None if m4_enable=False
     attributor = ThalamicAttributor(
         sr=SR,
         similarity_threshold=similarity_threshold,
