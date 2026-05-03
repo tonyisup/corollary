@@ -179,6 +179,8 @@ M4 classification is only invoked when the accumulated self-audio buffer reaches
 - `m4_buffer_length` (int|None) — buffer length at classification time
 - `m4_outcome` (str) — One of: `accepted`, `below_threshold`, `exception`, `buffer_too_short`, `not_attempted`
 
+**M4 invocation requirement:** M4 needs >=700ms stimulus duration to accumulate meaningful audio. With 350ms stimulus, even 60ms buffer fails because playback window is only ~350ms. Testing with 700ms stimulus successfully triggered M4 (30 frames across 2/3 seeds).
+
 The 50-trial Bayesian optimization (Optuna TPE) is tagged .  A CSV dump of trials is available (if generated) under .
 
 ### 2026-04-20 debrief lessons
