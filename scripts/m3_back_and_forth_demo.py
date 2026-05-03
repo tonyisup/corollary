@@ -167,7 +167,7 @@ async def run_turn(
     metrics.interrupted = bridge.accepted_initial_output and any(d.should_interrupt for d in bridge.decisions)
     
     # Calculate response latency (simplified: time from world detection to response)
-    world_frames = [f for f in frames if f.verdict.name == "WORLD"]
+    world_frames = [f for f in frames if f.attribution.verdict.name == "WORLD"]
     if world_frames and bridge.accepted_initial_output:
         first_world_s = world_frames[0].start_s
         # Response starts after cooldown
