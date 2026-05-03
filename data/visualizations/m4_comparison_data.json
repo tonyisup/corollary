@@ -1,0 +1,19 @@
+{
+  "categories": [
+    "SELF",
+    "BOTH",
+    "WORLD"
+  ],
+  "no_m4": [
+    0,
+    208,
+    139
+  ],
+  "m4_on": [
+    197,
+    27,
+    109
+  ],
+  "m4_accepted": 196,
+  "avg_m4_confidence": 0.4266547043801997
+}
