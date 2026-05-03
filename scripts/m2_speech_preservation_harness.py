@@ -474,7 +474,7 @@ def run_m2_trial(
 
         rms = float(np.sqrt(np.mean(frame ** 2)))
         rms_db = db(rms)
-        is_playing = (start >= self_expected_shift) and (end <= self_expected_shift + len(self_pcm))
+        is_playing = (start < self_expected_shift + len(self_pcm)) and (end > self_expected_shift)
 
         res = attributor.attribute(
             match_score=self_score if is_playing else 0.0,
