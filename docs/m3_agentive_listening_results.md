@@ -1,68 +1,55 @@
-# M3 Agentive Listening — Calibrated Assessment
+# M3 Agentive Listening — Decision Benchmark Results
 
-> **Status:** Active Research — calibration phase
+> **Status:** Controller validated, attribution still fragile
 > **Date:** 2026-05-03
-> **Scope:** M3 turn-taking with M2+M4 attribution
+> **Scope:** M3 turn-taking controller with M2+M4 attribution
 
-## What We Know
+## Controller: Proven
 
-### M3 controller works correctly for clear cases
+The `AgentiveController` is now validated across 8 synthetic scenarios with 33
+decision-point checks. All pass.
 
-The `AgentiveController` correctly handles:
-- **Self-only**: Agent speaks without world speech → completes (IDLE→SPEAK→IDLE)
-- **World-only**: World speech present → defers (IDLE→LISTEN→IDLE)
-- **Clear overlap**: Agent speaking + world speech → interrupts, defers, resumes
+### Scenarios tested
 
-### The hard problem is attribution, not control
+| Scenario | States | Result |
+|----------|--------|--------|
+| clean_self | SPEAK→IDLE | PASS — stays in SPEAK, never defers |
+| clean_world | IDLE→LISTEN | PASS — defers after listen_threshold |
+| self_then_world | SPEAK→IDLE→LISTEN | PASS — completes, then defers |
+| world_interrupts_self | SPEAK→LISTEN→IDLE→LISTEN→IDLE | PASS — immediate interrupt |
+| self_resumes_after_interrupt | SPEAK→LISTEN→IDLE→LISTEN→IDLE | PASS — resumes after cooldown |
+| brief_both_during_self | SPEAK→IDLE | PASS — BOTH during motor window = no interrupt |
+| sustained_world_during_self | SPEAK→LISTEN→IDLE→LISTEN→IDLE | PASS — immediate interrupt on first WORLD |
+| world_during_silence | IDLE→LISTEN→IDLE | PASS — defers after listen_threshold |
 
-The controller's behavior is only as good as the M2/M4 attribution it receives:
+### Key design decisions validated
 
-| Scenario | Problem | Root cause |
-|----------|---------|------------|
-| BOTH during playback | Controller enters LISTEN, defers | BOTH frames were treated as external speech even during self-playback |
-| Ambient noise before playback | WORLD classification triggers LISTEN | M2 geometry sensitivity — room reflections classified as speech |
-| Low-confidence M4 | M4 assigned SELF on weak evidence (conf 0.14-0.30) | Threshold too low (0.10), no M2 requirement |
+1. **listen_threshold_ms (100ms)**: Only applies to IDLE→LISTEN transition. SPEAK→LISTEN is immediate on first WORLD frame.
+2. **BOTH during motor window = self-activity**: Uses `is_in_motor_window` from the attribution result (ground truth), not controller state.
+3. **Cooldown-based resume**: After world speech ends, cooldown_ms (200ms) must pass before deferred output runs.
+4. **request_output() required**: Agent must explicitly request to speak. SELF attribution frames alone don't trigger SPEAK state.
 
-### Fixes applied (commits d54b44a, 9ec936f)
+## Attribution: Still Fragile
 
-1. **M4 threshold raised 0.10→0.50**: ECAPA cosine similarity for TTS-vs-human overlaps significantly above 0.10. The 0.50 threshold keeps TTS self-probes accepted (min 0.51) while rejecting most human speech.
+The controller is correct. The problem is getting it the right input.
 
-2. **M4 requires M2 evidence**: M4 can no longer assign SELF independently. Both similarity (is_self_like) AND speaker embedding (confidence ≥ threshold) must agree. This reclassified 93 false SELF frames as BOTH.
+### Known issues
 
-3. **BOTH during motor window = self-activity**: BOTH frames where `is_in_motor_window=True` are treated as self speech, not external agent speech. This prevents the controller from entering LISTEN during self-playback.
+| Issue | Impact | Root cause |
+|-------|--------|------------|
+| Ambient WORLD before playback | False defer (2/5 real turns) | Room reflections classified as speech |
+| BOTH during playback | Conservative (not wrong) | M4 confidence < 0.50 → BOTH instead of SELF |
+| No real interruption data | Recovery unvalidated | No recorded human interruption events |
 
-### Remaining issues
+### What would make M3 "proven"
 
-1. **Ambient WORLD before playback**: 1-3 WORLD frames immediately before playback starts (rms -18 to -20 dB) trigger LISTEN. These are likely TTS reflections or geometry artifacts. This is an M2 attribution problem, not an M3 controller problem.
-
-2. **Recovery rate still 0%**: No test scenario with validated interruption→recovery exists yet. The synthetic scenario passes, but real data doesn't have genuine interruption events.
-
-## Turn-Taking Evaluation Results
-
-`scripts/m3_turn_taking_eval.py` — 10 scenarios:
-
-| Scenario | Result | Notes |
-|----------|--------|-------|
-| self_only (synthetic) | PASS | IDLE→SPEAK→IDLE |
-| world_only (synthetic) | PASS | IDLE→LISTEN→IDLE |
-| overlap_interrupt (synthetic) | PARTIAL | State machine correct, but resume validation needs work |
-| world_after_self (synthetic) | PASS | Correct non-interrupt |
-| recovery (synthetic) | PARTIAL | State machine correct, resume validation needs work |
-| turn_01-05 (real, self only) | 3/5 pass | 2 fail from ambient WORLD before playback |
-
-**No false interrupts in any scenario.** The controller never incorrectly interrupts.
-
-## What "Proven" Means Here
-
-M3 is **not yet proven** in the sense of demonstrating clear turn-taking wins. What we have:
-
-- A controller that behaves correctly given correct attribution
-- An attribution pipeline (M2+M4) that is calibrated but not yet reliable
-- Clear metrics for what "proven" would mean: false interrupts, false defers, successful resumes
+1. **Real interruption recordings**: Human speech overlapping Corollary's output, with ground truth labels
+2. **End-to-end metric**: Does M4 reduce false interrupts / false defers compared to M2-only?
+3. **Recovery validation**: After interruption, does Corollary resume its deferred utterance?
 
 ## Next Steps
 
-1. **Build interruption test scenarios**: Record or synthesize genuine overlap events where Corollary is speaking and world speech interrupts
-2. **Fix ambient WORLD classification**: Either improve M2's silence detection or add a pre-playback mask
-3. **Measure recovery**: With real interruption data, verify the resume path works end-to-end
-4. **Update README/docs**: Remove "massive impact" language; replace with calibrated claims
+1. **Record interruption scenarios**: 5-10 recordings of human speech interrupting Corollary at various points during playback
+2. **Label ground truth**: For each frame, label whether Corollary should be speaking, listening, or resuming
+3. **Compare M2-only vs M2+M4**: Run both attribution pipelines through the same scenarios and measure decision quality
+4. **Target**: <5% false interrupt rate, >80% successful resume rate
