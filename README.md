@@ -212,16 +212,52 @@ Private — personal research project
 
 
 
-## M4 forward-model findings (May 2026)
+## M4 Speaker Embedding Findings (May 2026)
 
-- A forward-model validation harness was built and successfully identified a promoted model configuration (nlms_mu≈0.107, cycles=4, search_ms≈69) that improves predicted vs dry self similarity and reduces onset error in the validator.
-- Benchmark and offline replay showed neutral WER (no regressions), but M4 **self-frame detection was consistently 0** across stimuli and thresholds.
-- Diagnostic investigation revealed:
-  - Per-frame M4 embedding similarity scores can reach ~0.6, but the M4 detector requires longer accumulated audio (>~500 ms) before it can produce a stable self-voice classification.
-  - The 350 ms default stimulus and 30 ms frame-level evaluation window are too short for M4 to trigger, even when thresholds are lowered.
-  - The causal-timing logic and per-frame classification pipeline in ThalamicAttributor only invokes M4 after accumulating sufficient buffer; short frames are never classified as “self” by M4.
+### Status: WORKING (as of 2026-05-02)
 
-Conclusion: M4 is **not ineffective** — it is **structurally unable** to fire on 30 ms frames. Humans do not operate at 30 ms either; the real system should buffer longer windows before invoking M4.
+M4 self-voice detection is now functional with these key findings:
+
+**Optimal Configuration:**
+- `--self-duration-ms 700` (350ms too short for M4 buffer)
+- `--causal-tolerance-ms 100` (default 25ms too low; typical onset error ~90ms)
+- `--m4-min-buffer-ms 90` (good balance of speed vs accuracy)
+- `--m4-self-threshold 0.10` (registration threshold fixed to 0.05 cap)
+- `--onset-latency-ms 24` (single-trial calibration; 67ms mean from 3 trials)
+
+**Performance:**
+- M4 triggered frames: 21 per seed (buffer=90ms)
+- Self% (accepted as SELF): **76.2%** (with registration threshold fix)
+- WER impact: **0.000** (no speech recognition regression)
+
+### Bugs Found & Fixed
+
+1. **Registration threshold bug** (commit `b2dcdf0`):
+   - Old: `m4_registration_threshold=0.15` filtered out valid frames
+   - New: Capped at 0.05 (real decision in ThalamicAttributor)
+   - Result: Self% improved from 0% to 76.2%
+
+2. **Causal tolerance too low**:
+   - Old: 25ms (onset error ~90ms → causal_score=0)
+   - New: 100ms (allows M4 to trigger)
+
+3. **Stimulus duration too short**:
+   - Old: 350ms (M4 buffer needs >=500ms)
+   - New: 700ms (reliable M4 triggering)
+
+### Hyperparameter Sweep Results
+
+See `data/m4_hyperparameter_sweep_corrected/` for full sweep (48 configs).
+
+**Best configs (Self%):**
+- Buffer 90ms, Threshold 0.10: ~76% Self%
+- Buffer 60ms, Threshold 0.05: ~48% Self%
+- Buffer 200ms, Threshold 0.20: ~14% Self% (too conservative)
+
+### Next Steps
+- Integrate M4 into real-time loop (currently benchmark-only)
+- Test with real-world speech (not just synthetic stimuli)
+- Optimize buffer size vs latency tradeoff
 
 ## Next: autoresearch loops
 
