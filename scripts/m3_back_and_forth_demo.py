@@ -250,8 +250,8 @@ async def main_async() -> None:
         if turn_num == 1:
             agent_text = args.agent_text
         else:
-            # Contingent response based on previous turn (simplified: just acknowledge)
-            agent_text = f"Turn {turn_num}: I heard you! Let me respond to that."
+            # Contingent response (keep it short to avoid timing issues)
+            agent_text = f"Turn {turn_num}: Heard you!"
         
         metrics = await run_turn(
             turn_num=turn_num,
