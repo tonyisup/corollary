@@ -1,0 +1,8 @@
+{
+  "turn_num": 5,
+  "agent_text": "Turn 5: Heard you!",
+  "world_detected": true,
+  "response_latency_ms": 199.99999999999994,
+  "interrupted": true,
+  "m2_frames": "39/6/20"
+}
