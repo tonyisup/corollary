@@ -1,0 +1,13 @@
+{
+  "trial": 1,
+  "self_start_s": 1.9966875,
+  "theoretical_shift_samples": 31947,
+  "lxcorr_shift_samples": 33686,
+  "energy_shift_samples": 33707,
+  "xcorr_score": 0.4144865572452545,
+  "lxcorr_score": 0.7583527499687452,
+  "offset_samples": 1739,
+  "offset_ms": 108.6875,
+  "suggested_onset_latency_ms": 108.68750000000004,
+  "current_onset_latency_ms": 400.0
+}
