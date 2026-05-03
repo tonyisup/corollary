@@ -360,15 +360,24 @@ def build_gating_gain(
     verdicts: list[SourceVerdict], frame_samples: int,
     total_samples: int, both_gain: float,
 ) -> np.ndarray:
+    """Build gain mask based on verdicts.
+    
+    Policy:
+    - SELF: gain=1.0 (let my voice through, no suppression)
+    - BOTH: gain=both_gain (suppress echoes)  
+    - WORLD: gain=1.0 (let world speech through)
+    - SILENCE: gain=1.0 (nothing to suppress)
+    """
     gain = np.ones(total_samples, dtype=np.float32)
     both_gain = float(np.clip(both_gain, 0.0, 1.0))
     for i, verdict in enumerate(verdicts):
         start = i * frame_samples
         end = min(start + frame_samples, total_samples)
         if verdict == SourceVerdict.SELF:
-            gain[start:end] = 0.0
+            gain[start:end] = 1.0  # Let SELF through (no suppression)
         elif verdict == SourceVerdict.BOTH:
-            gain[start:end] = both_gain
+            gain[start:end] = both_gain  # Suppress echoes
+        # WORLD and SILENCE: gain stays 1.0 (no change needed)
     return gain
 
 
