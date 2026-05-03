@@ -1,46 +1,68 @@
-# M3 Agentive Listening Results: Social Contingency
+# M3 Agentive Listening — Calibrated Assessment
 
-> **Status:** Active Research
-> **Date:** 2026-04-20
-> **Scope:** M3 Agentive Listening and Proto-Turn-Taking (Hardware)
+> **Status:** Active Research — calibration phase
+> **Date:** 2026-05-03
+> **Scope:** M3 turn-taking with M2+M4 attribution
 
-## Overview
+## What We Know
 
-M3 transitions Corollary from a passive listener to an active participant in vocal exchange. The core goal is to distinguish "Agentive Others" from background noise and respond with appropriate social timing.
+### M3 controller works correctly for clear cases
 
-## Key Technical Achievements
+The `AgentiveController` correctly handles:
+- **Self-only**: Agent speaks without world speech → completes (IDLE→SPEAK→IDLE)
+- **World-only**: World speech present → defers (IDLE→LISTEN→IDLE)
+- **Clear overlap**: Agent speaking + world speech → interrupts, defers, resumes
 
-### 1. PFC Agentive Controller
-We implemented the `AgentiveController` (`packages/pfc/agentive_controller.py`) to manage social state:
-- **IDLE**: Ambient monitoring.
-- **LISTEN**: Actively hearing a world-agent. Triggered after 300ms of sustained world-speech.
-- **SPEAK**: Actively emitting self-audio when output is accepted.
-- **Deferred output**: currently represented as `LISTEN` state plus a queued utterance, not as a separate explicit controller state.
+### The hard problem is attribution, not control
 
-### 2. Turn-Taking Policy
-The controller enforces a "Contingent Listening" policy:
-- **Non-Interruption**: If the PFC requests to speak while in the `LISTEN` state, the utterance is deferred.
-- **Automatic Trigger**: Once the world-agent has been silent for a cooldown period (800ms), the deferred utterance is automatically executed.
+The controller's behavior is only as good as the M2/M4 attribution it receives:
 
-### 3. Hardware Demo (M3-A)
-We created `scripts/m3_agentive_listening_demo.py` to showcase these behaviors on real hardware.
-- **Current result**: the demo exercises the controller sketch and deferred-output path, but should be treated as an early prototype demonstration rather than a completed hardware validation of turn-taking.
+| Scenario | Problem | Root cause |
+|----------|---------|------------|
+| BOTH during playback | Controller enters LISTEN, defers | BOTH frames were treated as external speech even during self-playback |
+| Ambient noise before playback | WORLD classification triggers LISTEN | M2 geometry sensitivity — room reflections classified as speech |
+| Low-confidence M4 | M4 assigned SELF on weak evidence (conf 0.14-0.30) | Threshold too low (0.10), no M2 requirement |
 
-## Hardware State Transitions (M3)
+### Fixes applied (commits d54b44a, 9ec936f)
 
-| Event | Previous State | New State | Action |
-| :--- | :--- | :--- | :--- |
-| sustained world-speech | `IDLE` | `LISTEN` | Suppress self-output |
-| silence > 800ms | `LISTEN` | `IDLE` | Deferred output may run once the controller returns idle |
-| PFC speech request | `IDLE` | `SPEAK` | Play audio immediately |
-| PFC speech request | `LISTEN` | `LISTEN` + deferred utterance | Queue utterance for later |
+1. **M4 threshold raised 0.10→0.50**: ECAPA cosine similarity for TTS-vs-human overlaps significantly above 0.10. The 0.50 threshold keeps TTS self-probes accepted (min 0.51) while rejecting most human speech.
 
-## Key Findings
+2. **M4 requires M2 evidence**: M4 can no longer assign SELF independently. Both similarity (is_self_like) AND speaker embedding (confidence ≥ threshold) must agree. This reclassified 93 false SELF frames as BOTH.
 
-1.  **Hysteresis is Essential**: Raw VAD is too jittery for social state. The `AgentiveController`'s 300ms/800ms timing windows provide the necessary stability for a first deferred-response prototype.
-2.  **Motor-Aware Gating remains preliminary**: by combining the `ThalamicAttributor` (which knows if *we* are talking) with the `VAD` (which knows if *someone* is talking), the repo has a plausible starting point for external-agent detection, but not yet a fully validated agentive classifier.
+3. **BOTH during motor window = self-activity**: BOTH frames where `is_in_motor_window=True` are treated as self speech, not external agent speech. This prevents the controller from entering LISTEN during self-playback.
+
+### Remaining issues
+
+1. **Ambient WORLD before playback**: 1-3 WORLD frames immediately before playback starts (rms -18 to -20 dB) trigger LISTEN. These are likely TTS reflections or geometry artifacts. This is an M2 attribution problem, not an M3 controller problem.
+
+2. **Recovery rate still 0%**: No test scenario with validated interruption→recovery exists yet. The synthetic scenario passes, but real data doesn't have genuine interruption events.
+
+## Turn-Taking Evaluation Results
+
+`scripts/m3_turn_taking_eval.py` — 10 scenarios:
+
+| Scenario | Result | Notes |
+|----------|--------|-------|
+| self_only (synthetic) | PASS | IDLE→SPEAK→IDLE |
+| world_only (synthetic) | PASS | IDLE→LISTEN→IDLE |
+| overlap_interrupt (synthetic) | PARTIAL | State machine correct, but resume validation needs work |
+| world_after_self (synthetic) | PASS | Correct non-interrupt |
+| recovery (synthetic) | PARTIAL | State machine correct, resume validation needs work |
+| turn_01-05 (real, self only) | 3/5 pass | 2 fail from ambient WORLD before playback |
+
+**No false interrupts in any scenario.** The controller never incorrectly interrupts.
+
+## What "Proven" Means Here
+
+M3 is **not yet proven** in the sense of demonstrating clear turn-taking wins. What we have:
+
+- A controller that behaves correctly given correct attribution
+- An attribution pipeline (M2+M4) that is calibrated but not yet reliable
+- Clear metrics for what "proven" would mean: false interrupts, false defers, successful resumes
 
 ## Next Steps
 
-1.  **Mimicry Primitives (M3-B)**: Implement "Echoic" responses where Corollary repeats back a syllable it heard, bridging raw vocal learning and dialog.
-2.  **Self-Voice Detector (M4)**: Use embeddings to distinguish "My Voice" from "Your Voice" even when spectra are similar, increasing confidence in high-noise environments.
+1. **Build interruption test scenarios**: Record or synthesize genuine overlap events where Corollary is speaking and world speech interrupts
+2. **Fix ambient WORLD classification**: Either improve M2's silence detection or add a pre-playback mask
+3. **Measure recovery**: With real interruption data, verify the resume path works end-to-end
+4. **Update README/docs**: Remove "massive impact" language; replace with calibrated claims
