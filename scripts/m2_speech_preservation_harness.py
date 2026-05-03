@@ -499,6 +499,10 @@ def run_m2_trial(
             "is_playing": bool(is_playing),
             "causal_score": float(res.causal_score),
             "onset_error_ms": res.onset_error_ms,
+            # M4 metadata
+            "m4_outcome": res.metadata.get("m4_outcome") if res.metadata else None,
+            "m4_confidence": res.metadata.get("m4_confidence") if res.metadata else None,
+            "m4_attempted": res.metadata.get("m4_attempted") if res.metadata else None,
         })
 
     gain = build_gating_gain(verdicts, VAD_FRAME_SAMPLES, len(observed), both_gain)
