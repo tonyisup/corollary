@@ -396,14 +396,14 @@ def run_m2_trial(
         observed = captured_audio
 
     # Build ThalamicAttributor with optional M4 support
-    m4_det = locals().get('m4_detector', None)  # Will be None if m4_enable=False
+    # m4_detector is set in lines 316-323 if m4_enable=True
     attributor = ThalamicAttributor(
         sr=SR,
         similarity_threshold=similarity_threshold,
         causal_tolerance_ms=causal_tolerance_ms,
-        m4_detector=m4_det,
-        m4_self_threshold=locals().get('m4_self_threshold', 0.05),
-        m4_min_buffer_ms=locals().get('m4_min_buffer_ms', 60.0),
+        m4_detector=m4_detector,  # Use the detector from lines 316-323
+        m4_self_threshold=locals().get('m4_self_threshold',0.05),
+        m4_min_buffer_ms=locals().get('m4_min_buffer_ms',60.0),
     )
     vad = SmoothedVAD()
 
