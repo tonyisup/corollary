@@ -27,7 +27,7 @@ WORLD_TEXT = "this is a test of world speech conservation"
 DEFAULT_AGENT_TEXT = "I was speaking, then paused."
 
 ROOM_LOCAL_OPERATING_DEFAULTS = {
-    "similarity_threshold": 0.10,
+    "similarity_threshold": 0.05,
     "onset_latency_ms": 300.0,
     "onset_method": "score",
     "causal_tolerance_ms": 175.0,

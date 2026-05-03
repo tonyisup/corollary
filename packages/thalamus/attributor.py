@@ -38,7 +38,7 @@ class ThalamicAttributor:
 
     def __init__(
         self,
-        similarity_threshold: float = 0.45,
+        similarity_threshold: float = 0.05,
         energy_threshold_db: float = -55.0,
         causal_tolerance_ms: float = 25.0,
         sr: int = 16000,
