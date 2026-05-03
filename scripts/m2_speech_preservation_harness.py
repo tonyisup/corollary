@@ -291,6 +291,10 @@ def run_m2_trial(
     self_match_search_ms: float = 250.0,
     room_filter_taps: int = 64,
     room_filter_ridge: float = 1e-4,
+    # M4 self-voice detection
+    m4_enable: bool = False,
+    m4_min_buffer_ms: float = 60.0,
+    m4_self_threshold: float = 0.10,
 ) -> dict[str, Any]:
     if both_policy == "family":
         decision = select_family_policy(self_stim, family_gain_overrides=family_gain_overrides)
@@ -308,7 +312,16 @@ def run_m2_trial(
         self_pcm = np.asarray(self_pcm_override, dtype=np.float32)
         if self_pcm.ndim != 1:
             raise ValueError("self_pcm_override must be mono float PCM")
-
+    
+    # Build M4 detector if enabled
+    m4_detector, m4_info = None, {}
+    if locals().get('m4_enable', False):
+        from scripts.m2_benchmark import build_m4_detector_for_self_pcm
+        args_ns = argparse.Namespace(
+            m4_registration_threshold=getattr(locals(), 'm4_registration_threshold', 0.05),
+        )
+        m4_detector, m4_info = build_m4_detector_for_self_pcm(self_pcm, args_ns)
+    
     if world_speech_file.endswith(".npy"):
         world_pcm = np.load(world_speech_file)
     else:
@@ -382,7 +395,16 @@ def run_m2_trial(
     else:
         observed = captured_audio
 
-    attributor = ThalamicAttributor(sr=SR, similarity_threshold=similarity_threshold, causal_tolerance_ms=causal_tolerance_ms)
+    # Build ThalamicAttributor with optional M4 support
+    m4_det = locals().get('m4_detector', None)  # Will be None if m4_enable=False
+    attributor = ThalamicAttributor(
+        sr=SR,
+        similarity_threshold=similarity_threshold,
+        causal_tolerance_ms=causal_tolerance_ms,
+        m4_detector=m4_det,
+        m4_self_threshold=locals().get('m4_self_threshold', 0.05),
+        m4_min_buffer_ms=locals().get('m4_min_buffer_ms', 60.0),
+    )
     vad = SmoothedVAD()
 
     self_expected_shift = int((self_start_s + onset_latency_ms / 1000.0) * SR)

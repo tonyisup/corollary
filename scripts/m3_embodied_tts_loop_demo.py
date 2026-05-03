@@ -80,6 +80,11 @@ async def main_async() -> None:
     parser.add_argument("--listen-threshold-ms", type=float, default=100.0)
     parser.add_argument("--cooldown-ms", type=float, default=200.0)
     parser.add_argument("--save-dir", default=None)
+    # M4 self-voice detection
+    parser.add_argument("--m4-enable", action="store_true", help="Enable M4 speaker embedding detector")
+    parser.add_argument("--m4-min-buffer-ms", type=float, default=60.0, help="M4 minimum buffer ms")
+    parser.add_argument("--m4-self-threshold", type=float, default=0.10, help="M4 self-decision threshold")
+
     args = apply_broca_room_local_operating_defaults(parser.parse_args())
 
     print("\n--- M3 Embodied TTS Loop Demo ---")
@@ -109,6 +114,10 @@ async def main_async() -> None:
         self_match_search_ms=args.self_match_search_ms,
         room_filter_taps=args.room_filter_taps,
         room_filter_ridge=args.room_filter_ridge,
+        # M4 self-voice detection
+        m4_enable=args.m4_enable,
+        m4_min_buffer_ms=args.m4_min_buffer_ms,
+        m4_self_threshold=args.m4_self_threshold,
     )
     if args.save_dir:
         save_trial_artifacts(args.save_dir, result)
