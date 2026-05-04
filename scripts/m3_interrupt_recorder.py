@@ -19,7 +19,8 @@ Recording process:
     - Each scenario starts with "========== SPEAK NOW ==========" (green) or
       ".......... stay silent .........." (dim)
     - You see exactly when to speak and when to stay quiet
-    - If you mess up, use --redo to re-record specific scenarios
+    - If you mess up, pick redo at the prompt after each scenario, or use
+      --redo to re-record specific scenarios from the command line
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import sys
 import time
 import threading
@@ -409,13 +411,37 @@ def _show_cues(speak_windows, agent_start_s, agent_duration_s, total_duration, l
     print()
 
 
+def prompt_post_scenario(current: str, next_scenario: str | None) -> str:
+    """Return 'next', 'redo_discard', or 'redo_keep'."""
+    if next_scenario:
+        next_desc = f"next scenario ({next_scenario})"
+    else:
+        next_desc = "finish (save summary and exit)"
+
+    while True:
+        print()
+        print(dim("  ── What next? ──"))
+        print(f"    {bold('1')} — Redo {current}: discard this take (delete saved files, record again)")
+        print(f"    {bold('2')} — Redo {current}: keep this take (archive folder, then record again)")
+        print(f"    {bold('3')} — Continue to {next_desc}")
+        raw = input(f"\n  Enter 1, 2, or 3 [default 3]: ").strip().lower()
+
+        if raw in ("", "3", "n", "next"):
+            return "next"
+        if raw in ("1", "d", "discard", "redo-discard"):
+            return "redo_discard"
+        if raw in ("2", "k", "keep", "redo-keep"):
+            return "redo_keep"
+        print(yellow("  Please enter 1, 2, or 3 (empty = continue)."))
+
+
 def main():
     parser = argparse.ArgumentParser(description="M3 Interruption Scenario Recorder v2")
     parser.add_argument("--scenarios", default="all",
                         help="Comma-separated names, or 'all'")
     parser.add_argument("--output-dir", default="data/m3_interrupt_v2")
-    parser.add_argument("--input-device", type=int, default=2)
-    parser.add_argument("--output-device", type=int, default=3)
+    parser.add_argument("--input-device", type=int, default=3)
+    parser.add_argument("--output-device", type=int, default=5)
     parser.add_argument("--list-devices", action="store_true")
     parser.add_argument("--list-scenarios", action="store_true")
     parser.add_argument("--redo", nargs="*", metavar="SCENARIO",
@@ -478,24 +504,47 @@ def main():
             print(f"  {text[:60]}...")
             agent_pcms[text] = asyncio.run(synthesize_text(text))
 
-    # Record each scenario
-    results = []
-    for i, name in enumerate(selected):
+    # Record each scenario (with optional on-the-spot redo)
+    results: list[dict] = []
+    i = 0
+    while i < len(selected):
+        name = selected[i]
         defn = SCENARIO_DEFS[name]
         agent_pcm = agent_pcms.get(defn["agent_text"]) if defn["agent_text"] else np.zeros(0, dtype=np.float32)
 
-        result = record_scenario(
-            scenario_name=name,
-            scenario_def=defn,
-            input_device=args.input_device,
-            output_device=args.output_device,
-            output_dir=output_dir,
-            agent_pcm=agent_pcm,
-        )
-        results.append(result)
+        while True:
+            result = record_scenario(
+                scenario_name=name,
+                scenario_def=defn,
+                input_device=args.input_device,
+                output_device=args.output_device,
+                output_dir=output_dir,
+                agent_pcm=agent_pcm,
+            )
+            results.append(result)
 
-        if i < len(selected) - 1:
-            input(f"\n  Press Enter for next scenario ({selected[i+1]})... ")
+            next_name = selected[i + 1] if i + 1 < len(selected) else None
+            choice = prompt_post_scenario(name, next_name)
+
+            if choice == "next":
+                i += 1
+                break
+
+            results.pop()
+            scenario_dir = output_dir / name
+
+            if choice == "redo_discard":
+                if scenario_dir.exists():
+                    shutil.rmtree(scenario_dir)
+                print(dim(f"  Discarded data under {scenario_dir}; re-recording {name}..."))
+            else:  # redo_keep
+                if scenario_dir.exists():
+                    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    archive_dir = output_dir / f"{name}_archived_{stamp}"
+                    shutil.move(str(scenario_dir), str(archive_dir))
+                    print(dim(f"  Archived previous take to {archive_dir}; re-recording {name}..."))
+                else:
+                    print(dim(f"  No existing folder for {name}; re-recording..."))
 
     # Summary
     summary = {
