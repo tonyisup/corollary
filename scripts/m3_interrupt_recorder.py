@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
-"""M3 Interruption Scenario Recorder.
+"""M3 Interruption Scenario Recorder v2.
 
-Records controlled human-speech-overlaps-Corollary scenarios for turn-taking
-evaluation. Each scenario plays a TTS utterance while a human speaks at a
-specified time. Saves raw mic audio, playback timing, and ground truth labels.
+Records controlled human-speech-overlaps-Corollary scenarios with clear
+visual cues for when to speak.
 
 Usage:
-    .venv/bin/python scripts/m3_interrupt_recorder.py --scenarios all --output-dir data/m3_interrupt_scenarios
-    .venv/bin/python scripts/m3_interrupt_recorder.py --scenarios 1,3,5 --output-dir data/m3_interrupt_scenarios
+    .venv/bin/python scripts/m3_interrupt_recorder.py --scenarios all
+    .venv/bin/python scripts/m3_interrupt_recorder.py --scenarios human_early,human_late
     .venv/bin/python scripts/m3_interrupt_recorder.py --list-devices
+    .venv/bin/python scripts/m3_interrupt_recorder.py --list-scenarios
 
-Scenario definitions:
-    1. human_before:     Human speaks before Corollary starts
-    2. human_after:      Human speaks after Corollary finishes
-    3. human_early:      Human speaks during first half of Corollary
-    4. human_late:       Human speaks during second half of Corollary
-    5. brief_noise:      Brief human noise during Corollary
-    6. human_double:     Human speaks, stops, speaks again
-    7. self_only:        Corollary speaks alone (control)
-    8. world_only:       Human speaks alone (control)
-    9. overlap_human_first: Human starts, Corollary overlaps
-    10. overlap_self_first: Corollary starts, human overlaps
+Before running:
+    1. Set your mic close to your mouth
+    2. Set your speaker.volume to a comfortable level
+    3. Run --list-devices to confirm input/output device numbers
+
+Recording process:
+    - Each scenario starts with "========== SPEAK NOW ==========" (green) or
+      ".......... stay silent .........." (dim)
+    - You see exactly when to speak and when to stay quiet
+    - If you mess up, use --redo to re-record specific scenarios
 """
 
 from __future__ import annotations
@@ -51,92 +50,101 @@ from cochlea.capture import SR
 
 
 # ── Scenario definitions ──
+# Times are relative to recording start. lead_in_s=0.5s before first event.
 
 SCENARIO_DEFS = {
-    "human_before": {
-        "description": "Human speaks before Corollary starts",
-        "agent_text": "I'm Corollary. I was about to say something important.",
-        "human_offset_s": -1.5,  # Human speaks 1.5s before agent starts
-        "human_duration_s": 1.0,
+    "self_only": {
+        "description": "Corollary speaks alone — no human speech",
+        "agent_text": "I'm Corollary. I am speaking alone.",
+        "speak_windows": [],  # No human speech expected
+        "expected_behavior": "complete",
+        "comment": "Just let Corollary speak. You stay silent.",
+    },
+    "world_only": {
+        "description": "Human speaks alone — no Corollary",
+        "agent_text": "",
+        "speak_windows": [(0.5, 2.0)],  # Speak from 0.5s to 2.0s
         "expected_behavior": "defer",
+        "comment": "Speak immediately after the beep. Say something like 'Hello, I'm here.'",
+    },
+    "human_before": {
+        "description": "Human speaks before Corollary",
+        "agent_text": "I'm Corollary. Was someone talking?",
+        "speak_windows": [(0.5, 1.5)],  # Speak before agent
+        "expected_behavior": "defer",
+        "comment": "Speak IMMEDIATELY when you see the cue. Corollary will start after you.",
     },
     "human_after": {
         "description": "Human speaks after Corollary finishes",
-        "agent_text": "I'm Corollary. I have finished my thought.",
-        "human_offset_s": 2.0,  # Human speaks 2s after agent starts
-        "human_duration_s": 1.0,
+        "agent_text": "I'm Corollary. I have finished.",
+        "speak_windows": [(3.5, 4.5)],  # Speak after agent finishes (~3s)
         "expected_behavior": "respond",
+        "comment": "Stay silent while Corollary speaks. Then respond when you see the cue.",
     },
     "human_early": {
-        "description": "Human speaks during first half of Corollary",
-        "agent_text": "I'm Corollary. I was about to say something important and now I'm being interrupted early.",
-        "human_offset_s": 0.5,
-        "human_duration_s": 1.0,
+        "description": "Human interrupts Corollary early",
+        "agent_text": "I'm Corollary. I was about to say something important that will take a while.",
+        "speak_windows": [(1.5, 2.5)],  # Interrupt during first half
         "expected_behavior": "interrupt_defer_resume",
+        "comment": "Interrupt Corollary EARLY, about 1 second after they start.",
     },
     "human_late": {
-        "description": "Human speaks during second half of Corollary",
-        "agent_text": "I'm Corollary. I was about to say something important and now I'm being interrupted late in my utterance.",
-        "human_offset_s": 1.5,
-        "human_duration_s": 1.0,
+        "description": "Human interrupts Corollary late",
+        "agent_text": "I'm Corollary. I have more to say and will keep talking for a bit longer.",
+        "speak_windows": [(3.0, 4.0)],  # Interrupt during second half
         "expected_behavior": "interrupt_defer_resume",
+        "comment": "Interrupt Corollary LATE, well into their utterance.",
     },
     "brief_noise": {
-        "description": "Brief human noise during Corollary",
-        "agent_text": "I'm Corollary. I am speaking continuously without interruption.",
-        "human_offset_s": 1.0,
-        "human_duration_s": 0.1,  # 100ms — single frame
+        "description": "Brief noise during Corollary (should not interrupt)",
+        "agent_text": "I'm Corollary. I am speaking continuously.",
+        "speak_windows": [(2.0, 2.15)],  # Very brief — ~150ms
         "expected_behavior": "no_interrupt",
+        "comment": "Make a very SHORT noise — like 'ah' — about 150ms. Just a cough or quick syllable.",
     },
     "human_double": {
-        "description": "Human speaks, stops, speaks again",
-        "agent_text": "I'm Corollary. I am trying to complete my utterance but keep getting interrupted.",
-        "human_offset_s": 0.5,
-        "human_duration_s": 0.5,
-        "human_second_offset_s": 2.0,
-        "human_second_duration_s": 0.5,
+        "description": "Human interrupts twice",
+        "agent_text": "I'm Corollary. I'm trying to finish my thought.",
+        "speak_windows": [(1.5, 2.0), (3.5, 4.0)],  # Two interruptions
         "expected_behavior": "interrupt_defer_resume_interrupt",
-    },
-    "self_only": {
-        "description": "Corollary speaks alone (control)",
-        "agent_text": "I'm Corollary. I am speaking alone with no human interruption.",
-        "human_offset_s": None,  # No human speech
-        "human_duration_s": 0,
-        "expected_behavior": "complete",
-    },
-    "world_only": {
-        "description": "Human speaks alone (control)",
-        "agent_text": "",  # No agent speech
-        "human_offset_s": 0.5,
-        "human_duration_s": 2.0,
-        "expected_behavior": "defer",
+        "comment": "Interrupt twice: once early, once later. Each time say something short.",
     },
     "overlap_human_first": {
-        "description": "Human starts speaking, Corollary overlaps",
-        "agent_text": "I'm Corollary. I'm joining the conversation.",
-        "human_offset_s": 0.0,  # Human starts at t=0
-        "human_duration_s": 2.0,
-        "agent_offset_s": 1.0,  # Agent starts 1s after human
+        "description": "Human starts first, Corollary joins",
+        "agent_text": "I'm Corollary. I'm joining in.",
+        "speak_windows": [(0.5, 2.5)],  # Human starts first
+        "agent_delay_s": 1.5,  # Agent starts 1.5s after recording start
         "expected_behavior": "defer_then_respond",
+        "comment": "Start speaking immediately. Corollary will join while you're talking.",
     },
     "overlap_self_first": {
-        "description": "Corollary starts, human overlaps",
-        "agent_text": "I'm Corollary. I started speaking and now someone is interrupting me.",
-        "human_offset_s": 1.0,  # Human starts 1s after agent
-        "human_duration_s": 1.5,
+        "description": "Corollary starts, human interrupts",
+        "agent_text": "I'm Corollary. I started speaking first.",
+        "speak_windows": [(2.0, 3.0)],  # Human interrupts
         "expected_behavior": "interrupt_defer_resume",
+        "comment": "Let Corollary start, then interrupt them about 1.5s in.",
     },
 }
 
 
+def color(text, code):
+    """Add ANSI color."""
+    return f"\033[{code}m{text}\033[0m"
+
+
+def red(text): return color(text, "91")
+def green(text): return color(text, "92")
+def yellow(text): return color(text, "93")
+def dim(text): return color(text, "2")
+def bold(text): return color(text, "1")
+
+
 def play_array_blocking(pcm: np.ndarray, device: int, samplerate: int) -> None:
-    """Play audio array blocking."""
     sd.play(pcm, samplerate=samplerate, device=device)
     sd.wait()
 
 
 async def synthesize_text(text: str) -> np.ndarray:
-    """Synthesize text to PCM."""
     if not text:
         return np.zeros(0, dtype=np.float32)
     return await synthesize(text)
@@ -150,15 +158,16 @@ def record_scenario(
     output_dir: Path,
     agent_pcm: np.ndarray | None = None,
 ) -> dict:
-    """Record a single interruption scenario."""
+    """Record a single interruption scenario with clear visual cues."""
 
     desc = scenario_def["description"]
     agent_text = scenario_def["agent_text"]
-    human_offset_s = scenario_def["human_offset_s"]
-    human_duration_s = scenario_def["human_duration_s"]
+    speak_windows = scenario_def["speak_windows"]
     expected = scenario_def["expected_behavior"]
+    comment = scenario_def["comment"]
+    agent_delay_s = scenario_def.get("agent_delay_s", 0.0)
 
-    # Synthesize agent audio if not provided
+    # Synthesize agent audio
     if agent_pcm is None and agent_text:
         print(f"  Synthesizing: {agent_text[:60]}...")
         agent_pcm = asyncio.run(synthesize_text(agent_text))
@@ -170,103 +179,120 @@ def record_scenario(
     # Timing
     lead_in_s = 0.5
     tail_s = 1.0
-    agent_start_s = lead_in_s
+    agent_start_s = lead_in_s + agent_delay_s
 
-    # Handle agent_offset_s for overlap scenarios
-    if "agent_offset_s" in scenario_def:
-        agent_start_s = lead_in_s + scenario_def["agent_offset_s"]
+    # Calculate total duration from events
+    all_end_times = [agent_start_s + agent_duration_s, agent_start_s + agent_duration_s + 1.0]
+    for start, end in speak_windows:
+        rec_start = lead_in_s + start
+        all_end_times.append(rec_start + end - start)
+    total_duration = max(all_end_times) + tail_s + 0.5
 
-    # Human timing (relative to recording start)
-    human_start_s = lead_in_s + human_offset_s if human_offset_s is not None else None
-
-    # Second human burst for double scenario
-    human_second = None
-    if "human_second_offset_s" in scenario_def:
-        human_second = {
-            "start_s": lead_in_s + scenario_def["human_second_offset_s"],
-            "duration_s": scenario_def["human_second_duration_s"],
-        }
-
-    # Total duration
-    total_duration = lead_in_s + max(
-        agent_start_s + agent_duration_s if len(agent_pcm) > 0 else 0,
-        (human_start_s + human_duration_s) if human_start_s is not None else 0,
-        (human_second["start_s"] + human_second["duration_s"]) if human_second else 0,
-    ) + tail_s
-
-    # Add padding
-    total_duration += 0.5
-
+    # Device SR
     input_sr = int(sd.query_devices(input_device)["default_samplerate"] or SR)
     output_sr = int(sd.query_devices(output_device)["default_samplerate"] or SR)
 
-    # Build output mix (agent audio at correct time)
+    # Build output mix
     total_samples = int(total_duration * output_sr)
     output_audio = np.zeros(total_samples, dtype=np.float32)
 
     if len(agent_pcm) > 0:
-        # Resample agent PCM to output SR if needed
         agent_resampled = agent_pcm
         if abs(output_sr - SR) > 1:
             import librosa
             agent_resampled = librosa.resample(agent_pcm, orig_sr=SR, target_sr=output_sr)
+        start_idx = int(agent_start_s * output_sr)
+        end_idx = min(total_samples, start_idx + len(agent_resampled))
+        output_audio[start_idx:end_idx] = agent_resampled[:end_idx - start_idx]
 
-        agent_start_idx = int(agent_start_s * output_sr)
-        agent_end_idx = min(total_samples, agent_start_idx + len(agent_resampled))
-        output_audio[agent_start_idx:agent_end_idx] = agent_resampled[:agent_end_idx - agent_start_idx]
-
-    # Build ground truth labels (at input SR)
+    # Ground truth labels
     total_input_samples = int(total_duration * input_sr)
-    gt_human_speaking = np.zeros(total_input_samples, dtype=bool)
-    gt_agent_playing = np.zeros(total_input_samples, dtype=bool)
-    gt_agent_should_speak = np.zeros(total_input_samples, dtype=bool)
+    gt_human = np.zeros(total_input_samples, dtype=bool)
+    gt_agent = np.zeros(total_input_samples, dtype=bool)
+    gt_should = np.zeros(total_input_samples, dtype=bool)
 
-    # Agent playing region
     if len(agent_pcm) > 0:
-        agent_play_start_idx = int(agent_start_s * input_sr)
-        agent_play_end_idx = int((agent_start_s + agent_duration_s) * input_sr)
-        gt_agent_playing[agent_play_start_idx:agent_play_end_idx] = True
+        a_start = int(agent_start_s * input_sr)
+        a_end = int((agent_start_s + agent_duration_s) * input_sr)
+        gt_agent[a_start:a_end] = True
 
-    # Human speaking region(s)
-    if human_start_s is not None:
-        human_start_idx = int(human_start_s * input_sr)
-        human_end_idx = int((human_start_s + human_duration_s) * input_sr)
-        gt_human_speaking[human_start_idx:human_end_idx] = True
+    for speak_start, speak_end in speak_windows:
+        s_start = int((lead_in_s + speak_start) * input_sr)
+        s_end = int((lead_in_s + speak_end) * input_sr)
+        gt_human[s_start:s_end] = True
 
-    if human_second:
-        hs_start_idx = int(human_second["start_s"] * input_sr)
-        hs_end_idx = int((human_second["start_s"] + human_second["duration_s"]) * input_sr)
-        gt_human_speaking[hs_start_idx:hs_end_idx] = True
+    gt_should = gt_agent & ~gt_human
 
-    # Ground truth: when should agent be speaking?
-    # Agent should speak when: agent is playing AND human is not speaking
-    gt_agent_should_speak = gt_agent_playing & ~gt_human_speaking
-
+    # ── Display cue timeline ──
     print(f"\n{'='*60}")
-    print(f"Scenario: {scenario_name}")
-    print(f"Description: {desc}")
-    print(f"Expected: {expected}")
-    print(f"Agent audio: {agent_duration_s:.2f}s at t={agent_start_s:.2f}s")
-    if human_start_s is not None:
-        print(f"Human speech: {human_duration_s:.2f}s at t={human_start_s:.2f}s")
-    if human_second:
-        print(f"Human 2nd: {human_second['duration_s']:.2f}s at t={human_second['start_s']:.2f}s")
-    print(f"Total duration: {total_duration:.2f}s")
-    print(f"\n*** SPEAK WHEN INDICATED ***")
+    print(bold(f"Scenario: {scenario_name}"))
+    print(f"  {desc}")
+    print(f"  Expected: {expected}")
+    print(f"  {dim(comment)}")
+    print()
+
+    # Show timeline
+    timeline_s = total_duration
+    print("  TIMELINE:")
+    print(f"  {'':>6s} ", end="")
+    for t in range(int(timeline_s) + 1):
+        print(f"{t:>5d}", end="")
+    print()
+
+    print(f"  {'SPEAK':>6s} ", end="")
+    scale = 5  # 5 chars per second
+    speak_line = [' '] * (int(timeline_s) * scale + 5)
+    for ws, we in speak_windows:
+        ws_idx = int((lead_in_s + ws) * scale)
+        we_idx = int((lead_in_s + we) * scale)
+        for i in range(max(0, ws_idx), min(len(speak_line), we_idx)):
+            speak_line[i] = '█'
+    print(''.join(speak_line))
+
+    if agent_text:
+        print(f"  {'COROLLARY':>6s} ", end="")
+        cor_line = [' '] * (int(timeline_s) * scale + 5)
+        cs_idx = int(agent_start_s * scale)
+        ce_idx = int((agent_start_s + agent_duration_s) * scale)
+        for i in range(max(0, cs_idx), min(len(cor_line), ce_idx)):
+            cor_line[i] = '▓'
+        print(''.join(cor_line))
+
+    print()
+    print(f"  {green('███')} = you speak    {dim('▓▓▓')} = Corollary speaks")
+    print()
+
+    # Pre-countdown
+    print(dim("  Get ready..."))
+    time.sleep(1)
 
     # Countdown
     for i in range(3, 0, -1):
-        print(f"  {i}...")
+        print(f"  {yellow(str(i))}...")
         time.sleep(1)
+
+    print(bold(green("  >>> RECORDING <<<")))
+    print()
 
     # Start recording and playback
     captured = np.zeros(total_input_samples, dtype=np.float32)
-    stream = sd.InputStream(device=input_device, channels=1, samplerate=input_sr, dtype="float32", blocksize=1024)
+    stream = sd.InputStream(device=input_device, channels=1, samplerate=input_sr,
+                           dtype="float32", blocksize=1024)
     stream.start()
 
-    # Start playback in a thread
-    playback_thread = threading.Thread(target=play_array_blocking, args=(output_audio, output_device, output_sr))
+    playback_thread = threading.Thread(
+        target=play_array_blocking, args=(output_audio, output_device, output_sr)
+    )
     playback_thread.start()
+
+    # Show real-time cues during recording
+    start_time = time.time()
+    cue_thread = threading.Thread(
+        target=_show_cues,
+        args=(speak_windows, agent_start_s, agent_duration_s, total_duration, lead_in_s),
+        daemon=True,
+    )
+    cue_thread.start()
 
     # Record
     pos = 0
@@ -280,21 +306,20 @@ def record_scenario(
     stream.stop()
     stream.close()
 
+    print()
+    print(dim("  Recording complete."))
+
     # Save artifacts
     scenario_dir = output_dir / scenario_name
     scenario_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save audio
     np.save(str(scenario_dir / "captured.npy"), captured)
     if len(agent_pcm) > 0:
         np.save(str(scenario_dir / "agent_pcm.npy"), agent_pcm)
+    np.save(str(scenario_dir / "gt_human_speaking.npy"), gt_human)
+    np.save(str(scenario_dir / "gt_agent_playing.npy"), gt_agent)
+    np.save(str(scenario_dir / "gt_agent_should_speak.npy"), gt_should)
 
-    # Save ground truth
-    np.save(str(scenario_dir / "gt_human_speaking.npy"), gt_human_speaking)
-    np.save(str(scenario_dir / "gt_agent_playing.npy"), gt_agent_playing)
-    np.save(str(scenario_dir / "gt_agent_should_speak.npy"), gt_agent_should_speak)
-
-    # Save metadata
     metadata = {
         "scenario_name": scenario_name,
         "description": desc,
@@ -303,9 +328,7 @@ def record_scenario(
         "agent_start_s": agent_start_s,
         "agent_duration_s": agent_duration_s,
         "agent_samples": len(agent_pcm),
-        "human_start_s": human_start_s,
-        "human_duration_s": human_duration_s,
-        "human_second": human_second,
+        "speak_windows": speak_windows,
         "total_duration_s": total_duration,
         "input_sr": input_sr,
         "output_sr": output_sr,
@@ -316,76 +339,138 @@ def record_scenario(
     with open(scenario_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2, default=str)
 
-    # Summary stats
-    captured_rms = float(np.sqrt(np.mean(captured**2)))
-    human_region_rms = float(np.sqrt(np.mean(captured[gt_human_speaking]**2))) if np.any(gt_human_speaking) else 0
-    agent_region_rms = float(np.sqrt(np.mean(captured[gt_agent_playing]**2))) if np.any(gt_agent_playing) else 0
+    # Quality check
+    rms = float(np.sqrt(np.mean(captured**2)))
+    human_rms = float(np.sqrt(np.mean(captured[gt_human]**2))) if np.any(gt_human) else 0
+    agent_rms = float(np.sqrt(np.mean(captured[gt_agent]**2))) if np.any(gt_agent) else 0
 
-    print(f"  Captured RMS: {captured_rms:.4f}")
-    print(f"  Human region RMS: {human_region_rms:.4f}")
-    print(f"  Agent region RMS: {agent_region_rms:.4f}")
-    print(f"  Saved to: {scenario_dir}")
+    print(f"  RMS: {rms:.4f} | Human region: {human_rms:.4f} | Agent region: {agent_rms:.4f}")
+
+    # Warn if human region is too quiet
+    if speak_windows and human_rms < 0.01:
+        print(red("  ⚠ WARNING: Human speaking region is very quiet!"))
+        print(dim("    You may not have spoken, or the mic may be too quiet."))
+        print(dim("    Consider re-recording this scenario with --redo"))
+    elif speak_windows and human_rms > 0.01:
+        print(green(f"  ✓ Human speech detected (RMS={human_rms:.4f})"))
+
+    print(f"  Saved: {scenario_dir}")
 
     return {
         "scenario": scenario_name,
         "dir": str(scenario_dir),
-        "captured_rms": captured_rms,
-        "human_region_rms": human_region_rms,
-        "agent_region_rms": agent_region_rms,
+        "captured_rms": rms,
+        "human_region_rms": human_rms,
+        "agent_region_rms": agent_rms,
+        "human_speaking_ms": float(np.sum(gt_human)) / input_sr * 1000,
+        "quality_ok": human_rms > 0.01 if speak_windows else True,
     }
 
 
+def _show_cues(speak_windows, agent_start_s, agent_duration_s, total_duration, lead_in_s):
+    """Show real-time SPEAK/SILENT cues during recording."""
+    start = time.time()
+    last_cue = None
+
+    while True:
+        elapsed = time.time() - start
+        if elapsed > total_duration:
+            break
+
+        rec_time = elapsed  # Time since recording started
+
+        # Check if in a speak window
+        speaking = False
+        for ws, we in speak_windows:
+            w_start = lead_in_s + ws
+            w_end = lead_in_s + we
+            if w_start <= rec_time <= w_end:
+                speaking = True
+                break
+
+        # Determine current agent state
+        agent_active = agent_start_s <= rec_time <= agent_start_s + agent_duration_s
+
+        # Build cue
+        if speaking:
+            cue = green("  ██████████  SPEAK NOW  ██████████")
+        elif agent_active:
+            cue = dim("  ..........  listening  ..........")
+        else:
+            cue = dim("  ..........  stay quiet ..........")
+
+        if cue != last_cue:
+            # Clear line and print
+            print(f"\r{cue}", end="", flush=True)
+            last_cue = cue
+
+        time.sleep(0.05)
+
+    print()
+
+
 def main():
-    parser = argparse.ArgumentParser(description="M3 Interruption Scenario Recorder")
+    parser = argparse.ArgumentParser(description="M3 Interruption Scenario Recorder v2")
     parser.add_argument("--scenarios", default="all",
-                        help="Comma-separated scenario names, or 'all'")
-    parser.add_argument("--output-dir", default="data/m3_interrupt_scenarios")
+                        help="Comma-separated names, or 'all'")
+    parser.add_argument("--output-dir", default="data/m3_interrupt_v2")
     parser.add_argument("--input-device", type=int, default=2)
     parser.add_argument("--output-device", type=int, default=3)
     parser.add_argument("--list-devices", action="store_true")
     parser.add_argument("--list-scenarios", action="store_true")
+    parser.add_argument("--redo", nargs="*", metavar="SCENARIO",
+                        help="Re-record specific scenarios")
     args = parser.parse_args()
 
     if args.list_devices:
         print("\nAvailable audio devices:\n")
-        devices = sd.query_devices()
-        print(f"{'Index':<8} {'Name':<50} {'In':<4} {'Out':<4} {'SR'}")
-        print("-" * 80)
-        for i, dev in enumerate(devices):
-            print(f"{i:<8} {dev['name']:<50} {dev['max_input_channels']:<4} "
-                  f"{dev['max_output_channels']:<4} {dev['default_samplerate']}")
+        for i, dev in enumerate(sd.query_devices()):
+            print(f"  {i:<4} {dev['name']:<45} in={dev['max_input_channels']} "
+                  f"out={dev['max_output_channels']} sr={dev['default_samplerate']}")
         return
 
     if args.list_scenarios:
         print("\nAvailable scenarios:\n")
-        for name, defn in SCENARIO_DEFS.items():
-            print(f"  {name:<25} {defn['description']}")
-            print(f"  {'':25} Expected: {defn['expected_behavior']}")
+        for name, d in SCENARIO_DEFS.items():
+            windows = ", ".join(f"{s}-{e}s" for s, e in d["speak_windows"]) if d["speak_windows"] else "none"
+            print(f"  {name:<22} speak={windows}")
+            print(f"  {'':22} {d['description']}")
+            print(f"  {'':22} {d['comment']}")
+            print()
         return
 
-    # Select scenarios
     if args.scenarios == "all":
         selected = list(SCENARIO_DEFS.keys())
     else:
         selected = [s.strip() for s in args.scenarios.split(",")]
-        for s in selected:
-            if s not in SCENARIO_DEFS:
-                print(f"ERROR: Unknown scenario '{s}'. Use --list-scenarios to see available.")
-                sys.exit(1)
+
+    if args.redo:
+        selected = args.redo
+
+    for s in selected:
+        if s not in SCENARIO_DEFS:
+            print(f"ERROR: Unknown scenario '{s}'")
+            sys.exit(1)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
-    print("M3 INTERRUPTION SCENARIO RECORDER")
+    print(bold("M3 INTERRUPTION SCENARIO RECORDER v2"))
     print("=" * 60)
     print(f"Scenarios: {len(selected)}")
-    print(f"Output: {output_dir}")
-    print(f"Input device: {args.input_device}")
-    print(f"Output device: {args.output_device}")
+    print(f"Output:    {output_dir}")
+    print(f"Input:     device {args.input_device}")
+    print(f"Output:    device {args.output_device}")
+    print()
+    print("During recording you will see:")
+    print(f"  {green('██████████  SPEAK NOW  ██████████')}  — speak during these windows")
+    print(f"  {dim('..........  listening  ..........')}  — Corollary is talking, stay quiet")
+    print(f"  {dim('..........  stay quiet ..........')}  — silence, wait for next cue")
+    print()
 
-    # Pre-synthesize all agent audio
-    print("\nPre-synthesizing agent audio...")
+    # Pre-synthesize agent audio
+    print("Pre-synthesizing agent audio...")
     agent_pcms = {}
     for name in selected:
         text = SCENARIO_DEFS[name]["agent_text"]
@@ -410,10 +495,9 @@ def main():
         results.append(result)
 
         if i < len(selected) - 1:
-            print(f"\n--- Next: {selected[i+1]} ---")
-            time.sleep(2)
+            input(f"\n  Press Enter for next scenario ({selected[i+1]})... ")
 
-    # Save summary
+    # Summary
     summary = {
         "recorded_at": datetime.now().isoformat(),
         "input_device": args.input_device,
@@ -423,9 +507,15 @@ def main():
     with open(output_dir / "recording_summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
+    ok = sum(1 for r in results if r["quality_ok"])
     print(f"\n{'='*60}")
-    print(f"RECORDING COMPLETE — {len(results)} scenarios saved to {output_dir}")
+    print(f"RECORDING COMPLETE — {ok}/{len(results)} scenarios with good audio")
     print(f"{'='*60}")
+
+    if ok < len(results):
+        failed = [r["scenario"] for r in results if not r["quality_ok"]]
+        print(red(f"\nRe-record these (human speech not detected): {', '.join(failed)}"))
+        print(f"  Command: ./.venv/bin/python scripts/m3_interrupt_recorder.py --redo {' '.join(failed)}")
 
 
 if __name__ == "__main__":
