@@ -105,6 +105,20 @@ class AgentiveController:
         # BOTH frames during self-playback (is_in_motor_window) are self-activity,
         # not external speech. The motor window means Corollary is actively emitting,
         # so any BOTH attribution is self-speech that couldn't be fully separated.
+        #
+        # KNOWN LIMITATION: When human speech overlaps with self-playback, the
+        # attributor may still classify as BOTH (because the self signal dominates).
+        # The controller cannot reliably distinguish this from self-dominant BOTH
+        # using current frame-level signals. See docs/m3_both_overlap_analysis.md.
+        # 
+        # Discrimination signals evaluated:
+        # - Excess RMS: works when human is louder, fails when quieter
+        # - Match score: constant within scenario (no discrimination)
+        # - M4 below-threshold: fires too often during self-playback
+        # - Combined (sustained + excess): best F1=0.31, still too many false positives
+        #
+        # Long-term fix requires per-frame self-match scoring in the attributor
+        # or a dedicated overlap detector.
         is_overlap_speech = (
             self.treat_both_speech_as_agentive
             and res.is_speech
