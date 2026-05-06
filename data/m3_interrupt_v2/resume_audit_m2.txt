@@ -1,0 +1,183 @@
+================================================================================
+M3 RESUME AUDIT
+================================================================================
+Source: data/m3_interrupt_v2/offline_analysis_results_m2.json
+Scenarios: 10
+Overall:
+  successful_resumes: 2
+
+Resume policy view:
+  Expected-resume scenarios: 5
+  Succeeded expected resumes: 1
+  Failed expected resumes: 4
+  Non-resume scenarios: 5
+
+--------------------------------------------------------------------------------
+✓ brief_noise
+  expected_resume: False
+  resumed_output: False
+  successful_resumes / analysis_expected: 0/1
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 7, 'LISTEN': 92, 'SPEAK': 146}
+  verdicts_count: {'WORLD': 99, 'BOTH': 146}
+  transitions: [(0, 'IDLE'), (7, 'LISTEN'), (17, 'SPEAK'), (163, 'LISTEN')]
+  first_listen_frame: 7
+  last_listen_frame: 244
+  agent_frames: 17..162
+  human_frames: 84..88
+  first_interrupt_frame: 163
+  first_can_speak_after_listen_frame: None
+  reason: resume not expected by scenario policy
+--------------------------------------------------------------------------------
+✗ human_after
+  expected_resume: True
+  resumed_output: False
+  successful_resumes / analysis_expected: 0/1
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 5, 'LISTEN': 94, 'SPEAK': 122}
+  verdicts_count: {'WORLD': 99, 'BOTH': 122}
+  transitions: [(0, 'IDLE'), (5, 'LISTEN'), (17, 'SPEAK'), (139, 'LISTEN')]
+  first_listen_frame: 5
+  last_listen_frame: 220
+  agent_frames: 17..138
+  human_frames: 134..166
+  first_interrupt_frame: 139
+  first_can_speak_after_listen_frame: None
+  reason: interrupt decision did not occur while gt_agent was active
+--------------------------------------------------------------------------------
+✓ human_before
+  expected_resume: False
+  resumed_output: False
+  successful_resumes / analysis_expected: 0/1
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 5, 'LISTEN': 95, 'SPEAK': 124}
+  verdicts_count: {'WORLD': 100, 'BOTH': 124}
+  transitions: [(0, 'IDLE'), (5, 'LISTEN'), (17, 'SPEAK'), (141, 'LISTEN')]
+  first_listen_frame: 5
+  last_listen_frame: 223
+  agent_frames: 17..140
+  human_frames: 34..66
+  first_interrupt_frame: 141
+  first_can_speak_after_listen_frame: None
+  reason: resume not expected by scenario policy
+--------------------------------------------------------------------------------
+✗ human_double
+  expected_resume: True
+  resumed_output: False
+  successful_resumes / analysis_expected: 0/1
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 7, 'LISTEN': 92, 'SPEAK': 144}
+  verdicts_count: {'WORLD': 99, 'BOTH': 144}
+  transitions: [(0, 'IDLE'), (7, 'LISTEN'), (17, 'SPEAK'), (161, 'LISTEN')]
+  first_listen_frame: 7
+  last_listen_frame: 242
+  agent_frames: 17..160
+  human_frames: 67..149
+  first_interrupt_frame: 161
+  first_can_speak_after_listen_frame: None
+  reason: interrupt decision did not occur while gt_agent was active
+--------------------------------------------------------------------------------
+✗ human_early
+  expected_resume: True
+  resumed_output: False
+  successful_resumes / analysis_expected: 0/1
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 5, 'LISTEN': 95, 'SPEAK': 180}
+  verdicts_count: {'WORLD': 100, 'BOTH': 180}
+  transitions: [(0, 'IDLE'), (5, 'LISTEN'), (17, 'SPEAK'), (197, 'LISTEN')]
+  first_listen_frame: 5
+  last_listen_frame: 279
+  agent_frames: 17..196
+  human_frames: 67..99
+  first_interrupt_frame: 197
+  first_can_speak_after_listen_frame: None
+  reason: interrupt decision did not occur while gt_agent was active
+--------------------------------------------------------------------------------
+✗ human_late
+  expected_resume: True
+  resumed_output: False
+  successful_resumes / analysis_expected: 0/1
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 7, 'LISTEN': 93, 'SPEAK': 189}
+  verdicts_count: {'WORLD': 100, 'BOTH': 189}
+  transitions: [(0, 'IDLE'), (7, 'LISTEN'), (17, 'SPEAK'), (206, 'LISTEN')]
+  first_listen_frame: 7
+  last_listen_frame: 288
+  agent_frames: 17..205
+  human_frames: 117..149
+  first_interrupt_frame: 206
+  first_can_speak_after_listen_frame: None
+  reason: interrupt decision did not occur while gt_agent was active
+--------------------------------------------------------------------------------
+! overlap_human_first
+  expected_resume: False
+  resumed_output: True
+  successful_resumes / analysis_expected: 1/1
+  FI/FD/MI: 0/0/17
+  states_count: {'IDLE': 92, 'LISTEN': 58, 'SPEAK': 121}
+  verdicts_count: {'WORLD': 150, 'BOTH': 121}
+  transitions: [(0, 'IDLE'), (7, 'LISTEN'), (20, 'IDLE'), (51, 'LISTEN'), (67, 'SPEAK'), (188, 'LISTEN'), (217, 'IDLE')]
+  first_listen_frame: 7
+  last_listen_frame: 216
+  agent_frames: 67..187
+  human_frames: 34..99
+  first_interrupt_frame: 188
+  first_can_speak_after_listen_frame: 217
+  reason: successful_resumes > 0
+--------------------------------------------------------------------------------
+✓ overlap_self_first
+  expected_resume: True
+  resumed_output: True
+  successful_resumes / analysis_expected: 1/1
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 27, 'LISTEN': 72, 'SPEAK': 142}
+  verdicts_count: {'WORLD': 99, 'BOTH': 142}
+  transitions: [(0, 'IDLE'), (5, 'LISTEN'), (17, 'SPEAK'), (159, 'LISTEN'), (219, 'IDLE')]
+  first_listen_frame: 5
+  last_listen_frame: 218
+  agent_frames: 17..158
+  human_frames: 84..116
+  first_interrupt_frame: 159
+  first_can_speak_after_listen_frame: 219
+  reason: successful_resumes > 0
+--------------------------------------------------------------------------------
+✓ self_only
+  expected_resume: False
+  resumed_output: False
+  successful_resumes / analysis_expected: 0/0
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 232}
+  verdicts_count: {'WORLD': 4, 'SILENCE': 141, 'SELF': 13, 'BOTH': 74}
+  transitions: [(0, 'IDLE')]
+  first_listen_frame: None
+  last_listen_frame: None
+  agent_frames: 17..148
+  human_frames: None..None
+  first_interrupt_frame: None
+  first_can_speak_after_listen_frame: None
+  reason: resume not expected by scenario policy
+--------------------------------------------------------------------------------
+✓ world_only
+  expected_resume: False
+  resumed_output: False
+  successful_resumes / analysis_expected: 0/0
+  FI/FD/MI: 0/0/0
+  states_count: {'IDLE': 7, 'LISTEN': 126}
+  verdicts_count: {'WORLD': 133}
+  transitions: [(0, 'IDLE'), (7, 'LISTEN')]
+  first_listen_frame: 7
+  last_listen_frame: 132
+  agent_frames: None..None
+  human_frames: 34..83
+  first_interrupt_frame: None
+  first_can_speak_after_listen_frame: None
+  reason: resume not expected by scenario policy
+
+================================================================================
+ACTIONABLE READ
+================================================================================
+Expected-resume failures:
+  - human_after: interrupt decision did not occur while gt_agent was active
+  - human_double: interrupt decision did not occur while gt_agent was active
+  - human_early: interrupt decision did not occur while gt_agent was active
+  - human_late: interrupt decision did not occur while gt_agent was active
