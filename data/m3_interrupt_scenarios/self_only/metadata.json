@@ -1,0 +1,19 @@
+{
+  "scenario_name": "self_only",
+  "description": "Corollary speaks alone (control)",
+  "expected_behavior": "complete",
+  "agent_text": "I'm Corollary. I am speaking alone with no human interruption.",
+  "agent_start_s": 0.5,
+  "agent_duration_s": 5.2381875,
+  "agent_samples": 83811,
+  "human_start_s": null,
+  "human_duration_s": 0,
+  "human_second": null,
+  "total_duration_s": 7.7381875,
+  "input_sr": 48000,
+  "input_channels": 1,
+  "output_sr": 48000,
+  "lead_in_s": 0.5,
+  "tail_s": 1.0,
+  "recorded_at": "2026-05-03T17:16:42.444586"
+}

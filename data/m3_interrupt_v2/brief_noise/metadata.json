@@ -1,0 +1,21 @@
+{
+  "scenario_name": "brief_noise",
+  "description": "Brief noise during Corollary (should not interrupt)",
+  "expected_behavior": "no_interrupt",
+  "agent_text": "I'm Corollary. I am speaking continuously.",
+  "agent_start_s": 0.5,
+  "agent_duration_s": 4.3741875,
+  "agent_samples": 69987,
+  "speak_windows": [
+    [
+      2.0,
+      2.15
+    ]
+  ],
+  "total_duration_s": 7.3741875,
+  "input_sr": 48000,
+  "output_sr": 48000,
+  "lead_in_s": 0.5,
+  "tail_s": 1.0,
+  "recorded_at": "2026-05-06T07:40:45.481547"
+}

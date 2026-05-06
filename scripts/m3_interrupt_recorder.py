@@ -539,7 +539,7 @@ def main():
                 print(dim(f"  Discarded data under {scenario_dir}; re-recording {name}..."))
             else:  # redo_keep
                 if scenario_dir.exists():
-                    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                     archive_dir = output_dir / f"{name}_archived_{stamp}"
                     shutil.move(str(scenario_dir), str(archive_dir))
                     print(dim(f"  Archived previous take to {archive_dir}; re-recording {name}..."))

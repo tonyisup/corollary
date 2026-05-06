@@ -1,0 +1,19 @@
+{
+  "scenario_name": "human_early",
+  "description": "Human speaks during first half of Corollary",
+  "expected_behavior": "interrupt_defer_resume",
+  "agent_text": "I'm Corollary. I was about to say something important and now I'm being interrupted early.",
+  "agent_start_s": 0.5,
+  "agent_duration_s": 6.3901875,
+  "agent_samples": 102243,
+  "human_start_s": 1.0,
+  "human_duration_s": 1.0,
+  "human_second": null,
+  "total_duration_s": 8.8901875,
+  "input_sr": 48000,
+  "input_channels": 1,
+  "output_sr": 48000,
+  "lead_in_s": 0.5,
+  "tail_s": 1.0,
+  "recorded_at": "2026-05-03T17:15:46.585964"
+}

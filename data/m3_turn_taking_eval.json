@@ -1,0 +1,138 @@
+{
+  "timestamp": "2026-05-03T13:11:09.538880",
+  "summary": {
+    "total_scenarios": 10,
+    "passed": 6,
+    "failed": 4,
+    "false_interrupts": 0,
+    "false_defers": 8,
+    "resumes": 0,
+    "resumes_expected": 2
+  },
+  "results": [
+    {
+      "name": "self_only",
+      "description": "Agent speaks, no world speech \u2192 should complete without interruption",
+      "passed": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE -> SPEAK -> IDLE",
+      "issues": []
+    },
+    {
+      "name": "world_only",
+      "description": "World speech only \u2192 should defer",
+      "passed": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE -> LISTEN -> IDLE",
+      "issues": []
+    },
+    {
+      "name": "overlap_interrupt",
+      "description": "Agent speaks, world overlaps \u2192 should interrupt + defer + resume",
+      "passed": false,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE -> SPEAK -> IDLE",
+      "issues": [
+        "  FAILED RESUME: expected resume but got none"
+      ]
+    },
+    {
+      "name": "world_after_self",
+      "description": "Agent completes, then world speaks \u2192 should not interrupt, should respond",
+      "passed": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE -> SPEAK -> IDLE -> LISTEN -> IDLE",
+      "issues": []
+    },
+    {
+      "name": "recovery",
+      "description": "Interrupted, then silence \u2192 should resume deferred utterance",
+      "passed": false,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE -> SPEAK -> IDLE",
+      "issues": [
+        "  FAILED RESUME: expected resume but got none"
+      ]
+    },
+    {
+      "name": "turn_01",
+      "description": "Real data: self speech only",
+      "passed": false,
+      "false_interrupts": 0,
+      "false_defers": 5,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE -> LISTEN -> IDLE",
+      "issues": [
+        "  FALSE DEFER at t=1.560s (frame_52)",
+        "  FALSE DEFER at t=1.590s (frame_53)",
+        "  FALSE DEFER at t=1.620s (frame_54)",
+        "  FALSE DEFER at t=1.650s (frame_55)",
+        "  FALSE DEFER at t=1.680s (frame_56)"
+      ]
+    },
+    {
+      "name": "turn_02",
+      "description": "Real data: self speech only",
+      "passed": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE",
+      "issues": []
+    },
+    {
+      "name": "turn_03",
+      "description": "Real data: self speech only",
+      "passed": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE",
+      "issues": []
+    },
+    {
+      "name": "turn_04",
+      "description": "Real data: self speech only",
+      "passed": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE",
+      "issues": []
+    },
+    {
+      "name": "turn_05",
+      "description": "Real data: self speech only",
+      "passed": false,
+      "false_interrupts": 0,
+      "false_defers": 3,
+      "resumes": 0,
+      "final_state": "IDLE",
+      "states": "IDLE -> LISTEN -> IDLE",
+      "issues": [
+        "  FALSE DEFER at t=1.380s (frame_46)",
+        "  FALSE DEFER at t=1.410s (frame_47)",
+        "  FALSE DEFER at t=1.440s (frame_48)"
+      ]
+    }
+  ]
+}

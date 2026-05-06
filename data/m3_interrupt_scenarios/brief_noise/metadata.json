@@ -1,0 +1,19 @@
+{
+  "scenario_name": "brief_noise",
+  "description": "Brief human noise during Corollary",
+  "expected_behavior": "no_interrupt",
+  "agent_text": "I'm Corollary. I am speaking continuously without interruption.",
+  "agent_start_s": 0.5,
+  "agent_duration_s": 5.3101875,
+  "agent_samples": 84963,
+  "human_start_s": 1.5,
+  "human_duration_s": 0.1,
+  "human_second": null,
+  "total_duration_s": 7.8101875,
+  "input_sr": 48000,
+  "input_channels": 1,
+  "output_sr": 48000,
+  "lead_in_s": 0.5,
+  "tail_s": 1.0,
+  "recorded_at": "2026-05-03T17:16:15.273462"
+}

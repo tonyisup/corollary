@@ -1,0 +1,374 @@
+{
+  "timestamp": "2026-05-03T13:33:15.868893",
+  "summary": {
+    "scenarios_total": 8,
+    "scenarios_passed": 8,
+    "checks_total": 33,
+    "checks_passed": 33
+  },
+  "scenarios": [
+    {
+      "name": "clean_self",
+      "description": "Agent speaks alone \u2014 should stay in SPEAK throughout",
+      "passed": true,
+      "states": [
+        "SPEAK",
+        "IDLE"
+      ],
+      "decisions": [
+        {
+          "frame": 0,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "Agent starts speaking"
+        },
+        {
+          "frame": 0,
+          "check": "can_speak",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "Agent starts speaking"
+        },
+        {
+          "frame": 10,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "Mid-speech"
+        },
+        {
+          "frame": 19,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "End of speech"
+        }
+      ]
+    },
+    {
+      "name": "clean_world",
+      "description": "World speech alone \u2014 should defer after listen_threshold",
+      "passed": true,
+      "states": [
+        "IDLE",
+        "LISTEN"
+      ],
+      "decisions": [
+        {
+          "frame": 0,
+          "check": "can_speak",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "First world frame \u2014 threshold not met yet"
+        },
+        {
+          "frame": 4,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "After listen_threshold \u2014 should defer"
+        },
+        {
+          "frame": 10,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "Mid-speech"
+        },
+        {
+          "frame": 19,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "End of world speech"
+        }
+      ]
+    },
+    {
+      "name": "self_then_world",
+      "description": "Agent finishes, then world speaks \u2014 should complete then defer",
+      "passed": true,
+      "states": [
+        "SPEAK",
+        "IDLE",
+        "LISTEN"
+      ],
+      "decisions": [
+        {
+          "frame": 0,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "Agent starts speaking"
+        },
+        {
+          "frame": 19,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "Agent finishes"
+        },
+        {
+          "frame": 20,
+          "check": "state",
+          "expected": "IDLE",
+          "actual": "IDLE",
+          "passed": true,
+          "description": "Gap \u2014 back to IDLE"
+        },
+        {
+          "frame": 32,
+          "check": "state",
+          "expected": "IDLE",
+          "actual": "IDLE",
+          "passed": true,
+          "description": "Still in gap"
+        },
+        {
+          "frame": 37,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "World sustained \u2014 should defer"
+        }
+      ]
+    },
+    {
+      "name": "world_interrupts_self",
+      "description": "Agent speaking, world joins \u2014 should interrupt + defer",
+      "passed": true,
+      "states": [
+        "SPEAK",
+        "LISTEN",
+        "IDLE",
+        "LISTEN",
+        "IDLE"
+      ],
+      "decisions": [
+        {
+          "frame": 0,
+          "check": "can_speak",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "Agent starts speaking"
+        },
+        {
+          "frame": 16,
+          "check": "can_speak",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "Still speaking, no world yet"
+        },
+        {
+          "frame": 17,
+          "check": "should_interrupt",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "World joins \u2014 should interrupt"
+        },
+        {
+          "frame": 17,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "After interrupt \u2014 should defer"
+        },
+        {
+          "frame": 36,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "World still speaking"
+        }
+      ]
+    },
+    {
+      "name": "self_resumes_after_interrupt",
+      "description": "Interrupted, then silence \u2014 should resume deferred utterance",
+      "passed": true,
+      "states": [
+        "SPEAK",
+        "LISTEN",
+        "IDLE",
+        "LISTEN",
+        "IDLE"
+      ],
+      "decisions": [
+        {
+          "frame": 0,
+          "check": "can_speak",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "Agent starts"
+        },
+        {
+          "frame": 10,
+          "check": "should_interrupt",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "World interrupts"
+        },
+        {
+          "frame": 10,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "Deferred"
+        },
+        {
+          "frame": 22,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "World still speaking"
+        },
+        {
+          "frame": 30,
+          "check": "can_speak",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "After cooldown \u2014 can resume"
+        }
+      ]
+    },
+    {
+      "name": "brief_both_during_self",
+      "description": "Single BOTH frame during self \u2014 should NOT interrupt (motor window)",
+      "passed": true,
+      "states": [
+        "SPEAK",
+        "IDLE"
+      ],
+      "decisions": [
+        {
+          "frame": 0,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "Agent starts"
+        },
+        {
+          "frame": 10,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "BOTH frame \u2014 should keep speaking"
+        },
+        {
+          "frame": 11,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "Back to SELF"
+        }
+      ]
+    },
+    {
+      "name": "sustained_world_during_self",
+      "description": "Sustained WORLD during self \u2014 should interrupt",
+      "passed": true,
+      "states": [
+        "SPEAK",
+        "LISTEN",
+        "IDLE",
+        "LISTEN",
+        "IDLE"
+      ],
+      "decisions": [
+        {
+          "frame": 0,
+          "check": "state",
+          "expected": "SPEAK",
+          "actual": "SPEAK",
+          "passed": true,
+          "description": "Agent starts"
+        },
+        {
+          "frame": 10,
+          "check": "state",
+          "expected": "LISTEN",
+          "actual": "LISTEN",
+          "passed": true,
+          "description": "First WORLD frame \u2014 immediate interrupt"
+        },
+        {
+          "frame": 10,
+          "check": "should_interrupt",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "Should interrupt on first WORLD"
+        },
+        {
+          "frame": 14,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "Still listening"
+        }
+      ]
+    },
+    {
+      "name": "world_during_silence",
+      "description": "World speech during agent silence \u2014 should defer",
+      "passed": true,
+      "states": [
+        "IDLE",
+        "LISTEN",
+        "IDLE"
+      ],
+      "decisions": [
+        {
+          "frame": 0,
+          "check": "can_speak",
+          "expected": "True",
+          "actual": "True",
+          "passed": true,
+          "description": "Silence \u2014 can speak"
+        },
+        {
+          "frame": 21,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "World sustained \u2014 should defer"
+        },
+        {
+          "frame": 36,
+          "check": "can_speak",
+          "expected": "False",
+          "actual": "False",
+          "passed": true,
+          "description": "World still speaking"
+        }
+      ]
+    }
+  ]
+}

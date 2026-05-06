@@ -1,0 +1,77 @@
+{
+  "recorded_at": "2026-05-03T17:17:19.636632",
+  "input_device": 3,
+  "output_device": 5,
+  "scenarios": [
+    {
+      "scenario": "human_before",
+      "dir": "data/m3_interrupt_scenarios/human_before",
+      "captured_rms": 0.043472081422805786,
+      "human_region_rms": 0,
+      "agent_region_rms": 0.05402312055230141
+    },
+    {
+      "scenario": "human_after",
+      "dir": "data/m3_interrupt_scenarios/human_after",
+      "captured_rms": 0.04412021115422249,
+      "human_region_rms": 0.08087489753961563,
+      "agent_region_rms": 0.056065719574689865
+    },
+    {
+      "scenario": "human_early",
+      "dir": "data/m3_interrupt_scenarios/human_early",
+      "captured_rms": 0.04992322623729706,
+      "human_region_rms": 0.0491676926612854,
+      "agent_region_rms": 0.05863754451274872
+    },
+    {
+      "scenario": "human_late",
+      "dir": "data/m3_interrupt_scenarios/human_late",
+      "captured_rms": 0.04941419139504433,
+      "human_region_rms": 0.06411296129226685,
+      "agent_region_rms": 0.05691225081682205
+    },
+    {
+      "scenario": "brief_noise",
+      "dir": "data/m3_interrupt_scenarios/brief_noise",
+      "captured_rms": 0.04845815524458885,
+      "human_region_rms": 0.008645528927445412,
+      "agent_region_rms": 0.058554381132125854
+    },
+    {
+      "scenario": "human_double",
+      "dir": "data/m3_interrupt_scenarios/human_double",
+      "captured_rms": 0.04713233560323715,
+      "human_region_rms": 0.07421527057886124,
+      "agent_region_rms": 0.0558745376765728
+    },
+    {
+      "scenario": "self_only",
+      "dir": "data/m3_interrupt_scenarios/self_only",
+      "captured_rms": 0.047432657331228256,
+      "human_region_rms": 0,
+      "agent_region_rms": 0.05762927979230881
+    },
+    {
+      "scenario": "world_only",
+      "dir": "data/m3_interrupt_scenarios/world_only",
+      "captured_rms": 0.0025465525686740875,
+      "human_region_rms": 0.0029298909939825535,
+      "agent_region_rms": 0
+    },
+    {
+      "scenario": "overlap_human_first",
+      "dir": "data/m3_interrupt_scenarios/overlap_human_first",
+      "captured_rms": 0.04279473051428795,
+      "human_region_rms": 0.05314183980226517,
+      "agent_region_rms": 0.057346686720848083
+    },
+    {
+      "scenario": "overlap_self_first",
+      "dir": "data/m3_interrupt_scenarios/overlap_self_first",
+      "captured_rms": 0.049212004989385605,
+      "human_region_rms": 0.04845071956515312,
+      "agent_region_rms": 0.05919935926795006
+    }
+  ]
+}
