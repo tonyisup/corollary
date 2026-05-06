@@ -254,6 +254,8 @@ def analyze_scenario(
             is_playing=is_agent_playing,
             is_speech=is_speech,
             frame_audio=frame_audio,
+            self_pcm=agent_pcm if is_agent_playing else None,
+            agent_start_sample=int(agent_start_s * SR) if is_agent_playing else None,
         )
 
         # Run through controller
@@ -268,6 +270,7 @@ def analyze_scenario(
             "can_speak": decision.can_speak,
             "should_interrupt": decision.should_interrupt,
             "match_score": round(match_score, 4),
+            "self_match_score_per_frame": round(result.self_match_score_per_frame, 4) if result.self_match_score_per_frame is not None else None,
             "rms_db": round(rms_db, 1),
             "is_speech": is_speech,
             "gt_human": is_human_speaking,

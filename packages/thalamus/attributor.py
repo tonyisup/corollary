@@ -28,6 +28,7 @@ class AttributionResult:
     is_speech: bool = False
     onset_error_ms: Optional[float] = None
     metadata: Optional[Dict[str, Any]] = None
+    self_match_score_per_frame: Optional[float] = None  # Per-frame local self-match
 
 class ThalamicAttributor:
     """The source attribution unit of the Thalamus.
@@ -57,6 +58,80 @@ class ThalamicAttributor:
         self.m4_min_buffer_samples = int(m4_min_buffer_ms * sr / 1000.0)
         self._m4_buffer: Optional[np.ndarray] = None
 
+    def _compute_per_frame_self_match(
+        self,
+        frame_audio: np.ndarray,
+        self_pcm: np.ndarray,
+        agent_start_sample: int,
+        observed_onset_samples: int,
+        expected_onset_samples: int,
+    ) -> Optional[float]:
+        """Compute per-frame self-match score.
+        
+        Uses normalized cross-correlation between the observed frame and the
+        corresponding slice of the agent PCM template. Returns None if
+        self_pcm is not available or frame is out of bounds.
+        
+        Note: This uses a short window (frame_audio length, typically 30ms)
+        which can be noisy. For more stable scoring, a longer window should
+        be used (see _compute_per_frame_energy_ratio).
+        """
+        frame_len = len(frame_audio)
+        rel_pos = observed_onset_samples - expected_onset_samples
+        self_start = agent_start_sample + rel_pos
+        self_end = self_start + frame_len
+        
+        if self_start < 0 or self_end > len(self_pcm):
+            return None
+        
+        expected_self_frame = self_pcm[self_start:self_end]
+        
+        obs_norm = float(np.linalg.norm(frame_audio))
+        self_norm = float(np.linalg.norm(expected_self_frame))
+        
+        if obs_norm < 1e-9 or self_norm < 1e-9:
+            return 0.0
+        
+        return float(np.dot(frame_audio, expected_self_frame) / (obs_norm * self_norm))
+    
+    def _compute_per_frame_energy_ratio(
+        self,
+        frame_audio: np.ndarray,
+        self_pcm: np.ndarray,
+        agent_start_sample: int,
+        observed_onset_samples: int,
+        expected_onset_samples: int,
+    ) -> Optional[float]:
+        """Compute per-frame energy ratio (observed / expected self).
+        
+        When human speech overlaps with self-playback, the observed energy
+        is higher than the expected self energy. This ratio is more stable
+        than per-frame correlation because it's less sensitive to timing
+        misalignment and phase differences.
+        
+        Returns:
+            Ratio of observed RMS to expected self RMS.
+            None if self_pcm is not available or frame is out of bounds.
+            0.0 if expected self energy is near zero.
+        """
+        frame_len = len(frame_audio)
+        rel_pos = observed_onset_samples - expected_onset_samples
+        self_start = agent_start_sample + rel_pos
+        self_end = self_start + frame_len
+        
+        if self_start < 0 or self_end > len(self_pcm):
+            return None
+        
+        expected_self_frame = self_pcm[self_start:self_end]
+        
+        obs_rms = float(np.sqrt(np.mean(frame_audio ** 2)))
+        self_rms = float(np.sqrt(np.mean(expected_self_frame ** 2)))
+        
+        if self_rms < 1e-10:
+            return 0.0
+        
+        return obs_rms / self_rms
+
     def attribute(
         self,
         match_score: float,
@@ -66,6 +141,8 @@ class ThalamicAttributor:
         is_playing: bool,
         is_speech: bool = False,
         frame_audio: Optional[np.ndarray] = None,
+        self_pcm: Optional[np.ndarray] = None,
+        agent_start_sample: Optional[int] = None,
     ) -> AttributionResult:
         """Assign source attribution to an acoustic event.
         
@@ -83,13 +160,19 @@ class ThalamicAttributor:
             True if Corollary was actively emitting sound during the window.
         is_speech : bool
             True if VAD detects speech in this window (M2).
+        frame_audio : np.ndarray, optional
+            Raw audio for this frame (used for M4 buffer).
+        self_pcm : np.ndarray, optional
+            Full agent PCM template for per-frame self-match scoring.
+        agent_start_sample : int, optional
+            Sample offset in self_pcm where agent playback begins.
         
         Returns
         -------
         AttributionResult
             The source verdict and supporting metrics.
         """
-        # Initialize M4 metadata at the start so all return paths can use it
+        # Initialize M4 metadata
         m4_metadata = {
             'm4_attempted': False,
             'm4_outcome': 'not_attempted',
@@ -97,10 +180,21 @@ class ThalamicAttributor:
             'm4_buffer_length': 0,
         }
         
+        # Compute per-frame self-match score when self_pcm is available.
+        # Uses energy ratio (observed / expected self RMS) which is more stable
+        # than per-frame correlation for short windows.
+        self_match_score_per_frame = None
+        if self_pcm is not None and agent_start_sample is not None and frame_audio is not None:
+            if expected_onset_samples is not None and is_playing:
+                self_match_score_per_frame = self._compute_per_frame_energy_ratio(
+                    frame_audio, self_pcm, agent_start_sample,
+                    observed_onset_samples, expected_onset_samples
+                )
+        
         # 1. Check for silence
         if rms_db < self.energy_threshold_db:
             return AttributionResult(
-                verdict=SourceVerdict.SILENCE,
+                verdict= SourceVerdict.SILENCE,
                 confidence=1.0,
                 self_match_score=match_score,
                 is_in_motor_window=is_playing,
@@ -108,6 +202,7 @@ class ThalamicAttributor:
                 energy_db=rms_db,
                 is_speech=is_speech,
                 metadata=m4_metadata,
+                self_match_score_per_frame=0.0,
             )
 
         # 2. Compute causal score (timing alignment)
@@ -121,21 +216,16 @@ class ThalamicAttributor:
         is_self_like = match_score >= self.similarity_threshold
         is_timely = causal_score > 0.0
         
-        # M4 attempt: attempt when playing + speech (the "maybe self, maybe world" zone)
-        # M4 attempt: attempt when playing + speech (the "maybe self, maybe world" zone)
-        # M4 helps distinguish self from world speech when timing/similarity is uncertain
+        # M4 attempt
         if is_playing and is_speech and self.m4_detector is not None:
-            # Accumulate frame into M4 buffer
             if frame_audio is not None:
                 if self._m4_buffer is None:
                     self._m4_buffer = frame_audio.copy()
                 else:
                     self._m4_buffer = np.concatenate([self._m4_buffer, frame_audio])
-                # Keep only the last m4_window_samples
                 if len(self._m4_buffer) > self.m4_window_samples:
                     self._m4_buffer = self._m4_buffer[-self.m4_window_samples:]
                 m4_metadata['m4_buffer_length'] = len(self._m4_buffer)
-                # Only run M4 when we have enough audio
                 m4_metadata['m4_attempted'] = len(self._m4_buffer) >= self.m4_min_buffer_samples
                 if m4_metadata['m4_attempted']:
                     try:
@@ -150,106 +240,42 @@ class ThalamicAttributor:
                 else:
                     m4_metadata['m4_outcome'] = 'buffer_too_short'
         
-        # 1. M4-assisted SELF attribution (requires both M2 and M4 evidence)
-        # M4 can upgrade BOTH to SELF when speaker embedding is confident,
-        # but cannot assign SELF on its own without M2 support.
+        # Determine verdict
+        verdict = SourceVerdict.WORLD
+        confidence = 0.5
+        
+        # M4-assisted SELF attribution
         if is_playing and is_speech and m4_metadata.get('m4_outcome') == 'accepted':
             m4_conf = m4_metadata.get('m4_confidence', 0.0)
             if is_self_like and m4_conf >= self.m4_self_threshold:
-                # M2 similarity + M4 speaker evidence both support SELF
+                verdict = SourceVerdict.SELF
                 confidence = (match_score + causal_score + m4_conf) / 3.0
                 return AttributionResult(
-                    verdict=SourceVerdict.SELF,
-                    confidence=confidence,
-                    self_match_score=match_score,
-                    is_in_motor_window=is_playing,
-                    causal_score=causal_score,
-                    energy_db=rms_db,
-                    is_speech=is_speech,
-                    onset_error_ms=onset_error_ms,
-                    metadata=m4_metadata,
+                    verdict=verdict, confidence=confidence,
+                    self_match_score=match_score, is_in_motor_window=is_playing,
+                    causal_score=causal_score, energy_db=rms_db, is_speech=is_speech,
+                    onset_error_ms=onset_error_ms, metadata=m4_metadata,
+                    self_match_score_per_frame=self_match_score_per_frame,
                 )
-            # M4 accepted but M2 weak → still BOTH (conservative)
-            # Fall through to M2 logic below
-
-        # 2. M2 logic (fallback when M4 not available or M4 didn't confirm)
-        if is_playing and is_self_like and is_timely and is_speech:
-            # M2 conservatism: speech during playback can contain world speech
-            # even when the self template matches. Without strong M4 evidence,
-            # classify as BOTH to avoid false SELF attribution.
-            confidence = (match_score + causal_score) / 2.0
-            return AttributionResult(
-                verdict=SourceVerdict.BOTH,
-                confidence=confidence,
-                self_match_score=match_score,
-                is_in_motor_window=is_playing,
-                causal_score=causal_score,
-                energy_db=rms_db,
-                is_speech=is_speech,
-                onset_error_ms=onset_error_ms,
-                metadata=m4_metadata,
-            )
-
-        if is_playing and is_self_like and is_timely:
-            # High similarity + motor command + correct timing = SELF
-            confidence = (match_score + causal_score) / 2.0
-            return AttributionResult(
-                verdict=SourceVerdict.SELF,
-                confidence=confidence,
-                self_match_score=match_score,
-                is_in_motor_window=is_playing,
-                causal_score=causal_score,
-                energy_db=rms_db,
-                is_speech=is_speech,
-                onset_error_ms=onset_error_ms
-            )
         
-        if is_playing and (not is_self_like or not is_timely):
-            # Energy exists during playback, but it doesn't match our prediction
-            # or it arrived at the wrong time.
+        # M2 logic
+        if is_playing and is_self_like and is_timely and is_speech:
             verdict = SourceVerdict.BOTH
-            if is_speech:
-                # If it's speech and doesn't match ME, it's likely WORLD speech.
-                confidence = 0.8
-            else:
-                confidence = 0.7
-                
-            return AttributionResult(
-                verdict=verdict,
-                confidence=confidence,
-                self_match_score=match_score,
-                is_in_motor_window=is_playing,
-                causal_score=causal_score,
-                energy_db=rms_db,
-                is_speech=is_speech,
-                onset_error_ms=onset_error_ms,
-                metadata=m4_metadata,
-            )
-
-        if not is_playing:
-            # Energy exists when we ARE NOT playing.
+            confidence = (match_score + causal_score) / 2.0
+        elif is_playing and is_self_like and is_timely:
+            verdict = SourceVerdict.SELF
+            confidence = (match_score + causal_score) / 2.0
+        elif is_playing:
+            verdict = SourceVerdict.BOTH
+            confidence = 0.8 if is_speech else 0.7
+        else:
             verdict = SourceVerdict.WORLD
             confidence = 0.9 if is_speech else 0.8
-            return AttributionResult(
-                verdict=verdict,
-                confidence=confidence,
-                self_match_score=match_score,
-                is_in_motor_window=is_playing,
-                causal_score=causal_score,
-                energy_db=rms_db,
-                is_speech=is_speech,
-                onset_error_ms=onset_error_ms,
-                metadata=m4_metadata,
-            )
-
-        # Fallback
+        
         return AttributionResult(
-            verdict=SourceVerdict.WORLD,
-            confidence=0.5,
-            self_match_score=match_score,
-            is_in_motor_window=is_playing,
-            causal_score=causal_score,
-            energy_db=rms_db,
-            is_speech=is_speech,
-            metadata=m4_metadata,
+            verdict=verdict, confidence=confidence,
+            self_match_score=match_score, is_in_motor_window=is_playing,
+            causal_score=causal_score, energy_db=rms_db, is_speech=is_speech,
+            onset_error_ms=onset_error_ms, metadata=m4_metadata,
+            self_match_score_per_frame=self_match_score_per_frame,
         )

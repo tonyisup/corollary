@@ -492,6 +492,8 @@ def run_m2_trial(
             is_playing=is_playing,
             is_speech=is_speech,
             frame_audio=frame,
+            self_pcm=self_pcm if is_playing else None,
+            agent_start_sample=0,
         )
         verdicts.append(res.verdict)
         frame_records.append({

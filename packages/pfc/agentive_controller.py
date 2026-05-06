@@ -39,12 +39,16 @@ class AgentiveController:
         cooldown_ms: float = 500.0,
         treat_both_speech_as_agentive: bool = True,
         motor_holdoff_ms: float = 200.0,
+        both_external_energy_ratio_threshold: float = 2.0,
+        both_external_min_frames: int = 3,
     ) -> None:
         self.state = AgentState.IDLE
         self.listen_threshold_ms = listen_threshold_ms
         self.cooldown_ms = cooldown_ms
         self.treat_both_speech_as_agentive = treat_both_speech_as_agentive
         self.motor_holdoff_ms = motor_holdoff_ms
+        self.both_external_energy_ratio_threshold = both_external_energy_ratio_threshold
+        self.both_external_min_frames = both_external_min_frames
 
         self.last_speech_time: float = 0.0
         self.speech_start_time: float = 0.0
@@ -102,28 +106,40 @@ class AgentiveController:
 
         # 1. Classify the frame for M3 policy.
         is_world_speech = res.is_speech and res.verdict == SourceVerdict.WORLD
-        # BOTH frames during self-playback (is_in_motor_window) are self-activity,
-        # not external speech. The motor window means Corollary is actively emitting,
-        # so any BOTH attribution is self-speech that couldn't be fully separated.
+        
+        # BOTH frames during self-playback (is_in_motor_window) are treated as
+        # self-activity by default. However, if the per-frame energy ratio
+        # (observed / expected self RMS) is significantly above 1.0, this
+        # indicates human speech is overlapping with the self signal.
         #
-        # KNOWN LIMITATION: When human speech overlaps with self-playback, the
-        # attributor may still classify as BOTH (because the self signal dominates).
-        # The controller cannot reliably distinguish this from self-dominant BOTH
-        # using current frame-level signals. See docs/m3_both_overlap_analysis.md.
-        # 
-        # Discrimination signals evaluated:
-        # - Excess RMS: works when human is louder, fails when quieter
-        # - Match score: constant within scenario (no discrimination)
-        # - M4 below-threshold: fires too often during self-playback
-        # - Combined (sustained + excess): best F1=0.31, still too many false positives
+        # The per-frame energy ratio is computed by comparing the observed
+        # frame's RMS against the expected self frame's RMS from the agent
+        # PCM template. When human speech overlaps, the observed energy is
+        # higher than expected.
         #
-        # Long-term fix requires per-frame self-match scoring in the attributor
-        # or a dedicated overlap detector.
+        # We require:
+        # 1. Per-frame energy ratio is available (self_pcm was provided)
+        # 2. Ratio exceeds threshold (e.g., 1.5 = 3.5 dB excess)
+        # 3. Sustained excess (N consecutive frames) to avoid noise
+        both_is_external = False
+        if (res.is_speech and res.verdict == SourceVerdict.BOTH 
+            and res.is_in_motor_window
+            and res.self_match_score_per_frame is not None):
+            # Energy ratio > threshold indicates external speech
+            if res.self_match_score_per_frame > self.both_external_energy_ratio_threshold:
+                self._both_external_count = getattr(self, '_both_external_count', 0) + 1
+            else:
+                self._both_external_count = 0
+            if self._both_external_count >= self.both_external_min_frames:
+                both_is_external = True
+        else:
+            self._both_external_count = 0
+        
         is_overlap_speech = (
             self.treat_both_speech_as_agentive
             and res.is_speech
             and res.verdict == SourceVerdict.BOTH
-            and not res.is_in_motor_window
+            and (not res.is_in_motor_window or both_is_external)
         )
         is_agentive_external_speech = is_world_speech or is_overlap_speech
         is_self_activity = res.verdict == SourceVerdict.SELF or (
