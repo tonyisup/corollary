@@ -11,12 +11,15 @@ from thalamus.attributor import AttributionResult, SourceVerdict
 from .m2_turn_bridge import M2Frame
 
 
-def attribution(verdict: SourceVerdict, is_speech: bool, energy_db: float = -30.0) -> AttributionResult:
+def attribution(verdict: SourceVerdict, is_speech: bool, energy_db: float = -30.0,
+                is_in_motor_window: bool | None = None) -> AttributionResult:
+    if is_in_motor_window is None:
+        is_in_motor_window = verdict in {SourceVerdict.SELF, SourceVerdict.BOTH}
     return AttributionResult(
         verdict=verdict,
         confidence=0.9,
         self_match_score=0.0,
-        is_in_motor_window=verdict in {SourceVerdict.SELF, SourceVerdict.BOTH},
+        is_in_motor_window=is_in_motor_window,
         causal_score=0.0,
         energy_db=energy_db,
         is_speech=is_speech,
@@ -148,8 +151,8 @@ def frames_from_m2_summary(
     frames: list[M2Frame] = []
     t = start_s
     if both_frames > 0 and is_speech:
-        frames.append(M2Frame(t, attribution(SourceVerdict.BOTH, is_speech=True)))
-        frames.append(M2Frame(t + frame_step_s, attribution(SourceVerdict.BOTH, is_speech=True)))
+        frames.append(M2Frame(t, attribution(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)))
+        frames.append(M2Frame(t + frame_step_s, attribution(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)))
         t += frame_step_s
     elif world_frames > 0 and is_speech:
         frames.append(M2Frame(t, attribution(SourceVerdict.WORLD, is_speech=True)))

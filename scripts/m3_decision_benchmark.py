@@ -350,7 +350,8 @@ def run_scenario(scenario: BenchmarkScenario, listen_threshold_ms=100.0,
 
     # Agent requests to speak if this scenario includes agent speech
     if scenario.agent_requests_speak:
-        controller.request_output(scenario.agent_text)
+        first_frame_time = scenario.frames[0].time_s if scenario.frames else 0.0
+        controller.request_output(scenario.agent_text, current_time=first_frame_time)
 
     # Process all frames
     decisions = []

@@ -110,7 +110,7 @@ def test_controller_interrupts_active_speech_on_external_overlap():
         verdict=SourceVerdict.BOTH,
         confidence=0.9,
         self_match_score=0.6,
-        is_in_motor_window=True,
+        is_in_motor_window=False,  # external overlap, not self
         causal_score=0.5,
         energy_db=-20.0,
         is_speech=True,

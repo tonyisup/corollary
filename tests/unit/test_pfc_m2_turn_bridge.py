@@ -3,12 +3,14 @@ from pfc.agentive_controller import AgentiveController, AgentState
 from pfc.m2_turn_bridge import M2Frame, run_turn_taking_bridge
 
 
-def attr(verdict: SourceVerdict, is_speech: bool) -> AttributionResult:
+def attr(verdict: SourceVerdict, is_speech: bool, is_in_motor_window: bool | None = None) -> AttributionResult:
+    if is_in_motor_window is None:
+        is_in_motor_window = verdict in {SourceVerdict.SELF, SourceVerdict.BOTH}
     return AttributionResult(
         verdict=verdict,
         confidence=0.9,
         self_match_score=0.1,
-        is_in_motor_window=verdict in {SourceVerdict.SELF, SourceVerdict.BOTH},
+        is_in_motor_window=is_in_motor_window,
         causal_score=0.0,
         energy_db=-30.0 if verdict != SourceVerdict.SILENCE else -70.0,
         is_speech=is_speech,
@@ -17,7 +19,11 @@ def attr(verdict: SourceVerdict, is_speech: bool) -> AttributionResult:
 
 def test_controller_treats_both_speech_as_agentive_external_speech() -> None:
     ctrl = AgentiveController(listen_threshold_ms=100)
-    both_speech = attr(SourceVerdict.BOTH, is_speech=True)
+    # BOTH with is_in_motor_window=False = external overlap (not self-caused)
+    both_speech = AttributionResult(
+        verdict=SourceVerdict.BOTH, confidence=0.9, self_match_score=0.1,
+        is_in_motor_window=False, causal_score=0.0, energy_db=-30.0, is_speech=True,
+    )
 
     ctrl.process_attribution(both_speech, current_time=1.0)
     assert ctrl.state == AgentState.IDLE
@@ -40,8 +46,8 @@ def test_controller_can_disable_both_speech_agentive_policy() -> None:
 def test_m2_turn_bridge_defers_then_resumes_after_cooldown() -> None:
     ctrl = AgentiveController(listen_threshold_ms=100, cooldown_ms=200)
     frames = [
-        M2Frame(1.00, attr(SourceVerdict.BOTH, is_speech=True)),
-        M2Frame(1.15, attr(SourceVerdict.BOTH, is_speech=True)),
+        M2Frame(1.00, attr(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
+        M2Frame(1.15, attr(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
         M2Frame(1.50, attr(SourceVerdict.SILENCE, is_speech=False)),
     ]
 
@@ -71,7 +77,7 @@ def test_m2_turn_bridge_interrupts_speaking_then_resumes_after_overlap() -> None
     ctrl = AgentiveController(listen_threshold_ms=100, cooldown_ms=200)
     frames = [
         M2Frame(1.00, attr(SourceVerdict.SELF, is_speech=False)),
-        M2Frame(1.15, attr(SourceVerdict.BOTH, is_speech=True)),
+        M2Frame(1.15, attr(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
         M2Frame(1.50, attr(SourceVerdict.SILENCE, is_speech=False)),
     ]
 

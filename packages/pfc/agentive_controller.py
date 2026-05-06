@@ -38,17 +38,20 @@ class AgentiveController:
         listen_threshold_ms: float = 300.0,
         cooldown_ms: float = 500.0,
         treat_both_speech_as_agentive: bool = True,
+        motor_holdoff_ms: float = 200.0,
     ) -> None:
         self.state = AgentState.IDLE
         self.listen_threshold_ms = listen_threshold_ms
         self.cooldown_ms = cooldown_ms
         self.treat_both_speech_as_agentive = treat_both_speech_as_agentive
-        
+        self.motor_holdoff_ms = motor_holdoff_ms
+
         self.last_speech_time: float = 0.0
         self.speech_start_time: float = 0.0
         self.last_self_time: float = 0.0
         self.active_utterance: Optional[str] = None
         self.deferred_utterance: Optional[str] = None
+        self._request_output_time: float = 0.0
 
     @property
     def has_deferred_output(self) -> bool:
@@ -77,7 +80,26 @@ class AgentiveController:
         """
         if current_time is None:
             current_time = time.time()
-            
+
+        # 0. Pre-playback LISTEN recovery: if the controller entered LISTEN due
+        # to ambient noise shortly before the agent started playing, and the
+        # current frame shows BOTH with high match_score (indicating the agent's
+        # own playback is now arriving), recover to SPEAK.
+        if (
+            self.state == AgentState.LISTEN
+            and self._request_output_time > 0
+            and self.speech_start_time > 0
+            and (self._request_output_time - self.speech_start_time) < (self.motor_holdoff_ms / 1000.0)
+            and res.verdict == SourceVerdict.BOTH
+            and res.is_speech
+            and res.self_match_score >= 0.03  # above noise floor
+        ):
+            self.state = AgentState.SPEAK
+            self.active_utterance = self.deferred_utterance
+            self.deferred_utterance = None
+            self.speech_start_time = 0
+            self.last_speech_time = 0
+
         # 1. Classify the frame for M3 policy.
         is_world_speech = res.is_speech and res.verdict == SourceVerdict.WORLD
         # BOTH frames during self-playback (is_in_motor_window) are self-activity,
@@ -122,9 +144,22 @@ class AgentiveController:
             if just_interrupted:
                 pass
             elif is_agentive_external_speech:
-                if self.speech_start_time == 0:
-                    self.speech_start_time = current_time
-                self.last_speech_time = current_time
+                # Motor holdoff: after request_output(), suppress WORLD→LISTEN
+                # transitions for a brief period. This prevents ambient noise
+                # before the agent starts playing from triggering LISTEN.
+                in_holdoff = (
+                    self._request_output_time > 0
+                    and (current_time - self._request_output_time) < (self.motor_holdoff_ms / 1000.0)
+                )
+                if in_holdoff:
+                    # During holdoff, don't start speech timing from WORLD frames.
+                    # But do track timing if already listening (sustained speech).
+                    if self.speech_start_time > 0:
+                        self.last_speech_time = current_time
+                else:
+                    if self.speech_start_time == 0:
+                        self.speech_start_time = current_time
+                    self.last_speech_time = current_time
             else:
                 # Only reset if we were previously hearing speech and the cooldown has passed.
                 if self.last_speech_time > 0 and (current_time - self.last_speech_time) > (self.cooldown_ms / 1000.0):
@@ -141,6 +176,23 @@ class AgentiveController:
                     # We were listening, now it's quiet. Return to IDLE.
                     self.state = AgentState.IDLE
 
+                # LISTEN→SPEAK recovery: if we're in LISTEN (from IDLE, not from
+                # a SPEAK interrupt) and the attributor detects BOTH with high
+                # match_score while the agent is actively emitting, the "world
+                # speech" is the agent's own playback starting. Transition back
+                # to SPEAK so the agent can continue its utterance.
+                if (
+                    self.state == AgentState.LISTEN
+                    and not just_interrupted  # don't override genuine SPEAK→LISTEN
+                    and res.verdict == SourceVerdict.BOTH
+                    and res.is_speech
+                    and res.self_match_score >= 0.03  # above noise floor
+                    and res.is_in_motor_window  # agent is actively emitting
+                ):
+                    self.state = AgentState.SPEAK
+                    self.active_utterance = self.deferred_utterance
+                    self.deferred_utterance = None
+
         # 4. Decision Making
         can_speak = (self.state != AgentState.LISTEN)
         
@@ -151,13 +203,15 @@ class AgentiveController:
             deferred_text=self.deferred_utterance if not can_speak else None
         )
 
-    def request_output(self, text: str) -> bool:
+    def request_output(self, text: str, current_time: float = None) -> bool:
         """PFC requests to speak. Returns True if accepted, False if deferred."""
         if self.state == AgentState.LISTEN:
             self.deferred_utterance = text
             return False
-        
+
         self.state = AgentState.SPEAK
         self.active_utterance = text
         self.deferred_utterance = None
+        # Use provided time or fall back to wall-clock
+        self._request_output_time = current_time if current_time is not None else time.time()
         return True

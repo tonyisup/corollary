@@ -43,8 +43,8 @@ def run_ladder(self_artifact: str, overlap_artifact: str) -> list[dict[str, Any]
     rows: list[dict[str, Any]] = []
 
     defer_frames = [
-        M2Frame(1.00, attribution(SourceVerdict.BOTH, is_speech=True)),
-        M2Frame(1.15, attribution(SourceVerdict.BOTH, is_speech=True)),
+        M2Frame(1.00, attribution(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
+        M2Frame(1.15, attribution(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
         M2Frame(1.50, attribution(SourceVerdict.SILENCE, is_speech=False, energy_db=-70.0)),
     ]
     defer = run_turn_taking_bridge(defer_frames, "after you", controller=controller())
@@ -72,7 +72,7 @@ def run_ladder(self_artifact: str, overlap_artifact: str) -> list[dict[str, Any]
 
     synthetic_interrupt_frames = [
         M2Frame(1.00, attribution(SourceVerdict.SELF, is_speech=False)),
-        M2Frame(1.15, attribution(SourceVerdict.BOTH, is_speech=True)),
+        M2Frame(1.15, attribution(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
         M2Frame(1.50, attribution(SourceVerdict.SILENCE, is_speech=False, energy_db=-70.0)),
     ]
     synthetic_interrupt = run_turn_taking_bridge(

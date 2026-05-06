@@ -23,7 +23,7 @@ def test_broca_room_local_operating_defaults_apply_recommended_values() -> None:
 
     apply_broca_room_local_operating_defaults(args)
 
-    assert args.similarity_threshold == 0.10
+    assert args.similarity_threshold == 0.05
     assert args.onset_latency_ms == 300.0
     assert args.onset_method == "score"
     assert args.causal_tolerance_ms == 175.0

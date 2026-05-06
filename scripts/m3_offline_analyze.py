@@ -66,6 +66,7 @@ def analyze_scenario(
     cerebellum_model: str | None = None,
     listen_threshold_ms: float = 100.0,
     cooldown_ms: float = 200.0,
+    motor_holdoff_ms: float = 200.0,
     similarity_threshold: float = 0.05,
     causal_tolerance_ms: float = 175.0,
     self_match_mode: str = "local_xcorr",
@@ -176,6 +177,7 @@ def analyze_scenario(
     controller = AgentiveController(
         listen_threshold_ms=listen_threshold_ms,
         cooldown_ms=cooldown_ms,
+        motor_holdoff_ms=motor_holdoff_ms,
     )
 
     # Agent requests output at the appropriate time
@@ -225,7 +227,7 @@ def analyze_scenario(
 
         # Agent requests output
         if not agent_requested and agent_pcm is not None and len(agent_pcm) > 0 and t_s >= agent_start_s:
-            controller.request_output(metadata.get("agent_text", "I'm Corollary."))
+            controller.request_output(metadata.get("agent_text", "I'm Corollary."), current_time=t_s)
             agent_requested = True
 
         # Build attribution
@@ -338,6 +340,8 @@ def main():
                         choices=["global_xcorr", "local_xcorr", "room_local_oracle"])
     parser.add_argument("--onset-method", default="score",
                         choices=["energy", "score", "xcorr"])
+    parser.add_argument("--motor-holdoff-ms", type=float, default=200.0,
+                        help="Holdoff period after request_output() where WORLD frames don't trigger LISTEN (default: 200ms)")
     args = parser.parse_args()
 
     input_dir = Path(args.input_dir)
@@ -373,6 +377,7 @@ def main():
             cerebellum_model=args.cerebellum_model,
             listen_threshold_ms=args.listen_threshold_ms,
             cooldown_ms=args.cooldown_ms,
+            motor_holdoff_ms=args.motor_holdoff_ms,
             similarity_threshold=args.similarity_threshold,
             self_match_mode=args.self_match_mode,
             onset_method=args.onset_method,
