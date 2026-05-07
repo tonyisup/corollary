@@ -500,14 +500,22 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     for i, d in enumerate(bridge.decisions):
         if i < len(frame_records):
             fr = frame_records[i]
-            gt_human = fr.get("verdict") in ("WORLD", "BOTH") and fr.get("is_speech", False)
-            gt_agent = fr.get("is_in_motor_window", False)
+            is_speech = fr.get("is_speech", False)
+            is_motor = fr.get("is_in_motor_window", False)
+            verdict = fr.get("verdict", "")
+            
+            # Human speech during motor window (BOTH) = overlap case
+            # Human speech outside motor window (WORLD) = external speech case
+            gt_human_during = verdict == "BOTH" and is_speech and is_motor
+            gt_human_after = verdict == "WORLD" and is_speech and not is_motor
+            gt_human = gt_human_during or gt_human_after
             
             if d.should_interrupt and not gt_human:
                 metrics.false_interrupts += 1
             elif d.should_interrupt and gt_human:
                 metrics.true_interrupts += 1
-            elif not d.should_interrupt and gt_human and gt_agent:
+            elif not d.should_interrupt and gt_human_after:
+                # Missed interrupt: human speaking after motor window, controller didn't interrupt
                 metrics.missed_interrupts += 1
     
     # Resume
