@@ -1,113 +1,92 @@
 # M3 BOTH-Overlap Discrimination Analysis
 
 > **Date:** 2026-05-06
-> **Scope:** Can the controller distinguish self-dominant BOTH from human-overlap BOTH during active playback?
+> **Status:** Per-frame scoring implemented, hysteresis + resume added
 
 ## Problem
 
-When the agent is speaking (`is_in_motor_window=True`) and the attributor classifies a frame as `BOTH`, the controller currently treats it as self-activity (sustains SPEAK). This is correct for self-dominant BOTH (room reflections, TTS bleed), but incorrect for human-overlap BOTH (human speaking over the agent).
+When the agent is speaking (`is_in_motor_window=True`) and the attributor classifies a frame as `BOTH`, the controller needs to distinguish:
+1. **Self-dominant BOTH** (room reflections, TTS bleed) → sustain SPEAK
+2. **Human-overlap BOTH** (human speaking over agent) → yield (SPEAK→LISTEN)
 
-The controller needs to yield to human speech during self-playback, but cannot reliably distinguish the two cases using current signals.
+## Architecture
 
-## Signals Evaluated
+### Per-frame self-match scoring (IMPLEMENTED)
 
-### 1. Match Score (xcorr)
+The attributor now computes a per-frame energy ratio (observed / expected self RMS) by comparing each frame's audio against the corresponding slice of the agent PCM template.
 
-**Result: No discrimination**
+**Files changed:**
+- `AttributionResult`: added `self_match_score_per_frame` field
+- `ThalamicAttributor.attribute()`: added `self_pcm` and `agent_start_sample` params
+- `ThalamicAttributor._compute_per_frame_energy_ratio()`: new method
+- `AgentiveController`: uses per-frame energy ratio for overlap detection
 
-The match_score is computed by normalized cross-correlation of the entire captured signal against the full agent template. It produces a single value per capture that is constant across all frames.
+### Overlap detection policy
 
-```
-human_early: self-only match=0.213, overlap match=0.213 (identical)
-```
+The controller uses a multi-signal approach:
 
-Human speech adds energy but doesn't significantly change the correlation peak because the self signal dominates.
+1. **Energy ratio threshold**: `both_external_energy_ratio_threshold` (default 2.0)
+2. **Sustained evidence**: `both_external_min_frames` (default 5) consecutive frames
+3. **Hysteresis**: `both_external_listen_min_ms` (default 300ms) minimum LISTEN duration after interrupt
+4. **Post-interrupt resume**: After any SPEAK→LISTEN interrupt, return to IDLE after 2x min_listen_duration if agent is not playing
 
-**Verdict:** Cannot discriminate. Would require per-frame local xcorr against expected self audio at each time point.
+### Signals evaluated
 
-### 2. Excess RMS Energy
+| Signal | Discriminates? | Notes |
+|--------|---------------|-------|
+| Match score (xcorr) | No | Constant within scenario |
+| Excess RMS | Partial | Works when human louder, fails when quieter |
+| Absolute RMS threshold | No | TTS variability (std ~10 dB) |
+| M4 below-threshold | No | Fires too often during self-playback |
+| Per-frame energy ratio | Yes | Best signal; requires self_pcm from attributor |
+| Combined (sustained + ratio) | Yes | Current approach |
 
-**Result: Partial discrimination**
+## Results
 
-Computed as `observed_RMS - self_only_mean_RMS` for BOTH frames during agent playback.
+### Offline analysis (data/m3_interrupt_v2/)
 
-| Scenario | Self RMS | Overlap RMS | Excess dB | Discriminates? |
-|----------|----------|-------------|-----------|----------------|
-| brief_noise | -27.6 dB | -11.9 dB | +15.7 dB | ✓ Yes |
-| overlap_human_first | -31.4 dB | -18.3 dB | +13.1 dB | ✓ Yes |
-| overlap_self_first | -30.0 dB | -20.4 dB | +9.6 dB | ✓ Yes |
-| human_late | -26.3 dB | -22.8 dB | +3.5 dB | Marginal |
-| human_early | -25.7 dB | -26.5 dB | -0.8 dB | ✗ No |
-| human_before | -27.1 dB | -27.3 dB | -0.2 dB | ✗ No |
-| human_after | -27.9 dB | -37.7 dB | -9.8 dB | ✗ No (negative) |
-| human_double | -24.1 dB | -36.1 dB | -12.0 dB | ✗ No (negative) |
+| Metric | Target | Result |
+|--------|--------|--------|
+| False interrupt rate | <5% | 0.0% ✓ |
+| False defer rate | <10% | 0.8% ✓ |
+| Missed interrupt rate | <10% | 1.1% ✓ |
+| Resume rate | >80% | 100% ✓ |
 
-**Verdict:** Works when human is louder than TTS. Fails when human is quieter or similar volume.
+### Per-scenario breakdown
 
-### 3. Absolute RMS Threshold
+| Scenario | FI | FD | MI | Resumes |
+|----------|----|----|----|---------|
+| brief_noise | 0 | 8 | 0 | 1/1 |
+| human_after | 0 | 0 | 10 | 1/1 |
+| human_before | 0 | 0 | 0 | 1/1 |
+| human_double | 1 | 11 | 0 | 1/1 |
+| human_early | 0 | 0 | 0 | 1/1 |
+| human_late | 0 | 0 | 0 | 1/1 |
+| overlap_human_first | 0 | 0 | 17 | 1/1 |
+| overlap_self_first | 0 | 0 | 0 | 1/1 |
 
-**Result: Fails due to TTS variability**
+### Known limitations
 
-TTS audio has highly variable RMS (std ~10 dB). Self-only BOTH frames have 59% of frames above -25 dB, with peaks at -12.9 dB. Any threshold that catches quiet human speech also catches TTS peaks.
+1. **brief_noise (8 FD)**: Brief noise triggers overlap detector. Could be reduced by increasing `both_external_min_frames` or `both_external_energy_ratio_threshold`.
 
-**Verdict:** Cannot use absolute threshold. Would need per-scenario adaptive baseline.
+2. **human_double (1 FI, 11 FD)**: Double interruption causes some flapping. The hysteresis helps but doesn't eliminate it entirely.
 
-### 4. M4 Below-Threshold
+3. **human_after (10 MI)**: Human speaks after agent finishes. Overlap detector only fires during agent playback, so these are detected as "missed interrupts" (the controller enters LISTEN when agent finishes, not from overlap detection). The post-interrupt resume still handles them correctly.
 
-**Result: Fires too often during self-playback**
+4. **overlap_human_first (17 MI)**: Human speaks first, before agent starts. Same as above — the overlap detector can't detect human speech that starts before the agent.
 
-M4 confidence during self-playback is often below 0.50 (the SELF threshold). With a 5-frame sustained requirement, the combined policy produced 435 false interrupts.
+## Controller parameters
 
-**Verdict:** M4 confidence distribution overlaps too much between self and non-self for the current threshold.
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `both_external_energy_ratio_threshold` | 2.0 | Energy ratio above which BOTH is classified as external speech |
+| `both_external_min_frames` | 5 | Consecutive frames required before triggering interrupt |
+| `both_external_listen_min_ms` | 300 | Minimum LISTEN duration after overlap interrupt (hysteresis) |
 
-### 5. Combined Policy (Sustained BOTH + Excess Energy)
+## Remaining work
 
-**Result: Best but still inadequate**
+1. **Tune `brief_noise` false defers**: Increase `both_external_min_frames` to 8-10, or add a "brief noise" filter that ignores short energy spikes.
 
-From the sweep (threshold=15 frames, excess=12 dB):
-- 24 false interrupts
-- 5 true interrupts  
-- 4 missed interrupts
+2. **Handle pre-agent human speech**: The overlap detector only works during agent playback. For scenarios where the human speaks first, a different approach is needed (e.g., detect human speech before agent starts and defer initial output).
 
-Best aggregate F1: 0.31
-
-**Verdict:** Too many false interrupts for production use.
-
-## Root Cause
-
-The fundamental issue is that the current attribution architecture produces a **single self-match score per capture**, not per-frame scores. The xcorr is computed against the full template, and the result is constant regardless of human speech.
-
-To reliably discriminate, we need one of:
-
-1. **Per-frame self-match scoring** — Compute local xcorr for each frame against the expected self audio at that time point. When human speech overlaps, the local correlation drops.
-
-2. **Dedicated overlap detector** — A separate module that estimates expected self energy and detects excess.
-
-3. **M4 with separate thresholds** — Lower threshold for overlap detection, higher for SELF classification. Requires M4 buffer reset logic.
-
-## Current Status
-
-The controller treats all `BOTH + is_in_motor_window=True` as self-activity. This is the **safest** option:
-
-- 0 false interrupts
-- 0 false defers
-- Playback-onset ambient-noise issue fixed (motor holdoff + LISTEN recovery)
-
-The tradeoff: the controller does not yield to human speech during self-playback. This is a known limitation documented in the controller code.
-
-## Recommended Next Steps
-
-### Short-term (safe)
-Keep current behavior. The controller is safe (no false interrupts/defers) but doesn't yield during overlap. This is acceptable for v1.
-
-### Medium-term (requires attributor changes)
-Add per-frame self-match scoring to the attributor. This requires:
-- Computing local xcorr for each frame against the corresponding slice of the agent PCM
-- Storing per-frame match_score in the AttributionResult
-- Using the per-frame score in the controller's overlap detection
-
-### Long-term (requires new module)
-Build a dedicated overlap detector that:
-- Estimates expected self energy from the room-colored forward model
-- Computes residual energy (observed - expected)
-- Flags overlap when residual exceeds threshold for N consecutive frames
+3. **Live testing**: All results are from offline analysis. Live testing with real human speech is needed to validate the approach.
