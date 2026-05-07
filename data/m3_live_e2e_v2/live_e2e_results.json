@@ -1,0 +1,107 @@
+[
+  {
+    "scenario": "human_early",
+    "total_frames": 130,
+    "false_interrupts": 0,
+    "false_defers": 0,
+    "missed_interrupts": 37,
+    "true_interrupts": 1,
+    "successful_resumes": 1,
+    "total_resumes_expected": 1,
+    "resume_rate": "1/1",
+    "state_transitions": [
+      "IDLE",
+      "SPEAK",
+      "LISTEN",
+      "IDLE",
+      "LISTEN",
+      "IDLE"
+    ],
+    "latency_ms": 10285.8,
+    "notes": []
+  },
+  {
+    "scenario": "human_late",
+    "total_frames": 159,
+    "false_interrupts": 0,
+    "false_defers": 0,
+    "missed_interrupts": 36,
+    "true_interrupts": 1,
+    "successful_resumes": 1,
+    "total_resumes_expected": 1,
+    "resume_rate": "1/1",
+    "state_transitions": [
+      "IDLE",
+      "SPEAK",
+      "LISTEN",
+      "IDLE",
+      "LISTEN",
+      "IDLE"
+    ],
+    "latency_ms": 10621.5,
+    "notes": []
+  },
+  {
+    "scenario": "human_before",
+    "total_frames": 71,
+    "false_interrupts": 1,
+    "false_defers": 0,
+    "missed_interrupts": 12,
+    "true_interrupts": 0,
+    "successful_resumes": 1,
+    "total_resumes_expected": 1,
+    "resume_rate": "1/1",
+    "state_transitions": [
+      "IDLE",
+      "SPEAK",
+      "LISTEN",
+      "IDLE",
+      "LISTEN",
+      "IDLE"
+    ],
+    "latency_ms": 8639.4,
+    "notes": []
+  },
+  {
+    "scenario": "human_after",
+    "total_frames": 69,
+    "false_interrupts": 1,
+    "false_defers": 0,
+    "missed_interrupts": 11,
+    "true_interrupts": 0,
+    "successful_resumes": 1,
+    "total_resumes_expected": 1,
+    "resume_rate": "1/1",
+    "state_transitions": [
+      "IDLE",
+      "SPEAK",
+      "LISTEN",
+      "IDLE",
+      "LISTEN",
+      "IDLE"
+    ],
+    "latency_ms": 8537.0,
+    "notes": []
+  },
+  {
+    "scenario": "overlap_self_first",
+    "total_frames": 82,
+    "false_interrupts": 1,
+    "false_defers": 0,
+    "missed_interrupts": 18,
+    "true_interrupts": 0,
+    "successful_resumes": 1,
+    "total_resumes_expected": 1,
+    "resume_rate": "1/1",
+    "state_transitions": [
+      "IDLE",
+      "SPEAK",
+      "LISTEN",
+      "IDLE",
+      "LISTEN",
+      "IDLE"
+    ],
+    "latency_ms": 9166.8,
+    "notes": []
+  }
+]

@@ -470,7 +470,7 @@ async def main_async() -> None:
     parser.add_argument("--all", action="store_true", help="Run all scenarios")
     parser.add_argument("--list", action="store_true", help="List available scenarios")
     parser.add_argument("--input-device", type=int, default=3)
-    parser.add_argument("--output-device", type=int, default=5)
+    parser.add_argument("--output-device", type=int, default=4)
     parser.add_argument("--listen-threshold-ms", type=float, default=100.0)
     parser.add_argument("--cooldown-ms", type=float, default=200.0)
     parser.add_argument("--save-dir", default=None, help="Directory to save artifacts")
