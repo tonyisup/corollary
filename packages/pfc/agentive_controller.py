@@ -40,7 +40,7 @@ class AgentiveController:
         treat_both_speech_as_agentive: bool = True,
         motor_holdoff_ms: float = 200.0,
         both_external_energy_ratio_threshold: float = 2.0,
-        both_external_min_frames: int = 5,
+        both_external_min_frames: int = 7,
         both_external_listen_min_ms: float = 300.0,
     ) -> None:
         self.state = AgentState.IDLE
