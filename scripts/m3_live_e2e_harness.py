@@ -294,8 +294,8 @@ async def run_live_replay_capture(
         samples_played[0] = end
     
     if dual_output:
-        # Dual-output mode: open a separate output stream for human speech
-        # and synchronize manually
+        # Dual-output mode: sd.Stream for mic input + TTS output,
+        # plus separate sd.OutputStream for human speech
         human_samples_played = [0]
         
         def human_callback(outdata, frames, time_info, status):
@@ -311,30 +311,25 @@ async def run_live_replay_capture(
             human_samples_played[0] = end
         
         print(f"  Starting dual-output capture...")
-        tts_stream = sd.OutputStream(
+        # Main stream: mic input + TTS output
+        with sd.Stream(
             samplerate=tts_sr,
             blocksize=int(VAD_FRAME_SAMPLES * tts_sr / SR),
             dtype="float32",
             channels=1,
             callback=audio_callback,
             device=(input_device, output_device),
-        )
-        human_stream = sd.OutputStream(
-            samplerate=human_sr,
-            blocksize=int(VAD_FRAME_SAMPLES * human_sr / SR),
-            dtype="float32",
-            channels=1,
-            callback=human_callback,
-            device=human_output_device,
-        )
-        
-        tts_stream.start()
-        human_stream.start()
-        await asyncio.sleep(total_duration_s + 0.5)
-        tts_stream.stop()
-        human_stream.stop()
-        tts_stream.close()
-        human_stream.close()
+        ):
+            # Human speech output (separate stream)
+            with sd.OutputStream(
+                samplerate=human_sr,
+                blocksize=int(VAD_FRAME_SAMPLES * human_sr / SR),
+                dtype="float32",
+                channels=1,
+                callback=human_callback,
+                device=human_output_device,
+            ):
+                await asyncio.sleep(total_duration_s + 0.5)
     else:
         # Single-output mode (original)
         print(f"  Starting single-output capture...")
@@ -534,6 +529,7 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     controller = AgentiveController(
         listen_threshold_ms=args.listen_threshold_ms,
         cooldown_ms=args.cooldown_ms,
+        both_external_min_frames=args.both_external_min_frames,
     )
     
     frames = frames_from_frame_records(frame_records, max_frames=len(frame_records))
@@ -644,6 +640,8 @@ async def main_async() -> None:
                         help="Margin above noise floor for energy threshold (dB)")
     parser.add_argument("--human-output-device", type=int, default=None,
                         help="External speaker device for human speech (enables dual-speaker mode)")
+    parser.add_argument("--both-external-min-frames", type=int, default=7,
+                        help="Consecutive frames for overlap detection (default 7)")
     
     args = parser.parse_args()
     
