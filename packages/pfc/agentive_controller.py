@@ -58,6 +58,9 @@ class AgentiveController:
         self.active_utterance: Optional[str] = None
         self.deferred_utterance: Optional[str] = None
         self._request_output_time: float = 0.0
+        self._motor_end_time: float = 0.0
+        self._was_in_motor_window: bool = False
+        self.motor_end_holdoff_ms = motor_holdoff_ms  # reuse same value
         # Overlap detection state
         self._both_external_count: int = 0
         self._overlap_listen_start_time: float = 0.0
@@ -139,6 +142,16 @@ class AgentiveController:
         else:
             self._both_external_count = 0
         
+        # Track when motor window ends (for post-playback ring-down holdoff)
+        # Only trigger on the actual transition from in-window to out-of-window.
+        if res.is_in_motor_window:
+            self._was_in_motor_window = True
+            self._motor_end_time = 0.0
+        elif self._was_in_motor_window and self._motor_end_time == 0.0:
+            # Motor window just ended — record the time
+            self._motor_end_time = current_time
+            self._was_in_motor_window = False
+        
         is_overlap_speech = (
             self.treat_both_speech_as_agentive
             and res.is_speech
@@ -156,7 +169,19 @@ class AgentiveController:
         # 2. SPEAK is a real lifecycle: self frames sustain it; external speech
         # interrupts it immediately and queues the active utterance for later.
         if self.state == AgentState.SPEAK:
-            if is_agentive_external_speech:
+            # Post-motor holdoff: after the motor window ends, suppress
+            # WORLD→LISTEN transitions briefly. This handles the acoustic
+            # ring-down of TTS in the room after playback stops.
+            # Only suppresses if the "speech" started while the agent was
+            # still playing (i.e., it's ring-down, not new human speech).
+            in_post_motor_holdoff = (
+                res.verdict == SourceVerdict.WORLD
+                and self._motor_end_time > 0
+                and self.speech_start_time > 0
+                and self.speech_start_time < self._motor_end_time
+                and (current_time - self._motor_end_time) < (self.motor_end_holdoff_ms / 1000.0)
+            )
+            if is_agentive_external_speech and not in_post_motor_holdoff:
                 should_interrupt = True
                 just_interrupted = True
                 if self.active_utterance is not None:

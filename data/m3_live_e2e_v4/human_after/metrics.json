@@ -1,9 +1,9 @@
 {
   "scenario": "human_after",
-  "total_frames": 40,
+  "total_frames": 42,
   "false_interrupts": 1,
   "false_defers": 0,
-  "missed_interrupts": 9,
+  "missed_interrupts": 12,
   "true_interrupts": 0,
   "successful_resumes": 1,
   "total_resumes_expected": 1,
@@ -16,6 +16,6 @@
     "LISTEN",
     "IDLE"
   ],
-  "latency_ms": 8554.3,
+  "latency_ms": 8558.2,
   "notes": []
 }

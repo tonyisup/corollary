@@ -1,6 +1,6 @@
 {
   "scenario": "human_early",
-  "total_frames": 32,
+  "total_frames": 38,
   "false_interrupts": 1,
   "false_defers": 0,
   "missed_interrupts": 0,
@@ -16,6 +16,6 @@
     "LISTEN",
     "IDLE"
   ],
-  "latency_ms": 10302.0,
+  "latency_ms": 10289.7,
   "notes": []
 }

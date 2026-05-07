@@ -4,533 +4,533 @@
     "start_s": 0.0,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-86.27779",
+    "energy_db": "-94.29822",
     "is_speech": false,
-    "rms_db": "-86.27779"
+    "rms_db": "-94.29822"
   },
   {
     "frame_index": 1,
     "start_s": 0.03,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-51.225113",
+    "energy_db": "-56.596687",
     "is_speech": false,
-    "rms_db": "-51.225113"
+    "rms_db": "-56.596687"
   },
   {
     "frame_index": 2,
     "start_s": 0.06,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-50.02408",
+    "energy_db": "-53.25739",
     "is_speech": false,
-    "rms_db": "-50.02408"
+    "rms_db": "-53.25739"
   },
   {
     "frame_index": 3,
     "start_s": 0.09,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-51.159348",
-    "is_speech": false,
-    "rms_db": "-51.159348"
+    "energy_db": "-52.803112",
+    "is_speech": true,
+    "rms_db": "-52.803112"
   },
   {
     "frame_index": 4,
     "start_s": 0.12,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-49.49427",
-    "is_speech": false,
-    "rms_db": "-49.49427"
+    "energy_db": "-53.349983",
+    "is_speech": true,
+    "rms_db": "-53.349983"
   },
   {
     "frame_index": 5,
     "start_s": 0.15,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-47.448612",
-    "is_speech": false,
-    "rms_db": "-47.448612"
+    "energy_db": "-48.92694",
+    "is_speech": true,
+    "rms_db": "-48.92694"
   },
   {
     "frame_index": 6,
     "start_s": 0.18,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-47.57885",
-    "is_speech": false,
-    "rms_db": "-47.57885"
+    "energy_db": "-48.756176",
+    "is_speech": true,
+    "rms_db": "-48.756176"
   },
   {
     "frame_index": 7,
     "start_s": 0.21,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-48.153008",
-    "is_speech": false,
-    "rms_db": "-48.153008"
+    "energy_db": "-49.80036",
+    "is_speech": true,
+    "rms_db": "-49.80036"
   },
   {
     "frame_index": 8,
     "start_s": 0.24,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-48.71367",
-    "is_speech": false,
-    "rms_db": "-48.71367"
+    "energy_db": "-50.189053",
+    "is_speech": true,
+    "rms_db": "-50.189053"
   },
   {
     "frame_index": 9,
     "start_s": 0.27,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-47.580223",
-    "is_speech": false,
-    "rms_db": "-47.580223"
+    "energy_db": "-48.74905",
+    "is_speech": true,
+    "rms_db": "-48.74905"
   },
   {
     "frame_index": 10,
     "start_s": 0.3,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-46.58187",
-    "is_speech": false,
-    "rms_db": "-46.58187"
+    "energy_db": "-48.287167",
+    "is_speech": true,
+    "rms_db": "-48.287167"
   },
   {
     "frame_index": 11,
     "start_s": 0.33,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-39.700634",
+    "energy_db": "-47.957462",
     "is_speech": false,
-    "rms_db": "-39.700634"
+    "rms_db": "-47.957462"
   },
   {
     "frame_index": 12,
     "start_s": 0.36,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-39.771683",
+    "energy_db": "-48.064507",
     "is_speech": false,
-    "rms_db": "-39.771683"
+    "rms_db": "-48.064507"
   },
   {
     "frame_index": 13,
     "start_s": 0.39,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-42.513996",
+    "energy_db": "-47.617287",
     "is_speech": false,
-    "rms_db": "-42.513996"
+    "rms_db": "-47.617287"
   },
   {
     "frame_index": 14,
     "start_s": 0.42,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-43.974876",
+    "energy_db": "-48.72483",
     "is_speech": false,
-    "rms_db": "-43.974876"
+    "rms_db": "-48.72483"
   },
   {
     "frame_index": 15,
     "start_s": 0.45,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-45.800262",
+    "energy_db": "-48.120846",
     "is_speech": false,
-    "rms_db": "-45.800262"
+    "rms_db": "-48.120846"
   },
   {
     "frame_index": 16,
     "start_s": 0.48,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-45.7114",
+    "energy_db": "-47.856285",
     "is_speech": false,
-    "rms_db": "-45.7114"
+    "rms_db": "-47.856285"
   },
   {
     "frame_index": 17,
     "start_s": 0.51,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-46.55218",
-    "is_speech": true,
-    "rms_db": "-46.55218"
+    "energy_db": "-47.71911",
+    "is_speech": false,
+    "rms_db": "-47.71911"
   },
   {
     "frame_index": 18,
     "start_s": 0.54,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-46.898994",
-    "is_speech": true,
-    "rms_db": "-46.898994"
+    "energy_db": "-48.976982",
+    "is_speech": false,
+    "rms_db": "-48.976982"
   },
   {
     "frame_index": 19,
     "start_s": 0.57,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-47.077312",
-    "is_speech": true,
-    "rms_db": "-47.077312"
+    "energy_db": "-48.799934",
+    "is_speech": false,
+    "rms_db": "-48.799934"
   },
   {
     "frame_index": 20,
     "start_s": 0.6,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-46.27072",
-    "is_speech": true,
-    "rms_db": "-46.27072"
+    "energy_db": "-48.98771",
+    "is_speech": false,
+    "rms_db": "-48.98771"
   },
   {
     "frame_index": 21,
     "start_s": 0.63,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-45.264725",
-    "is_speech": true,
-    "rms_db": "-45.264725"
+    "energy_db": "-47.809776",
+    "is_speech": false,
+    "rms_db": "-47.809776"
   },
   {
     "frame_index": 22,
     "start_s": 0.66,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-46.40394",
-    "is_speech": true,
-    "rms_db": "-46.40394"
+    "energy_db": "-48.113155",
+    "is_speech": false,
+    "rms_db": "-48.113155"
   },
   {
     "frame_index": 23,
     "start_s": 0.69,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.6418758568822261,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 0.6167911357445385,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-29.925274",
-    "is_speech": true,
-    "rms_db": "-29.925274"
+    "energy_db": "-30.271532",
+    "is_speech": false,
+    "rms_db": "-30.271532"
   },
   {
     "frame_index": 24,
     "start_s": 0.72,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.3459235598892306,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 0.3341780574251098,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-24.78633",
-    "is_speech": true,
-    "rms_db": "-24.78633"
+    "energy_db": "-25.086374",
+    "is_speech": false,
+    "rms_db": "-25.086374"
   },
   {
     "frame_index": 25,
     "start_s": 0.75,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.31936400817879307,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 0.32158297050297524,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-26.007233",
-    "is_speech": true,
-    "rms_db": "-26.007233"
+    "energy_db": "-25.947092",
+    "is_speech": false,
+    "rms_db": "-25.947092"
   },
   {
     "frame_index": 26,
     "start_s": 0.78,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.44101059887004446,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 0.4514593124742846,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-26.150587",
-    "is_speech": true,
-    "rms_db": "-26.150587"
+    "energy_db": "-25.947193",
+    "is_speech": false,
+    "rms_db": "-25.947193"
   },
   {
     "frame_index": 27,
     "start_s": 0.81,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.32291159950286014,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 0.32058785064773543,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-31.300102",
-    "is_speech": true,
-    "rms_db": "-31.300102"
+    "energy_db": "-31.362835",
+    "is_speech": false,
+    "rms_db": "-31.362835"
   },
   {
     "frame_index": 28,
     "start_s": 0.84,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.16896007498237905,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 0.14496593673737432,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-31.434689",
-    "is_speech": true,
-    "rms_db": "-31.434689"
+    "energy_db": "-32.765053",
+    "is_speech": false,
+    "rms_db": "-32.765053"
   },
   {
     "frame_index": 29,
     "start_s": 0.87,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.7648573304966987,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 0.5147390825589943,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-33.004253",
+    "energy_db": "-36.44412",
     "is_speech": true,
-    "rms_db": "-33.004253"
+    "rms_db": "-36.44412"
   },
   {
     "frame_index": 30,
     "start_s": 0.9,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-35.714867",
+    "energy_db": "-38.815735",
     "is_speech": true,
-    "rms_db": "-35.714867"
+    "rms_db": "-38.815735"
   },
   {
     "frame_index": 31,
     "start_s": 0.93,
-    "verdict": "SILENCE",
-    "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.0,
+    "verdict": "BOTH",
+    "confidence": 0.7,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 0.3244749702943638,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-35.433064",
+    "energy_db": "-36.649586",
     "is_speech": true,
-    "rms_db": "-35.433064"
+    "rms_db": "-36.649586"
   },
   {
     "frame_index": 32,
     "start_s": 0.96,
-    "verdict": "SILENCE",
-    "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 0.0,
+    "verdict": "BOTH",
+    "confidence": 0.7,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 15.666637731702512,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-35.154625",
+    "energy_db": "-36.049942",
     "is_speech": true,
-    "rms_db": "-35.154625"
+    "rms_db": "-36.049942"
   },
   {
     "frame_index": 33,
     "start_s": 0.99,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-39.30287",
+    "energy_db": "-40.324883",
     "is_speech": true,
-    "rms_db": "-39.30287"
+    "rms_db": "-40.324883"
   },
   {
     "frame_index": 34,
     "start_s": 1.02,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-39.761433",
+    "energy_db": "-39.591244",
     "is_speech": true,
-    "rms_db": "-39.761433"
+    "rms_db": "-39.591244"
   },
   {
     "frame_index": 35,
     "start_s": 1.05,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-39.97234",
+    "energy_db": "-40.759716",
     "is_speech": true,
-    "rms_db": "-39.97234"
+    "rms_db": "-40.759716"
   },
   {
     "frame_index": 36,
     "start_s": 1.08,
     "verdict": "SILENCE",
     "confidence": 1.0,
-    "self_match_score": 0.02757854573428631,
+    "self_match_score": 0.033739689737558365,
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-38.548912",
+    "energy_db": "-39.10374",
     "is_speech": true,
-    "rms_db": "-38.548912"
+    "rms_db": "-39.10374"
   },
   {
     "frame_index": 37,
     "start_s": 1.11,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 387.03473247469236,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 362.60737188202296,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-29.10458",
+    "energy_db": "-29.670847",
     "is_speech": true,
-    "rms_db": "-29.10458"
+    "rms_db": "-29.670847"
   },
   {
     "frame_index": 38,
     "start_s": 1.14,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 311.8479868068169,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 325.55432296709733,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-28.95382",
+    "energy_db": "-28.58021",
     "is_speech": true,
-    "rms_db": "-28.95382"
+    "rms_db": "-28.58021"
   },
   {
     "frame_index": 39,
     "start_s": 1.17,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 170.27326335933685,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 163.95478879161507,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-31.257334",
+    "energy_db": "-31.58578",
     "is_speech": true,
-    "rms_db": "-31.257334"
+    "rms_db": "-31.58578"
   },
   {
     "frame_index": 40,
     "start_s": 1.2,
     "verdict": "BOTH",
     "confidence": 0.7,
-    "self_match_score": 0.02757854573428631,
-    "self_match_score_per_frame": 61.628882076447134,
+    "self_match_score": 0.033739689737558365,
+    "self_match_score_per_frame": 61.80409242382517,
     "is_in_motor_window": true,
     "causal_score": 0.0,
-    "energy_db": "-34.899845",
+    "energy_db": "-34.875187",
     "is_speech": true,
-    "rms_db": "-34.899845"
+    "rms_db": "-34.875187"
   },
   {
     "frame_index": 41,
@@ -541,9 +541,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-35.004543",
+    "energy_db": "-34.875446",
     "is_speech": true,
-    "rms_db": "-35.004543"
+    "rms_db": "-34.875446"
   },
   {
     "frame_index": 42,
@@ -554,9 +554,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-34.691624",
+    "energy_db": "-35.590443",
     "is_speech": true,
-    "rms_db": "-34.691624"
+    "rms_db": "-35.590443"
   },
   {
     "frame_index": 43,
@@ -567,9 +567,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-27.325752",
+    "energy_db": "-27.224861",
     "is_speech": true,
-    "rms_db": "-27.325752"
+    "rms_db": "-27.224861"
   },
   {
     "frame_index": 44,
@@ -580,9 +580,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-32.17669",
+    "energy_db": "-32.688366",
     "is_speech": true,
-    "rms_db": "-32.17669"
+    "rms_db": "-32.688366"
   },
   {
     "frame_index": 45,
@@ -593,9 +593,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-30.601767",
+    "energy_db": "-30.652649",
     "is_speech": true,
-    "rms_db": "-30.601767"
+    "rms_db": "-30.652649"
   },
   {
     "frame_index": 46,
@@ -606,9 +606,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-28.97216",
+    "energy_db": "-29.095423",
     "is_speech": true,
-    "rms_db": "-28.97216"
+    "rms_db": "-29.095423"
   },
   {
     "frame_index": 47,
@@ -619,9 +619,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-30.760113",
+    "energy_db": "-30.729973",
     "is_speech": true,
-    "rms_db": "-30.760113"
+    "rms_db": "-30.729973"
   },
   {
     "frame_index": 48,
@@ -632,22 +632,22 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-30.77914",
+    "energy_db": "-30.342272",
     "is_speech": true,
-    "rms_db": "-30.77914"
+    "rms_db": "-30.342272"
   },
   {
     "frame_index": 49,
     "start_s": 1.47,
-    "verdict": "SILENCE",
-    "confidence": 1.0,
+    "verdict": "WORLD",
+    "confidence": 0.8,
     "self_match_score": 0.0,
-    "self_match_score_per_frame": 0.0,
+    "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-35.615906",
+    "energy_db": "-35.607094",
     "is_speech": true,
-    "rms_db": "-35.615906"
+    "rms_db": "-35.607094"
   },
   {
     "frame_index": 50,
@@ -658,9 +658,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-37.498882",
+    "energy_db": "-37.740944",
     "is_speech": true,
-    "rms_db": "-37.498882"
+    "rms_db": "-37.740944"
   },
   {
     "frame_index": 51,
@@ -671,9 +671,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-37.853672",
+    "energy_db": "-38.326687",
     "is_speech": true,
-    "rms_db": "-37.853672"
+    "rms_db": "-38.326687"
   },
   {
     "frame_index": 52,
@@ -684,9 +684,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-39.428185",
+    "energy_db": "-39.48129",
     "is_speech": true,
-    "rms_db": "-39.428185"
+    "rms_db": "-39.48129"
   },
   {
     "frame_index": 53,
@@ -697,9 +697,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-39.812756",
+    "energy_db": "-40.057888",
     "is_speech": true,
-    "rms_db": "-39.812756"
+    "rms_db": "-40.057888"
   },
   {
     "frame_index": 54,
@@ -710,9 +710,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-42.94718",
+    "energy_db": "-42.91323",
     "is_speech": true,
-    "rms_db": "-42.94718"
+    "rms_db": "-42.91323"
   },
   {
     "frame_index": 55,
@@ -723,9 +723,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.534126",
+    "energy_db": "-46.0158",
     "is_speech": true,
-    "rms_db": "-45.534126"
+    "rms_db": "-46.0158"
   },
   {
     "frame_index": 56,
@@ -736,9 +736,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.4344",
+    "energy_db": "-47.895294",
     "is_speech": true,
-    "rms_db": "-46.4344"
+    "rms_db": "-47.895294"
   },
   {
     "frame_index": 57,
@@ -749,9 +749,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.886093",
+    "energy_db": "-48.144802",
     "is_speech": true,
-    "rms_db": "-45.886093"
+    "rms_db": "-48.144802"
   },
   {
     "frame_index": 58,
@@ -762,9 +762,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-41.918873",
+    "energy_db": "-42.783886",
     "is_speech": true,
-    "rms_db": "-41.918873"
+    "rms_db": "-42.783886"
   },
   {
     "frame_index": 59,
@@ -775,9 +775,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-37.380413",
+    "energy_db": "-37.595547",
     "is_speech": true,
-    "rms_db": "-37.380413"
+    "rms_db": "-37.595547"
   },
   {
     "frame_index": 60,
@@ -788,9 +788,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-41.638073",
+    "energy_db": "-42.00813",
     "is_speech": true,
-    "rms_db": "-41.638073"
+    "rms_db": "-42.00813"
   },
   {
     "frame_index": 61,
@@ -801,35 +801,35 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-38.45686",
+    "energy_db": "-38.533844",
     "is_speech": true,
-    "rms_db": "-38.45686"
+    "rms_db": "-38.533844"
   },
   {
     "frame_index": 62,
     "start_s": 1.86,
-    "verdict": "SILENCE",
-    "confidence": 1.0,
+    "verdict": "WORLD",
+    "confidence": 0.8,
     "self_match_score": 0.0,
-    "self_match_score_per_frame": 0.0,
+    "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-36.044846",
+    "energy_db": "-36.252808",
     "is_speech": true,
-    "rms_db": "-36.044846"
+    "rms_db": "-36.252808"
   },
   {
     "frame_index": 63,
     "start_s": 1.89,
-    "verdict": "SILENCE",
-    "confidence": 1.0,
+    "verdict": "WORLD",
+    "confidence": 0.8,
     "self_match_score": 0.0,
-    "self_match_score_per_frame": 0.0,
+    "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-36.790462",
+    "energy_db": "-36.70829",
     "is_speech": true,
-    "rms_db": "-36.790462"
+    "rms_db": "-36.70829"
   },
   {
     "frame_index": 64,
@@ -840,9 +840,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-39.06247",
+    "energy_db": "-38.91294",
     "is_speech": true,
-    "rms_db": "-39.06247"
+    "rms_db": "-38.91294"
   },
   {
     "frame_index": 65,
@@ -853,9 +853,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-44.54189",
+    "energy_db": "-45.4287",
     "is_speech": true,
-    "rms_db": "-44.54189"
+    "rms_db": "-45.4287"
   },
   {
     "frame_index": 66,
@@ -866,9 +866,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.89702",
+    "energy_db": "-47.508907",
     "is_speech": true,
-    "rms_db": "-46.89702"
+    "rms_db": "-47.508907"
   },
   {
     "frame_index": 67,
@@ -879,9 +879,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.175896",
+    "energy_db": "-48.752865",
     "is_speech": true,
-    "rms_db": "-47.175896"
+    "rms_db": "-48.752865"
   },
   {
     "frame_index": 68,
@@ -892,9 +892,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.55452",
+    "energy_db": "-48.255066",
     "is_speech": true,
-    "rms_db": "-47.55452"
+    "rms_db": "-48.255066"
   },
   {
     "frame_index": 69,
@@ -905,9 +905,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-43.960537",
+    "energy_db": "-44.986572",
     "is_speech": true,
-    "rms_db": "-43.960537"
+    "rms_db": "-44.986572"
   },
   {
     "frame_index": 70,
@@ -918,9 +918,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-37.68977",
+    "energy_db": "-38.0182",
     "is_speech": true,
-    "rms_db": "-37.68977"
+    "rms_db": "-38.0182"
   },
   {
     "frame_index": 71,
@@ -931,9 +931,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-39.76258",
+    "energy_db": "-39.421837",
     "is_speech": true,
-    "rms_db": "-39.76258"
+    "rms_db": "-39.421837"
   },
   {
     "frame_index": 72,
@@ -944,9 +944,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-42.654984",
+    "energy_db": "-42.77792",
     "is_speech": true,
-    "rms_db": "-42.654984"
+    "rms_db": "-42.77792"
   },
   {
     "frame_index": 73,
@@ -957,9 +957,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-38.99344",
+    "energy_db": "-39.543842",
     "is_speech": true,
-    "rms_db": "-38.99344"
+    "rms_db": "-39.543842"
   },
   {
     "frame_index": 74,
@@ -970,9 +970,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-39.07597",
+    "energy_db": "-39.521275",
     "is_speech": true,
-    "rms_db": "-39.07597"
+    "rms_db": "-39.521275"
   },
   {
     "frame_index": 75,
@@ -983,9 +983,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-40.994255",
+    "energy_db": "-40.8485",
     "is_speech": true,
-    "rms_db": "-40.994255"
+    "rms_db": "-40.8485"
   },
   {
     "frame_index": 76,
@@ -996,9 +996,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.08765",
+    "energy_db": "-47.414093",
     "is_speech": true,
-    "rms_db": "-46.08765"
+    "rms_db": "-47.414093"
   },
   {
     "frame_index": 77,
@@ -1009,9 +1009,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.525326",
+    "energy_db": "-48.73154",
     "is_speech": true,
-    "rms_db": "-47.525326"
+    "rms_db": "-48.73154"
   },
   {
     "frame_index": 78,
@@ -1022,9 +1022,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.231285",
+    "energy_db": "-48.453747",
     "is_speech": true,
-    "rms_db": "-45.231285"
+    "rms_db": "-48.453747"
   },
   {
     "frame_index": 79,
@@ -1035,9 +1035,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.680023",
+    "energy_db": "-48.86998",
     "is_speech": true,
-    "rms_db": "-45.680023"
+    "rms_db": "-48.86998"
   },
   {
     "frame_index": 80,
@@ -1048,9 +1048,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.098675",
+    "energy_db": "-48.92157",
     "is_speech": true,
-    "rms_db": "-46.098675"
+    "rms_db": "-48.92157"
   },
   {
     "frame_index": 81,
@@ -1061,9 +1061,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.776577",
-    "is_speech": true,
-    "rms_db": "-46.776577"
+    "energy_db": "-49.181076",
+    "is_speech": false,
+    "rms_db": "-49.181076"
   },
   {
     "frame_index": 82,
@@ -1074,9 +1074,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-43.36474",
-    "is_speech": true,
-    "rms_db": "-43.36474"
+    "energy_db": "-43.91975",
+    "is_speech": false,
+    "rms_db": "-43.91975"
   },
   {
     "frame_index": 83,
@@ -1087,9 +1087,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-40.37306",
-    "is_speech": true,
-    "rms_db": "-40.37306"
+    "energy_db": "-41.47922",
+    "is_speech": false,
+    "rms_db": "-41.47922"
   },
   {
     "frame_index": 84,
@@ -1100,9 +1100,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-40.026897",
-    "is_speech": true,
-    "rms_db": "-40.026897"
+    "energy_db": "-39.885548",
+    "is_speech": false,
+    "rms_db": "-39.885548"
   },
   {
     "frame_index": 85,
@@ -1113,9 +1113,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-38.71426",
-    "is_speech": true,
-    "rms_db": "-38.71426"
+    "energy_db": "-38.18999",
+    "is_speech": false,
+    "rms_db": "-38.18999"
   },
   {
     "frame_index": 86,
@@ -1126,9 +1126,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-44.770462",
-    "is_speech": true,
-    "rms_db": "-44.770462"
+    "energy_db": "-46.286446",
+    "is_speech": false,
+    "rms_db": "-46.286446"
   },
   {
     "frame_index": 87,
@@ -1139,9 +1139,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.79014",
-    "is_speech": true,
-    "rms_db": "-45.79014"
+    "energy_db": "-48.007587",
+    "is_speech": false,
+    "rms_db": "-48.007587"
   },
   {
     "frame_index": 88,
@@ -1152,9 +1152,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-43.184677",
+    "energy_db": "-44.259182",
     "is_speech": true,
-    "rms_db": "-43.184677"
+    "rms_db": "-44.259182"
   },
   {
     "frame_index": 89,
@@ -1165,9 +1165,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-33.341843",
+    "energy_db": "-33.62677",
     "is_speech": true,
-    "rms_db": "-33.341843"
+    "rms_db": "-33.62677"
   },
   {
     "frame_index": 90,
@@ -1178,9 +1178,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-32.84705",
+    "energy_db": "-32.713104",
     "is_speech": true,
-    "rms_db": "-32.84705"
+    "rms_db": "-32.713104"
   },
   {
     "frame_index": 91,
@@ -1191,9 +1191,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-33.165848",
+    "energy_db": "-33.06152",
     "is_speech": true,
-    "rms_db": "-33.165848"
+    "rms_db": "-33.06152"
   },
   {
     "frame_index": 92,
@@ -1204,9 +1204,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-33.208023",
+    "energy_db": "-33.318283",
     "is_speech": true,
-    "rms_db": "-33.208023"
+    "rms_db": "-33.318283"
   },
   {
     "frame_index": 93,
@@ -1217,9 +1217,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-33.040604",
+    "energy_db": "-33.22396",
     "is_speech": true,
-    "rms_db": "-33.040604"
+    "rms_db": "-33.22396"
   },
   {
     "frame_index": 94,
@@ -1230,9 +1230,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-37.558437",
+    "energy_db": "-38.058594",
     "is_speech": true,
-    "rms_db": "-37.558437"
+    "rms_db": "-38.058594"
   },
   {
     "frame_index": 95,
@@ -1243,9 +1243,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-31.46055",
+    "energy_db": "-31.69344",
     "is_speech": true,
-    "rms_db": "-31.46055"
+    "rms_db": "-31.69344"
   },
   {
     "frame_index": 96,
@@ -1256,9 +1256,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-27.849548",
+    "energy_db": "-28.027466",
     "is_speech": true,
-    "rms_db": "-27.849548"
+    "rms_db": "-28.027466"
   },
   {
     "frame_index": 97,
@@ -1269,22 +1269,22 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-31.102371",
+    "energy_db": "-31.156118",
     "is_speech": true,
-    "rms_db": "-31.102371"
+    "rms_db": "-31.156118"
   },
   {
     "frame_index": 98,
     "start_s": 2.94,
-    "verdict": "SILENCE",
-    "confidence": 1.0,
+    "verdict": "WORLD",
+    "confidence": 0.8,
     "self_match_score": 0.0,
-    "self_match_score_per_frame": 0.0,
+    "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-35.44678",
+    "energy_db": "-35.06197",
     "is_speech": true,
-    "rms_db": "-35.44678"
+    "rms_db": "-35.06197"
   },
   {
     "frame_index": 99,
@@ -1295,9 +1295,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-33.0945",
+    "energy_db": "-32.866093",
     "is_speech": true,
-    "rms_db": "-33.0945"
+    "rms_db": "-32.866093"
   },
   {
     "frame_index": 100,
@@ -1308,9 +1308,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-29.692417",
+    "energy_db": "-29.945305",
     "is_speech": true,
-    "rms_db": "-29.692417"
+    "rms_db": "-29.945305"
   },
   {
     "frame_index": 101,
@@ -1321,9 +1321,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-29.269808",
+    "energy_db": "-29.452782",
     "is_speech": true,
-    "rms_db": "-29.269808"
+    "rms_db": "-29.452782"
   },
   {
     "frame_index": 102,
@@ -1334,9 +1334,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-30.575073",
+    "energy_db": "-30.61325",
     "is_speech": true,
-    "rms_db": "-30.575073"
+    "rms_db": "-30.61325"
   },
   {
     "frame_index": 103,
@@ -1347,9 +1347,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-30.264158",
+    "energy_db": "-30.71283",
     "is_speech": true,
-    "rms_db": "-30.264158"
+    "rms_db": "-30.71283"
   },
   {
     "frame_index": 104,
@@ -1360,9 +1360,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-29.187504",
+    "energy_db": "-29.41552",
     "is_speech": true,
-    "rms_db": "-29.187504"
+    "rms_db": "-29.41552"
   },
   {
     "frame_index": 105,
@@ -1373,22 +1373,22 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-32.665703",
+    "energy_db": "-32.481026",
     "is_speech": true,
-    "rms_db": "-32.665703"
+    "rms_db": "-32.481026"
   },
   {
     "frame_index": 106,
     "start_s": 3.18,
-    "verdict": "SILENCE",
-    "confidence": 1.0,
+    "verdict": "WORLD",
+    "confidence": 0.8,
     "self_match_score": 0.0,
-    "self_match_score_per_frame": 0.0,
+    "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-35.903465",
+    "energy_db": "-36.527924",
     "is_speech": true,
-    "rms_db": "-35.903465"
+    "rms_db": "-36.527924"
   },
   {
     "frame_index": 107,
@@ -1399,9 +1399,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-29.815302",
+    "energy_db": "-29.885561",
     "is_speech": true,
-    "rms_db": "-29.815302"
+    "rms_db": "-29.885561"
   },
   {
     "frame_index": 108,
@@ -1412,9 +1412,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-28.273552",
+    "energy_db": "-28.591146",
     "is_speech": true,
-    "rms_db": "-28.273552"
+    "rms_db": "-28.591146"
   },
   {
     "frame_index": 109,
@@ -1425,9 +1425,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-30.338737",
+    "energy_db": "-30.592508",
     "is_speech": true,
-    "rms_db": "-30.338737"
+    "rms_db": "-30.592508"
   },
   {
     "frame_index": 110,
@@ -1438,9 +1438,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-41.09867",
+    "energy_db": "-41.376183",
     "is_speech": true,
-    "rms_db": "-41.09867"
+    "rms_db": "-41.376183"
   },
   {
     "frame_index": 111,
@@ -1451,9 +1451,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.06895",
+    "energy_db": "-45.449074",
     "is_speech": true,
-    "rms_db": "-45.06895"
+    "rms_db": "-45.449074"
   },
   {
     "frame_index": 112,
@@ -1464,9 +1464,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-44.491116",
+    "energy_db": "-45.047813",
     "is_speech": true,
-    "rms_db": "-44.491116"
+    "rms_db": "-45.047813"
   },
   {
     "frame_index": 113,
@@ -1477,9 +1477,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-37.89841",
+    "energy_db": "-38.61",
     "is_speech": true,
-    "rms_db": "-37.89841"
+    "rms_db": "-38.61"
   },
   {
     "frame_index": 114,
@@ -1490,9 +1490,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-32.555138",
+    "energy_db": "-33.22988",
     "is_speech": true,
-    "rms_db": "-32.555138"
+    "rms_db": "-33.22988"
   },
   {
     "frame_index": 115,
@@ -1503,9 +1503,9 @@
     "self_match_score_per_frame": null,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-31.876677",
+    "energy_db": "-32.07918",
     "is_speech": true,
-    "rms_db": "-31.876677"
+    "rms_db": "-32.07918"
   },
   {
     "frame_index": 116,
@@ -1516,9 +1516,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-40.333286",
+    "energy_db": "-41.48751",
     "is_speech": true,
-    "rms_db": "-40.333286"
+    "rms_db": "-41.48751"
   },
   {
     "frame_index": 117,
@@ -1529,9 +1529,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-44.61435",
+    "energy_db": "-45.19053",
     "is_speech": true,
-    "rms_db": "-44.61435"
+    "rms_db": "-45.19053"
   },
   {
     "frame_index": 118,
@@ -1542,9 +1542,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.2648",
+    "energy_db": "-48.315605",
     "is_speech": true,
-    "rms_db": "-47.2648"
+    "rms_db": "-48.315605"
   },
   {
     "frame_index": 119,
@@ -1555,9 +1555,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.554443",
+    "energy_db": "-48.585365",
     "is_speech": true,
-    "rms_db": "-47.554443"
+    "rms_db": "-48.585365"
   },
   {
     "frame_index": 120,
@@ -1568,9 +1568,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.97589",
+    "energy_db": "-47.0691",
     "is_speech": true,
-    "rms_db": "-45.97589"
+    "rms_db": "-47.0691"
   },
   {
     "frame_index": 121,
@@ -1581,9 +1581,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.98774",
+    "energy_db": "-49.57651",
     "is_speech": true,
-    "rms_db": "-46.98774"
+    "rms_db": "-49.57651"
   },
   {
     "frame_index": 122,
@@ -1594,9 +1594,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.544525",
+    "energy_db": "-49.253036",
     "is_speech": true,
-    "rms_db": "-47.544525"
+    "rms_db": "-49.253036"
   },
   {
     "frame_index": 123,
@@ -1607,9 +1607,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.92093",
+    "energy_db": "-49.046707",
     "is_speech": true,
-    "rms_db": "-46.92093"
+    "rms_db": "-49.046707"
   },
   {
     "frame_index": 124,
@@ -1620,9 +1620,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.303185",
+    "energy_db": "-49.444168",
     "is_speech": true,
-    "rms_db": "-47.303185"
+    "rms_db": "-49.444168"
   },
   {
     "frame_index": 125,
@@ -1633,9 +1633,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.294937",
+    "energy_db": "-49.666523",
     "is_speech": true,
-    "rms_db": "-47.294937"
+    "rms_db": "-49.666523"
   },
   {
     "frame_index": 126,
@@ -1646,9 +1646,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.77983",
-    "is_speech": true,
-    "rms_db": "-46.77983"
+    "energy_db": "-49.398247",
+    "is_speech": false,
+    "rms_db": "-49.398247"
   },
   {
     "frame_index": 127,
@@ -1659,9 +1659,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.691193",
+    "energy_db": "-49.102768",
     "is_speech": false,
-    "rms_db": "-46.691193"
+    "rms_db": "-49.102768"
   },
   {
     "frame_index": 128,
@@ -1672,9 +1672,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.45137",
+    "energy_db": "-49.41757",
     "is_speech": false,
-    "rms_db": "-48.45137"
+    "rms_db": "-49.41757"
   },
   {
     "frame_index": 129,
@@ -1685,9 +1685,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.067783",
+    "energy_db": "-49.004196",
     "is_speech": false,
-    "rms_db": "-48.067783"
+    "rms_db": "-49.004196"
   },
   {
     "frame_index": 130,
@@ -1698,9 +1698,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.054283",
+    "energy_db": "-47.90374",
     "is_speech": false,
-    "rms_db": "-48.054283"
+    "rms_db": "-47.90374"
   },
   {
     "frame_index": 131,
@@ -1711,9 +1711,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.798843",
+    "energy_db": "-48.241077",
     "is_speech": false,
-    "rms_db": "-47.798843"
+    "rms_db": "-48.241077"
   },
   {
     "frame_index": 132,
@@ -1724,9 +1724,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.92144",
+    "energy_db": "-49.55239",
     "is_speech": false,
-    "rms_db": "-47.92144"
+    "rms_db": "-49.55239"
   },
   {
     "frame_index": 133,
@@ -1737,9 +1737,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.01505",
+    "energy_db": "-49.872856",
     "is_speech": false,
-    "rms_db": "-49.01505"
+    "rms_db": "-49.872856"
   },
   {
     "frame_index": 134,
@@ -1750,9 +1750,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.62804",
+    "energy_db": "-50.38473",
     "is_speech": false,
-    "rms_db": "-47.62804"
+    "rms_db": "-50.38473"
   },
   {
     "frame_index": 135,
@@ -1763,9 +1763,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.713562",
+    "energy_db": "-49.48654",
     "is_speech": false,
-    "rms_db": "-47.713562"
+    "rms_db": "-49.48654"
   },
   {
     "frame_index": 136,
@@ -1776,9 +1776,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.951897",
+    "energy_db": "-49.12561",
     "is_speech": false,
-    "rms_db": "-46.951897"
+    "rms_db": "-49.12561"
   },
   {
     "frame_index": 137,
@@ -1789,9 +1789,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.67151",
+    "energy_db": "-49.42387",
     "is_speech": false,
-    "rms_db": "-47.67151"
+    "rms_db": "-49.42387"
   },
   {
     "frame_index": 138,
@@ -1802,9 +1802,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.72538",
+    "energy_db": "-48.9879",
     "is_speech": false,
-    "rms_db": "-47.72538"
+    "rms_db": "-48.9879"
   },
   {
     "frame_index": 139,
@@ -1815,9 +1815,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.646137",
+    "energy_db": "-48.812943",
     "is_speech": false,
-    "rms_db": "-47.646137"
+    "rms_db": "-48.812943"
   },
   {
     "frame_index": 140,
@@ -1828,9 +1828,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.54479",
+    "energy_db": "-49.61132",
     "is_speech": false,
-    "rms_db": "-48.54479"
+    "rms_db": "-49.61132"
   },
   {
     "frame_index": 141,
@@ -1841,9 +1841,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.836563",
+    "energy_db": "-48.908382",
     "is_speech": false,
-    "rms_db": "-47.836563"
+    "rms_db": "-48.908382"
   },
   {
     "frame_index": 142,
@@ -1854,9 +1854,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.730724",
+    "energy_db": "-48.941532",
     "is_speech": false,
-    "rms_db": "-46.730724"
+    "rms_db": "-48.941532"
   },
   {
     "frame_index": 143,
@@ -1867,9 +1867,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.30743",
+    "energy_db": "-49.561523",
     "is_speech": false,
-    "rms_db": "-47.30743"
+    "rms_db": "-49.561523"
   },
   {
     "frame_index": 144,
@@ -1880,9 +1880,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.936966",
+    "energy_db": "-48.849457",
     "is_speech": false,
-    "rms_db": "-45.936966"
+    "rms_db": "-48.849457"
   },
   {
     "frame_index": 145,
@@ -1893,9 +1893,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.959705",
+    "energy_db": "-48.554527",
     "is_speech": false,
-    "rms_db": "-46.959705"
+    "rms_db": "-48.554527"
   },
   {
     "frame_index": 146,
@@ -1906,9 +1906,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-45.97938",
+    "energy_db": "-48.971375",
     "is_speech": false,
-    "rms_db": "-45.97938"
+    "rms_db": "-48.971375"
   },
   {
     "frame_index": 147,
@@ -1919,9 +1919,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.392456",
+    "energy_db": "-49.88176",
     "is_speech": false,
-    "rms_db": "-47.392456"
+    "rms_db": "-49.88176"
   },
   {
     "frame_index": 148,
@@ -1932,9 +1932,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.792297",
+    "energy_db": "-50.140945",
     "is_speech": false,
-    "rms_db": "-46.792297"
+    "rms_db": "-50.140945"
   },
   {
     "frame_index": 149,
@@ -1945,9 +1945,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.65296",
+    "energy_db": "-49.033897",
     "is_speech": false,
-    "rms_db": "-47.65296"
+    "rms_db": "-49.033897"
   },
   {
     "frame_index": 150,
@@ -1958,9 +1958,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.928192",
+    "energy_db": "-49.147495",
     "is_speech": false,
-    "rms_db": "-47.928192"
+    "rms_db": "-49.147495"
   },
   {
     "frame_index": 151,
@@ -1971,9 +1971,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.763878",
+    "energy_db": "-48.857388",
     "is_speech": false,
-    "rms_db": "-46.763878"
+    "rms_db": "-48.857388"
   },
   {
     "frame_index": 152,
@@ -1984,9 +1984,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.741276",
+    "energy_db": "-49.51673",
     "is_speech": false,
-    "rms_db": "-47.741276"
+    "rms_db": "-49.51673"
   },
   {
     "frame_index": 153,
@@ -1997,9 +1997,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.82574",
+    "energy_db": "-50.39496",
     "is_speech": false,
-    "rms_db": "-47.82574"
+    "rms_db": "-50.39496"
   },
   {
     "frame_index": 154,
@@ -2010,9 +2010,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.219482",
+    "energy_db": "-49.651978",
     "is_speech": false,
-    "rms_db": "-48.219482"
+    "rms_db": "-49.651978"
   },
   {
     "frame_index": 155,
@@ -2023,9 +2023,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.26942",
+    "energy_db": "-48.95372",
     "is_speech": false,
-    "rms_db": "-47.26942"
+    "rms_db": "-48.95372"
   },
   {
     "frame_index": 156,
@@ -2036,9 +2036,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.15975",
+    "energy_db": "-49.079323",
     "is_speech": false,
-    "rms_db": "-47.15975"
+    "rms_db": "-49.079323"
   },
   {
     "frame_index": 157,
@@ -2049,9 +2049,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.691154",
+    "energy_db": "-49.279144",
     "is_speech": false,
-    "rms_db": "-47.691154"
+    "rms_db": "-49.279144"
   },
   {
     "frame_index": 158,
@@ -2062,9 +2062,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.393307",
+    "energy_db": "-49.450798",
     "is_speech": false,
-    "rms_db": "-47.393307"
+    "rms_db": "-49.450798"
   },
   {
     "frame_index": 159,
@@ -2075,9 +2075,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.854042",
+    "energy_db": "-49.920216",
     "is_speech": false,
-    "rms_db": "-47.854042"
+    "rms_db": "-49.920216"
   },
   {
     "frame_index": 160,
@@ -2088,9 +2088,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.81955",
+    "energy_db": "-48.586075",
     "is_speech": false,
-    "rms_db": "-46.81955"
+    "rms_db": "-48.586075"
   },
   {
     "frame_index": 161,
@@ -2101,9 +2101,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.693687",
+    "energy_db": "-49.072144",
     "is_speech": false,
-    "rms_db": "-47.693687"
+    "rms_db": "-49.072144"
   },
   {
     "frame_index": 162,
@@ -2114,9 +2114,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.08166",
+    "energy_db": "-48.331837",
     "is_speech": false,
-    "rms_db": "-48.08166"
+    "rms_db": "-48.331837"
   },
   {
     "frame_index": 163,
@@ -2127,9 +2127,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.31043",
+    "energy_db": "-48.939835",
     "is_speech": false,
-    "rms_db": "-47.31043"
+    "rms_db": "-48.939835"
   },
   {
     "frame_index": 164,
@@ -2140,9 +2140,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.50981",
+    "energy_db": "-48.66661",
     "is_speech": false,
-    "rms_db": "-47.50981"
+    "rms_db": "-48.66661"
   },
   {
     "frame_index": 165,
@@ -2153,9 +2153,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.97135",
+    "energy_db": "-48.99022",
     "is_speech": false,
-    "rms_db": "-47.97135"
+    "rms_db": "-48.99022"
   },
   {
     "frame_index": 166,
@@ -2166,9 +2166,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.59739",
+    "energy_db": "-49.183792",
     "is_speech": false,
-    "rms_db": "-47.59739"
+    "rms_db": "-49.183792"
   },
   {
     "frame_index": 167,
@@ -2179,9 +2179,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.482758",
+    "energy_db": "-48.141895",
     "is_speech": false,
-    "rms_db": "-47.482758"
+    "rms_db": "-48.141895"
   },
   {
     "frame_index": 168,
@@ -2192,9 +2192,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.11448",
+    "energy_db": "-48.622963",
     "is_speech": false,
-    "rms_db": "-48.11448"
+    "rms_db": "-48.622963"
   },
   {
     "frame_index": 169,
@@ -2205,9 +2205,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.517883",
+    "energy_db": "-42.251144",
     "is_speech": false,
-    "rms_db": "-47.517883"
+    "rms_db": "-42.251144"
   },
   {
     "frame_index": 170,
@@ -2218,9 +2218,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.72005",
+    "energy_db": "-44.67194",
     "is_speech": false,
-    "rms_db": "-47.72005"
+    "rms_db": "-44.67194"
   },
   {
     "frame_index": 171,
@@ -2231,9 +2231,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.9927",
+    "energy_db": "-43.085464",
     "is_speech": false,
-    "rms_db": "-47.9927"
+    "rms_db": "-43.085464"
   },
   {
     "frame_index": 172,
@@ -2244,9 +2244,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.898476",
+    "energy_db": "-44.20286",
     "is_speech": false,
-    "rms_db": "-46.898476"
+    "rms_db": "-44.20286"
   },
   {
     "frame_index": 173,
@@ -2257,9 +2257,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.24907",
+    "energy_db": "-46.616917",
     "is_speech": false,
-    "rms_db": "-47.24907"
+    "rms_db": "-46.616917"
   },
   {
     "frame_index": 174,
@@ -2270,9 +2270,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.187153",
+    "energy_db": "-46.89047",
     "is_speech": false,
-    "rms_db": "-47.187153"
+    "rms_db": "-46.89047"
   },
   {
     "frame_index": 175,
@@ -2283,9 +2283,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.970898",
+    "energy_db": "-47.649612",
     "is_speech": false,
-    "rms_db": "-46.970898"
+    "rms_db": "-47.649612"
   },
   {
     "frame_index": 176,
@@ -2296,9 +2296,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.17215",
+    "energy_db": "-45.672554",
     "is_speech": false,
-    "rms_db": "-48.17215"
+    "rms_db": "-45.672554"
   },
   {
     "frame_index": 177,
@@ -2309,9 +2309,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.132954",
+    "energy_db": "-46.65011",
     "is_speech": false,
-    "rms_db": "-48.132954"
+    "rms_db": "-46.65011"
   },
   {
     "frame_index": 178,
@@ -2322,9 +2322,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.04265",
+    "energy_db": "-45.337456",
     "is_speech": false,
-    "rms_db": "-49.04265"
+    "rms_db": "-45.337456"
   },
   {
     "frame_index": 179,
@@ -2335,9 +2335,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.491478",
+    "energy_db": "-47.469772",
     "is_speech": false,
-    "rms_db": "-48.491478"
+    "rms_db": "-47.469772"
   },
   {
     "frame_index": 180,
@@ -2348,9 +2348,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.699543",
+    "energy_db": "-46.397633",
     "is_speech": false,
-    "rms_db": "-46.699543"
+    "rms_db": "-46.397633"
   },
   {
     "frame_index": 181,
@@ -2361,9 +2361,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.27616",
+    "energy_db": "-48.084137",
     "is_speech": false,
-    "rms_db": "-48.27616"
+    "rms_db": "-48.084137"
   },
   {
     "frame_index": 182,
@@ -2374,9 +2374,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.583294",
+    "energy_db": "-48.0241",
     "is_speech": false,
-    "rms_db": "-46.583294"
+    "rms_db": "-48.0241"
   },
   {
     "frame_index": 183,
@@ -2387,9 +2387,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.527435",
+    "energy_db": "-47.35272",
     "is_speech": false,
-    "rms_db": "-47.527435"
+    "rms_db": "-47.35272"
   },
   {
     "frame_index": 184,
@@ -2400,9 +2400,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.095646",
+    "energy_db": "-46.85721",
     "is_speech": false,
-    "rms_db": "-47.095646"
+    "rms_db": "-46.85721"
   },
   {
     "frame_index": 185,
@@ -2413,9 +2413,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.229313",
+    "energy_db": "-47.48742",
     "is_speech": false,
-    "rms_db": "-48.229313"
+    "rms_db": "-47.48742"
   },
   {
     "frame_index": 186,
@@ -2426,9 +2426,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.329033",
+    "energy_db": "-48.643356",
     "is_speech": false,
-    "rms_db": "-47.329033"
+    "rms_db": "-48.643356"
   },
   {
     "frame_index": 187,
@@ -2439,9 +2439,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.460915",
+    "energy_db": "-48.113358",
     "is_speech": false,
-    "rms_db": "-46.460915"
+    "rms_db": "-48.113358"
   },
   {
     "frame_index": 188,
@@ -2452,9 +2452,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.96373",
+    "energy_db": "-48.69706",
     "is_speech": false,
-    "rms_db": "-46.96373"
+    "rms_db": "-48.69706"
   },
   {
     "frame_index": 189,
@@ -2465,9 +2465,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.857815",
+    "energy_db": "-46.66193",
     "is_speech": false,
-    "rms_db": "-47.857815"
+    "rms_db": "-46.66193"
   },
   {
     "frame_index": 190,
@@ -2478,9 +2478,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.66536",
+    "energy_db": "-47.30748",
     "is_speech": false,
-    "rms_db": "-47.66536"
+    "rms_db": "-47.30748"
   },
   {
     "frame_index": 191,
@@ -2491,9 +2491,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.697567",
+    "energy_db": "-48.9957",
     "is_speech": false,
-    "rms_db": "-47.697567"
+    "rms_db": "-48.9957"
   },
   {
     "frame_index": 192,
@@ -2504,9 +2504,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.687794",
+    "energy_db": "-48.598717",
     "is_speech": false,
-    "rms_db": "-46.687794"
+    "rms_db": "-48.598717"
   },
   {
     "frame_index": 193,
@@ -2517,9 +2517,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.18325",
+    "energy_db": "-48.749805",
     "is_speech": false,
-    "rms_db": "-48.18325"
+    "rms_db": "-48.749805"
   },
   {
     "frame_index": 194,
@@ -2530,9 +2530,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.547707",
+    "energy_db": "-48.78115",
     "is_speech": false,
-    "rms_db": "-47.547707"
+    "rms_db": "-48.78115"
   },
   {
     "frame_index": 195,
@@ -2543,9 +2543,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.224487",
+    "energy_db": "-48.30522",
     "is_speech": false,
-    "rms_db": "-47.224487"
+    "rms_db": "-48.30522"
   },
   {
     "frame_index": 196,
@@ -2556,9 +2556,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.811222",
+    "energy_db": "-47.753235",
     "is_speech": false,
-    "rms_db": "-47.811222"
+    "rms_db": "-47.753235"
   },
   {
     "frame_index": 197,
@@ -2569,9 +2569,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.90486",
+    "energy_db": "-47.758224",
     "is_speech": false,
-    "rms_db": "-46.90486"
+    "rms_db": "-47.758224"
   },
   {
     "frame_index": 198,
@@ -2582,9 +2582,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.67328",
+    "energy_db": "-49.17187",
     "is_speech": false,
-    "rms_db": "-47.67328"
+    "rms_db": "-49.17187"
   },
   {
     "frame_index": 199,
@@ -2595,9 +2595,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.854904",
+    "energy_db": "-48.559345",
     "is_speech": false,
-    "rms_db": "-46.854904"
+    "rms_db": "-48.559345"
   },
   {
     "frame_index": 200,
@@ -2608,9 +2608,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.14207",
+    "energy_db": "-48.201897",
     "is_speech": false,
-    "rms_db": "-47.14207"
+    "rms_db": "-48.201897"
   },
   {
     "frame_index": 201,
@@ -2621,9 +2621,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.748154",
+    "energy_db": "-48.60521",
     "is_speech": false,
-    "rms_db": "-47.748154"
+    "rms_db": "-48.60521"
   },
   {
     "frame_index": 202,
@@ -2634,9 +2634,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.72239",
+    "energy_db": "-48.002518",
     "is_speech": false,
-    "rms_db": "-47.72239"
+    "rms_db": "-48.002518"
   },
   {
     "frame_index": 203,
@@ -2647,9 +2647,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.430244",
+    "energy_db": "-48.157425",
     "is_speech": false,
-    "rms_db": "-46.430244"
+    "rms_db": "-48.157425"
   },
   {
     "frame_index": 204,
@@ -2660,9 +2660,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.765472",
+    "energy_db": "-48.6892",
     "is_speech": false,
-    "rms_db": "-46.765472"
+    "rms_db": "-48.6892"
   },
   {
     "frame_index": 205,
@@ -2673,9 +2673,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.12959",
+    "energy_db": "-48.475266",
     "is_speech": false,
-    "rms_db": "-46.12959"
+    "rms_db": "-48.475266"
   },
   {
     "frame_index": 206,
@@ -2686,9 +2686,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.31298",
+    "energy_db": "-49.472065",
     "is_speech": false,
-    "rms_db": "-47.31298"
+    "rms_db": "-49.472065"
   },
   {
     "frame_index": 207,
@@ -2699,9 +2699,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.92459",
+    "energy_db": "-49.11714",
     "is_speech": false,
-    "rms_db": "-46.92459"
+    "rms_db": "-49.11714"
   },
   {
     "frame_index": 208,
@@ -2712,9 +2712,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.488953",
+    "energy_db": "-49.31929",
     "is_speech": false,
-    "rms_db": "-48.488953"
+    "rms_db": "-49.31929"
   },
   {
     "frame_index": 209,
@@ -2725,9 +2725,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.29802",
+    "energy_db": "-49.42246",
     "is_speech": false,
-    "rms_db": "-48.29802"
+    "rms_db": "-49.42246"
   },
   {
     "frame_index": 210,
@@ -2738,9 +2738,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.033833",
+    "energy_db": "-49.32193",
     "is_speech": false,
-    "rms_db": "-48.033833"
+    "rms_db": "-49.32193"
   },
   {
     "frame_index": 211,
@@ -2751,9 +2751,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.62466",
+    "energy_db": "-49.09192",
     "is_speech": false,
-    "rms_db": "-47.62466"
+    "rms_db": "-49.09192"
   },
   {
     "frame_index": 212,
@@ -2764,9 +2764,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.841583",
+    "energy_db": "-48.139706",
     "is_speech": false,
-    "rms_db": "-46.841583"
+    "rms_db": "-48.139706"
   },
   {
     "frame_index": 213,
@@ -2777,9 +2777,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.33576",
+    "energy_db": "-49.504875",
     "is_speech": false,
-    "rms_db": "-47.33576"
+    "rms_db": "-49.504875"
   },
   {
     "frame_index": 214,
@@ -2790,9 +2790,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.106434",
+    "energy_db": "-49.25575",
     "is_speech": false,
-    "rms_db": "-47.106434"
+    "rms_db": "-49.25575"
   },
   {
     "frame_index": 215,
@@ -2803,9 +2803,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.12754",
+    "energy_db": "-47.65203",
     "is_speech": false,
-    "rms_db": "-47.12754"
+    "rms_db": "-47.65203"
   },
   {
     "frame_index": 216,
@@ -2816,9 +2816,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.463417",
+    "energy_db": "-49.43375",
     "is_speech": false,
-    "rms_db": "-47.463417"
+    "rms_db": "-49.43375"
   },
   {
     "frame_index": 217,
@@ -2829,9 +2829,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.56108",
+    "energy_db": "-49.141502",
     "is_speech": false,
-    "rms_db": "-47.56108"
+    "rms_db": "-49.141502"
   },
   {
     "frame_index": 218,
@@ -2842,9 +2842,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.541607",
+    "energy_db": "-50.29741",
     "is_speech": false,
-    "rms_db": "-48.541607"
+    "rms_db": "-50.29741"
   },
   {
     "frame_index": 219,
@@ -2855,9 +2855,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.727253",
+    "energy_db": "-49.635128",
     "is_speech": false,
-    "rms_db": "-46.727253"
+    "rms_db": "-49.635128"
   },
   {
     "frame_index": 220,
@@ -2868,9 +2868,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.066246",
+    "energy_db": "-48.606697",
     "is_speech": false,
-    "rms_db": "-47.066246"
+    "rms_db": "-48.606697"
   },
   {
     "frame_index": 221,
@@ -2881,9 +2881,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.263737",
+    "energy_db": "-48.814774",
     "is_speech": false,
-    "rms_db": "-47.263737"
+    "rms_db": "-48.814774"
   },
   {
     "frame_index": 222,
@@ -2894,9 +2894,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.373222",
+    "energy_db": "-49.50109",
     "is_speech": false,
-    "rms_db": "-48.373222"
+    "rms_db": "-49.50109"
   },
   {
     "frame_index": 223,
@@ -2907,9 +2907,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.78874",
+    "energy_db": "-50.351784",
     "is_speech": false,
-    "rms_db": "-48.78874"
+    "rms_db": "-50.351784"
   },
   {
     "frame_index": 224,
@@ -2920,9 +2920,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.268585",
+    "energy_db": "-48.54183",
     "is_speech": false,
-    "rms_db": "-47.268585"
+    "rms_db": "-48.54183"
   },
   {
     "frame_index": 225,
@@ -2933,9 +2933,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-46.660095",
+    "energy_db": "-48.57195",
     "is_speech": false,
-    "rms_db": "-46.660095"
+    "rms_db": "-48.57195"
   },
   {
     "frame_index": 226,
@@ -2946,9 +2946,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.09446",
+    "energy_db": "-49.022255",
     "is_speech": false,
-    "rms_db": "-47.09446"
+    "rms_db": "-49.022255"
   },
   {
     "frame_index": 227,
@@ -2959,9 +2959,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.552834",
+    "energy_db": "-47.886395",
     "is_speech": false,
-    "rms_db": "-47.552834"
+    "rms_db": "-47.886395"
   },
   {
     "frame_index": 228,
@@ -2972,9 +2972,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-47.37536",
+    "energy_db": "-48.576714",
     "is_speech": false,
-    "rms_db": "-47.37536"
+    "rms_db": "-48.576714"
   },
   {
     "frame_index": 229,
@@ -2985,9 +2985,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.866596",
+    "energy_db": "-51.137978",
     "is_speech": false,
-    "rms_db": "-49.866596"
+    "rms_db": "-51.137978"
   },
   {
     "frame_index": 230,
@@ -2998,9 +2998,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.6941",
+    "energy_db": "-51.609932",
     "is_speech": false,
-    "rms_db": "-49.6941"
+    "rms_db": "-51.609932"
   },
   {
     "frame_index": 231,
@@ -3011,9 +3011,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.93356",
+    "energy_db": "-52.340813",
     "is_speech": false,
-    "rms_db": "-48.93356"
+    "rms_db": "-52.340813"
   },
   {
     "frame_index": 232,
@@ -3024,9 +3024,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.930946",
+    "energy_db": "-50.61769",
     "is_speech": false,
-    "rms_db": "-49.930946"
+    "rms_db": "-50.61769"
   },
   {
     "frame_index": 233,
@@ -3037,9 +3037,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.68946",
+    "energy_db": "-50.65703",
     "is_speech": false,
-    "rms_db": "-49.68946"
+    "rms_db": "-50.65703"
   },
   {
     "frame_index": 234,
@@ -3050,9 +3050,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.945473",
+    "energy_db": "-50.82661",
     "is_speech": false,
-    "rms_db": "-50.945473"
+    "rms_db": "-50.82661"
   },
   {
     "frame_index": 235,
@@ -3063,9 +3063,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.132362",
+    "energy_db": "-51.6789",
     "is_speech": false,
-    "rms_db": "-49.132362"
+    "rms_db": "-51.6789"
   },
   {
     "frame_index": 236,
@@ -3076,9 +3076,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-51.01829",
+    "energy_db": "-52.146076",
     "is_speech": false,
-    "rms_db": "-51.01829"
+    "rms_db": "-52.146076"
   },
   {
     "frame_index": 237,
@@ -3089,9 +3089,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.98298",
+    "energy_db": "-53.277878",
     "is_speech": false,
-    "rms_db": "-49.98298"
+    "rms_db": "-53.277878"
   },
   {
     "frame_index": 238,
@@ -3102,9 +3102,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.87029",
+    "energy_db": "-53.37089",
     "is_speech": false,
-    "rms_db": "-50.87029"
+    "rms_db": "-53.37089"
   },
   {
     "frame_index": 239,
@@ -3115,9 +3115,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.06725",
+    "energy_db": "-52.975536",
     "is_speech": false,
-    "rms_db": "-49.06725"
+    "rms_db": "-52.975536"
   },
   {
     "frame_index": 240,
@@ -3128,9 +3128,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.31984",
+    "energy_db": "-52.076447",
     "is_speech": false,
-    "rms_db": "-50.31984"
+    "rms_db": "-52.076447"
   },
   {
     "frame_index": 241,
@@ -3141,9 +3141,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.618942",
+    "energy_db": "-51.72974",
     "is_speech": false,
-    "rms_db": "-48.618942"
+    "rms_db": "-51.72974"
   },
   {
     "frame_index": 242,
@@ -3154,9 +3154,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.409363",
+    "energy_db": "-52.283897",
     "is_speech": false,
-    "rms_db": "-50.409363"
+    "rms_db": "-52.283897"
   },
   {
     "frame_index": 243,
@@ -3167,9 +3167,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.062225",
+    "energy_db": "-52.75156",
     "is_speech": false,
-    "rms_db": "-50.062225"
+    "rms_db": "-52.75156"
   },
   {
     "frame_index": 244,
@@ -3180,9 +3180,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.425793",
+    "energy_db": "-51.584667",
     "is_speech": false,
-    "rms_db": "-50.425793"
+    "rms_db": "-51.584667"
   },
   {
     "frame_index": 245,
@@ -3193,9 +3193,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.032",
+    "energy_db": "-51.926937",
     "is_speech": false,
-    "rms_db": "-49.032"
+    "rms_db": "-51.926937"
   },
   {
     "frame_index": 246,
@@ -3206,9 +3206,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.56183",
+    "energy_db": "-52.388493",
     "is_speech": false,
-    "rms_db": "-50.56183"
+    "rms_db": "-52.388493"
   },
   {
     "frame_index": 247,
@@ -3219,9 +3219,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.520485",
+    "energy_db": "-52.463703",
     "is_speech": false,
-    "rms_db": "-49.520485"
+    "rms_db": "-52.463703"
   },
   {
     "frame_index": 248,
@@ -3232,9 +3232,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.96267",
+    "energy_db": "-52.975693",
     "is_speech": false,
-    "rms_db": "-49.96267"
+    "rms_db": "-52.975693"
   },
   {
     "frame_index": 249,
@@ -3245,9 +3245,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.16043",
+    "energy_db": "-52.96084",
     "is_speech": false,
-    "rms_db": "-49.16043"
+    "rms_db": "-52.96084"
   },
   {
     "frame_index": 250,
@@ -3258,9 +3258,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.586212",
+    "energy_db": "-53.149704",
     "is_speech": false,
-    "rms_db": "-49.586212"
+    "rms_db": "-53.149704"
   },
   {
     "frame_index": 251,
@@ -3271,9 +3271,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.07203",
+    "energy_db": "-53.550106",
     "is_speech": false,
-    "rms_db": "-50.07203"
+    "rms_db": "-53.550106"
   },
   {
     "frame_index": 252,
@@ -3284,9 +3284,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-50.108208",
+    "energy_db": "-53.16889",
     "is_speech": false,
-    "rms_db": "-50.108208"
+    "rms_db": "-53.16889"
   },
   {
     "frame_index": 253,
@@ -3297,9 +3297,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.2294",
+    "energy_db": "-52.27137",
     "is_speech": false,
-    "rms_db": "-49.2294"
+    "rms_db": "-52.27137"
   },
   {
     "frame_index": 254,
@@ -3310,9 +3310,9 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-48.732876",
+    "energy_db": "-52.46716",
     "is_speech": false,
-    "rms_db": "-48.732876"
+    "rms_db": "-52.46716"
   },
   {
     "frame_index": 255,
@@ -3323,8 +3323,8 @@
     "self_match_score_per_frame": 0.0,
     "is_in_motor_window": false,
     "causal_score": 0.0,
-    "energy_db": "-49.436676",
+    "energy_db": "-52.744755",
     "is_speech": false,
-    "rms_db": "-49.436676"
+    "rms_db": "-52.744755"
   }
 ]

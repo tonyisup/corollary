@@ -1,9 +1,9 @@
 {
   "scenario": "human_before",
-  "total_frames": 40,
+  "total_frames": 41,
   "false_interrupts": 1,
   "false_defers": 0,
-  "missed_interrupts": 10,
+  "missed_interrupts": 7,
   "true_interrupts": 0,
   "successful_resumes": 1,
   "total_resumes_expected": 1,
@@ -16,6 +16,6 @@
     "LISTEN",
     "IDLE"
   ],
-  "latency_ms": 8619.8,
+  "latency_ms": 8627.3,
   "notes": []
 }

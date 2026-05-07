@@ -1,10 +1,10 @@
 {
   "scenario": "human_late",
-  "total_frames": 51,
-  "false_interrupts": 1,
+  "total_frames": 83,
+  "false_interrupts": 0,
   "false_defers": 0,
-  "missed_interrupts": 12,
-  "true_interrupts": 0,
+  "missed_interrupts": 22,
+  "true_interrupts": 1,
   "successful_resumes": 1,
   "total_resumes_expected": 1,
   "resume_rate": "1/1",
@@ -12,10 +12,8 @@
     "IDLE",
     "SPEAK",
     "LISTEN",
-    "IDLE",
-    "LISTEN",
     "IDLE"
   ],
-  "latency_ms": 10616.7,
+  "latency_ms": 10633.2,
   "notes": []
 }

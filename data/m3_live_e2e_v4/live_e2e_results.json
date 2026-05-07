@@ -1,7 +1,7 @@
 [
   {
     "scenario": "human_early",
-    "total_frames": 32,
+    "total_frames": 38,
     "false_interrupts": 1,
     "false_defers": 0,
     "missed_interrupts": 0,
@@ -17,12 +17,52 @@
       "LISTEN",
       "IDLE"
     ],
-    "latency_ms": 10302.0,
+    "latency_ms": 10289.7,
     "notes": []
   },
   {
     "scenario": "human_late",
-    "total_frames": 51,
+    "total_frames": 83,
+    "false_interrupts": 0,
+    "false_defers": 0,
+    "missed_interrupts": 22,
+    "true_interrupts": 1,
+    "successful_resumes": 1,
+    "total_resumes_expected": 1,
+    "resume_rate": "1/1",
+    "state_transitions": [
+      "IDLE",
+      "SPEAK",
+      "LISTEN",
+      "IDLE"
+    ],
+    "latency_ms": 10633.2,
+    "notes": []
+  },
+  {
+    "scenario": "human_before",
+    "total_frames": 41,
+    "false_interrupts": 1,
+    "false_defers": 0,
+    "missed_interrupts": 7,
+    "true_interrupts": 0,
+    "successful_resumes": 1,
+    "total_resumes_expected": 1,
+    "resume_rate": "1/1",
+    "state_transitions": [
+      "IDLE",
+      "SPEAK",
+      "LISTEN",
+      "IDLE",
+      "LISTEN",
+      "IDLE"
+    ],
+    "latency_ms": 8627.3,
+    "notes": []
+  },
+  {
+    "scenario": "human_after",
+    "total_frames": 42,
     "false_interrupts": 1,
     "false_defers": 0,
     "missed_interrupts": 12,
@@ -38,57 +78,15 @@
       "LISTEN",
       "IDLE"
     ],
-    "latency_ms": 10616.7,
-    "notes": []
-  },
-  {
-    "scenario": "human_before",
-    "total_frames": 40,
-    "false_interrupts": 1,
-    "false_defers": 0,
-    "missed_interrupts": 10,
-    "true_interrupts": 0,
-    "successful_resumes": 1,
-    "total_resumes_expected": 1,
-    "resume_rate": "1/1",
-    "state_transitions": [
-      "IDLE",
-      "SPEAK",
-      "LISTEN",
-      "IDLE",
-      "LISTEN",
-      "IDLE"
-    ],
-    "latency_ms": 8619.8,
-    "notes": []
-  },
-  {
-    "scenario": "human_after",
-    "total_frames": 40,
-    "false_interrupts": 1,
-    "false_defers": 0,
-    "missed_interrupts": 9,
-    "true_interrupts": 0,
-    "successful_resumes": 1,
-    "total_resumes_expected": 1,
-    "resume_rate": "1/1",
-    "state_transitions": [
-      "IDLE",
-      "SPEAK",
-      "LISTEN",
-      "IDLE",
-      "LISTEN",
-      "IDLE"
-    ],
-    "latency_ms": 8554.3,
+    "latency_ms": 8558.2,
     "notes": []
   },
   {
     "scenario": "overlap_self_first",
-    "total_frames": 43,
+    "total_frames": 55,
     "false_interrupts": 1,
     "false_defers": 0,
-    "missed_interrupts": 6,
+    "missed_interrupts": 14,
     "true_interrupts": 0,
     "successful_resumes": 1,
     "total_resumes_expected": 1,
@@ -101,7 +99,7 @@
       "LISTEN",
       "IDLE"
     ],
-    "latency_ms": 9136.9,
+    "latency_ms": 9180.5,
     "notes": []
   }
 ]
