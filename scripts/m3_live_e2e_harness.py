@@ -35,10 +35,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 sys.path.insert(0, os.path.dirname(__file__))
 
 from broca.tts import synthesize
-from cochlea.capture import SR, CaptureStream
+from cochlea.capture import SR
 from cochlea.vad import VAD_FRAME_SAMPLES, SmoothedVAD
 from thalamus.attributor import ThalamicAttributor, SourceVerdict
-from pfc.agentive_controller import AgentiveController, AgentState
+from pfc.agentive_controller import AgentiveController
 from pfc.m2_artifact_replay import frames_from_frame_records
 from pfc.m2_turn_bridge import run_turn_taking_bridge
 from m2_speech_preservation_harness import run_m2_trial, save_trial_artifacts
@@ -105,24 +105,65 @@ async def run_live_replay_capture(
 ) -> dict:
     """Replay pre-recorded captured audio through speaker, re-capture through mic.
     
-    This simulates the real conversation: the pre-recorded audio contains both
-    agent TTS and human speech as captured by the mic. Replaying it through the
-    speaker and re-capturing tests the full room acoustics chain.
+    The pre-recorded audio is at 16kHz. The output device may run at a different
+    native rate (e.g. 48kHz). We resample the replay audio to the stream rate
+    for playback, then resample the captured audio back to 16kHz for attribution.
     
-    Returns dict with live_captured, agent_pcm, replay_audio.
+    Returns dict with live_captured (16kHz), agent_pcm (16kHz), replay_audio (16kHz).
     """
     import sounddevice as sd
+    from scipy.signal import resample as scipy_resample
     
-    # Load pre-recorded audio
-    replay_audio = np.load(scenario.captured_audio_file).astype(np.float32)
-    agent_pcm = np.load(scenario.agent_pcm_file).astype(np.float32)
+    # Load pre-recorded audio and metadata
+    replay_audio_raw = np.load(scenario.captured_audio_file).astype(np.float32)
+    agent_pcm_raw = np.load(scenario.agent_pcm_file).astype(np.float32)
     
-    duration_s = len(replay_audio) / SR + 1.0  # Extra second for tail
-    total_samples = int(duration_s * SR)
-    live_captured = np.zeros(total_samples, dtype=np.float32)
+    # Read the actual sample rate from metadata
+    meta_path = Path(scenario.captured_audio_file).parent / "metadata.json"
+    if meta_path.exists():
+        meta = json.loads(meta_path.read_text())
+        input_sr = meta.get("input_sr", SR)
+    else:
+        input_sr = SR
     
-    print(f"  Replay audio: {len(replay_audio)} samples ({len(replay_audio)/SR:.2f}s)")
-    print(f"  Agent PCM:    {len(agent_pcm)} samples ({len(agent_pcm)/SR:.2f}s)")
+    # Resample to working rate (SR = 16kHz) for attribution
+    if input_sr != SR:
+        replay_audio_16k = scipy_resample(
+            replay_audio_raw,
+            int(len(replay_audio_raw) * SR / input_sr)
+        ).astype(np.float32)
+        agent_pcm = scipy_resample(
+            agent_pcm_raw,
+            int(len(agent_pcm_raw) * SR / input_sr)
+        ).astype(np.float32)
+        print(f"  Resampled: {input_sr}Hz -> {SR}Hz")
+    else:
+        replay_audio_16k = replay_audio_raw
+        agent_pcm = agent_pcm_raw
+    
+    # Determine stream sample rate from the output device
+    dev_info = sd.query_devices(output_device)
+    stream_sr = int(dev_info["default_samplerate"])
+    
+    # Resample replay audio to stream rate for playback
+    if stream_sr != SR:
+        replay_audio = scipy_resample(
+            replay_audio_16k,
+            int(len(replay_audio_16k) * stream_sr / SR)
+        ).astype(np.float32)
+        print(f"  Resampled replay: {SR}Hz -> {stream_sr}Hz")
+    else:
+        replay_audio = replay_audio_16k
+    
+    duration_s = len(replay_audio_16k) / SR + 1.0  # Extra second for tail (in 16k time)
+    total_stream_samples = int(duration_s * stream_sr)
+    total_16k_samples = int(duration_s * SR)
+    
+    live_captured_stream = np.zeros(total_stream_samples, dtype=np.float32)
+    
+    print(f"  Replay audio: {len(replay_audio_16k)} samples at {SR}Hz ({len(replay_audio_16k)/SR:.2f}s)")
+    print(f"  Agent PCM:    {len(agent_pcm)} samples at {SR}Hz ({len(agent_pcm)/SR:.2f}s)")
+    print(f"  Stream rate:  {stream_sr}Hz")
     print(f"  Duration:     {duration_s:.1f}s")
     
     capture_queue = asyncio.Queue()
@@ -137,9 +178,10 @@ async def run_live_replay_capture(
         start = samples_played
         end = min(start + frames, len(replay_audio))
         if start < len(replay_audio):
-            outdata[:end-start, 0] = replay_audio[start:end]
-            if end - start < frames:
-                outdata[end-start:, 0] = 0
+            n = end - start
+            outdata[:n, 0] = replay_audio[start:end]
+            if n < frames:
+                outdata[n:, 0] = 0
         else:
             outdata[:] = 0
         
@@ -151,8 +193,8 @@ async def run_live_replay_capture(
     t0 = time.time()
     
     with sd.Stream(
-        samplerate=SR,
-        blocksize=VAD_FRAME_SAMPLES,
+        samplerate=stream_sr,
+        blocksize=int(VAD_FRAME_SAMPLES * stream_sr / SR),  # Scale blocksize to stream rate
         dtype="float32",
         channels=1,
         callback=audio_callback,
@@ -168,14 +210,24 @@ async def run_live_replay_capture(
         captured_frames.append(capture_queue.get_nowait())
     
     if captured_frames:
-        live_captured = np.concatenate(captured_frames)[:total_samples]
+        live_captured_stream = np.concatenate(captured_frames)[:total_stream_samples]
     
-    print(f"  Capture complete: {len(live_captured)} samples in {elapsed:.1f}s")
+    # Resample captured audio back to 16kHz for attribution
+    if stream_sr != SR:
+        live_captured = scipy_resample(
+            live_captured_stream,
+            int(len(live_captured_stream) * SR / stream_sr)
+        ).astype(np.float32)
+        print(f"  Resampled capture: {stream_sr}Hz -> {SR}Hz")
+    else:
+        live_captured = live_captured_stream
+    
+    print(f"  Capture complete: {len(live_captured)} samples at {SR}Hz in {elapsed:.1f}s")
     
     return {
         "live_captured": live_captured,
         "agent_pcm": agent_pcm,
-        "replay_audio": replay_audio,
+        "replay_audio": replay_audio_16k,
         "capture_time_s": elapsed,
     }
 
@@ -208,7 +260,7 @@ def run_attribution_pipeline(
         frame_audio = captured_audio[start:end]
         
         # VAD
-        is_speech = vad.process(frame_audio)
+        is_speech = vad.process_frame(frame_audio)
         
         # RMS
         rms = np.sqrt(np.mean(frame_audio ** 2))
@@ -232,8 +284,8 @@ def run_attribution_pipeline(
         
         frame_records.append({
             "frame_index": i,
-            "time_s": start / SR,
-            "verdict": result.verdict,
+            "start_s": start / SR,
+            "verdict": result.verdict.name,
             "confidence": result.confidence,
             "self_match_score": result.self_match_score,
             "self_match_score_per_frame": result.self_match_score_per_frame,
@@ -305,7 +357,6 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     attributor = ThalamicAttributor(
         energy_threshold_db=-55.0,
         similarity_threshold=0.05,
-        onset_latency_ms=300.0,
         causal_tolerance_ms=175.0,
     )
     vad = SmoothedVAD()
@@ -331,7 +382,7 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
         cooldown_ms=args.cooldown_ms,
     )
     
-    frames = frames_from_frame_records(frame_records)
+    frames = frames_from_frame_records(frame_records, max_frames=len(frame_records))
     t0 = time.time()
     bridge = run_turn_taking_bridge(
         frames,
@@ -365,7 +416,7 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     for i, d in enumerate(bridge.decisions):
         if i < len(frame_records):
             fr = frame_records[i]
-            gt_human = fr.get("verdict") in (SourceVerdict.WORLD, SourceVerdict.BOTH) and fr.get("is_speech", False)
+            gt_human = fr.get("verdict") in ("WORLD", "BOTH") and fr.get("is_speech", False)
             gt_agent = fr.get("is_in_motor_window", False)
             
             if d.should_interrupt and not gt_human:
@@ -469,6 +520,7 @@ async def main_async() -> None:
     
     if args.save_dir:
         overall_path = Path(args.save_dir) / "live_e2e_results.json"
+        overall_path.parent.mkdir(parents=True, exist_ok=True)
         with open(overall_path, "w") as f:
             json.dump(all_metrics, f, indent=2, default=str)
         print(f"\nSaved overall results to: {overall_path}")
