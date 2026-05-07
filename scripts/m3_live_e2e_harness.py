@@ -98,14 +98,88 @@ SCENARIOS: dict[str, LiveScenario] = {
 
 # ── Live replay + capture ────────────────────────────────────────────────────
 
+async def calibrate_noise_floor(
+    input_device: int,
+    duration_s: float = 2.0,
+    margin_db: float = 15.0,
+) -> float:
+    """Capture room audio and measure the ambient noise floor.
+    
+    Plays silence through the output (so the room is in its normal state)
+    and captures mic input for `duration_s` seconds. Measures the RMS
+    energy distribution and returns an energy threshold that is `margin_db`
+    above the median noise floor.
+    
+    This is the "LISTEN" phase — the system calibrates to the room before
+    trying to detect speech.
+    
+    Returns the recommended energy_threshold_db.
+    """
+    import sounddevice as sd
+    
+    print(f"\n[CALIBRATING] Listening to room for {duration_s}s...")
+    
+    sr = int(sd.query_devices(input_device)["default_samplerate"])
+    total_samples = int(duration_s * sr)
+    captured = np.zeros(total_samples, dtype=np.float32)
+    capture_queue = asyncio.Queue()
+    samples_captured = [0]
+    
+    def audio_callback(indata, outdata, frames, time_info, status):
+        # Output silence
+        outdata[:] = 0
+        # Capture mic input
+        n = min(frames, total_samples - samples_captured[0])
+        if n > 0:
+            captured[samples_captured[0]:samples_captured[0] + n] = indata[:n, 0]
+            samples_captured[0] += n
+        capture_queue.put_nowait(n)
+    
+    with sd.Stream(
+        samplerate=sr,
+        blocksize=int(VAD_FRAME_SAMPLES * sr / SR),
+        dtype="float32",
+        channels=1,
+        callback=audio_callback,
+        device=(input_device, sd.default.device[1]),
+    ):
+        await asyncio.sleep(duration_s + 0.3)
+    
+    # Trim to actual captured length
+    captured = captured[:samples_captured[0]]
+    
+    if len(captured) < VAD_FRAME_SAMPLES:
+        print(f"  WARNING: Only captured {len(captured)} samples, using default threshold")
+        return -55.0
+    
+    # Measure RMS energy in 30ms frames
+    frame_count = len(captured) // VAD_FRAME_SAMPLES
+    rms_values = []
+    for i in range(frame_count):
+        frame = captured[i * VAD_FRAME_SAMPLES:(i + 1) * VAD_FRAME_SAMPLES]
+        rms = np.sqrt(np.mean(frame ** 2))
+        rms_db = 20 * np.log10(max(rms, 1e-10))
+        rms_values.append(rms_db)
+    
+    rms_array = np.array(rms_values)
+    median_floor = np.median(rms_array)
+    p90_floor = np.percentile(rms_array, 90)
+    
+    # Set threshold above the noise floor
+    energy_threshold = median_floor + margin_db
+    
+    print(f"  Room noise floor: median={median_floor:.1f} dB, p90={p90_floor:.1f} dB")
+    print(f"  Energy threshold: {energy_threshold:.1f} dB (median + {margin_db} dB margin)")
+    
+    return float(energy_threshold)
+
+
 async def run_live_replay_capture(
     scenario: LiveScenario,
     input_device: int,
     output_device: int,
 ) -> dict:
     """Replay pre-recorded captured audio through speaker, re-capture through mic.
-    
-    The pre-recorded audio is at 16kHz. The output device may run at a different
     native rate (e.g. 48kHz). We resample the replay audio to the stream rate
     for playback, then resample the captured audio back to 16kHz for attribution.
     
@@ -352,10 +426,20 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     live_captured = capture_result["live_captured"]
     agent_pcm = capture_result["agent_pcm"]
     
+    # 1.5. Calibrate noise floor (LISTEN phase)
+    if args.calibrate:
+        energy_threshold_db = await calibrate_noise_floor(
+            args.input_device,
+            duration_s=args.calibrate_duration,
+            margin_db=args.calibrate_margin_db,
+        )
+    else:
+        energy_threshold_db = -55.0
+    
     # 2. Run attribution pipeline
     print(f"\n[2/3] Running attribution pipeline...")
     attributor = ThalamicAttributor(
-        energy_threshold_db=-55.0,
+        energy_threshold_db=energy_threshold_db,
         similarity_threshold=0.05,
         causal_tolerance_ms=175.0,
     )
@@ -474,6 +558,12 @@ async def main_async() -> None:
     parser.add_argument("--listen-threshold-ms", type=float, default=100.0)
     parser.add_argument("--cooldown-ms", type=float, default=200.0)
     parser.add_argument("--save-dir", default=None, help="Directory to save artifacts")
+    parser.add_argument("--calibrate", action="store_true",
+                        help="Enable ambient noise calibration before each scenario")
+    parser.add_argument("--calibrate-duration", type=float, default=2.0,
+                        help="Duration of calibration listening phase (seconds)")
+    parser.add_argument("--calibrate-margin-db", type=float, default=15.0,
+                        help="Margin above noise floor for energy threshold (dB)")
     
     args = parser.parse_args()
     
