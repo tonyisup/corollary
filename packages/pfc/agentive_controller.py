@@ -40,7 +40,8 @@ class AgentiveController:
         treat_both_speech_as_agentive: bool = True,
         motor_holdoff_ms: float = 200.0,
         both_external_energy_ratio_threshold: float = 2.0,
-        both_external_min_frames: int = 3,
+        both_external_min_frames: int = 5,
+        both_external_listen_min_ms: float = 300.0,
     ) -> None:
         self.state = AgentState.IDLE
         self.listen_threshold_ms = listen_threshold_ms
@@ -49,6 +50,7 @@ class AgentiveController:
         self.motor_holdoff_ms = motor_holdoff_ms
         self.both_external_energy_ratio_threshold = both_external_energy_ratio_threshold
         self.both_external_min_frames = both_external_min_frames
+        self.both_external_listen_min_ms = both_external_listen_min_ms
 
         self.last_speech_time: float = 0.0
         self.speech_start_time: float = 0.0
@@ -56,6 +58,10 @@ class AgentiveController:
         self.active_utterance: Optional[str] = None
         self.deferred_utterance: Optional[str] = None
         self._request_output_time: float = 0.0
+        # Overlap detection state
+        self._both_external_count: int = 0
+        self._overlap_listen_start_time: float = 0.0
+        self._was_overlap_interrupted: bool = False
 
     @property
     def has_deferred_output(self) -> bool:
@@ -109,27 +115,25 @@ class AgentiveController:
         
         # BOTH frames during self-playback (is_in_motor_window) are treated as
         # self-activity by default. However, if the per-frame energy ratio
-        # (observed / expected self RMS) is significantly above 1.0, this
-        # indicates human speech is overlapping with the self signal.
+        # (observed / expected self RMS) is significantly above 1.0 for a
+        # sustained period, this indicates human speech is overlapping.
         #
-        # The per-frame energy ratio is computed by comparing the observed
-        # frame's RMS against the expected self frame's RMS from the agent
-        # PCM template. When human speech overlaps, the observed energy is
-        # higher than expected.
+        # The per-frame energy ratio is computed by the attributor by comparing
+        # the observed frame's RMS against the expected self frame's RMS from
+        # the agent PCM template.
         #
-        # We require:
-        # 1. Per-frame energy ratio is available (self_pcm was provided)
-        # 2. Ratio exceeds threshold (e.g., 1.5 = 3.5 dB excess)
-        # 3. Sustained excess (N consecutive frames) to avoid noise
+        # Hysteresis: once we detect overlap and enter LISTEN, we stay in LISTEN
+        # for at least both_external_listen_min_ms to prevent flapping.
         both_is_external = False
         if (res.is_speech and res.verdict == SourceVerdict.BOTH 
             and res.is_in_motor_window
             and res.self_match_score_per_frame is not None):
             # Energy ratio > threshold indicates external speech
             if res.self_match_score_per_frame > self.both_external_energy_ratio_threshold:
-                self._both_external_count = getattr(self, '_both_external_count', 0) + 1
+                self._both_external_count += 1
             else:
                 self._both_external_count = 0
+            # Require N consecutive frames of high energy ratio
             if self._both_external_count >= self.both_external_min_frames:
                 both_is_external = True
         else:
@@ -162,6 +166,10 @@ class AgentiveController:
                 if self.speech_start_time == 0:
                     self.speech_start_time = current_time
                 self.last_speech_time = current_time
+                # Record when we entered LISTEN due to overlap (for hysteresis)
+                if both_is_external:
+                    self._overlap_listen_start_time = current_time
+                    self._was_overlap_interrupted = True
             elif is_self_activity:
                 self.last_self_time = current_time
             else:
@@ -196,14 +204,70 @@ class AgentiveController:
                     self.speech_start_time = 0
                     self.last_speech_time = 0
 
-            if not just_interrupted:
+            # 3b. Hysteresis: minimum LISTEN duration after overlap interrupt.
+            # Once we entered LISTEN due to BOTH-overlap detection, stay in LISTEN
+            # for at least both_external_listen_min_ms. This prevents flapping
+            # when the energy ratio oscillates around the threshold.
+            in_overlap_hysteresis = False
+            if (
+                self.state == AgentState.LISTEN
+                and self._overlap_listen_start_time > 0
+            ):
+                elapsed = current_time - self._overlap_listen_start_time
+                if elapsed < (self.both_external_listen_min_ms / 1000.0):
+                    in_overlap_hysteresis = True
+                else:
+                    # Minimum LISTEN duration satisfied
+                    self._overlap_listen_start_time = 0.0
+
+            # 3c. Post-interrupt resume: after any SPEAK→LISTEN interrupt,
+            # if the controller is still in LISTEN after the agent finishes
+            # and the human speech has ended, return to IDLE.
+            #
+            # This handles two cases:
+            # A) Overlap interrupt (energy ratio-based): resume when ratio
+            #    drops below threshold or after timeout
+            # B) Agent-finished interrupt (WORLD speech): resume after timeout
+            #    if VAD keeps detecting noise but agent is not playing
+            post_interrupt_resume = False
+            if (
+                self.state == AgentState.LISTEN
+                and not just_interrupted
+                and not in_overlap_hysteresis
+            ):
+                # Check if we have deferred output (were interrupted)
+                if self.deferred_utterance is not None:
+                    # Case A: Overlap interrupt — use energy ratio
+                    if (
+                        self._was_overlap_interrupted
+                        and res.self_match_score_per_frame is not None
+                        and res.self_match_score_per_frame <= self.both_external_energy_ratio_threshold
+                    ):
+                        post_interrupt_resume = True
+                    # Case B: Any interrupt — time-based fallback
+                    # If we've been in LISTEN for > 2x min listen duration
+                    # and the agent is not playing, assume human speech ended
+                    elif res.verdict != SourceVerdict.BOTH:
+                        # Agent is not playing (verdict is WORLD or SILENCE)
+                        if self._overlap_listen_start_time > 0:
+                            elapsed = current_time - self._overlap_listen_start_time
+                        else:
+                            elapsed = current_time - self.speech_start_time
+                        if elapsed >= (self.both_external_listen_min_ms * 2 / 1000.0):
+                            post_interrupt_resume = True
+            
+            if post_interrupt_resume:
+                self.state = AgentState.IDLE
+                self.speech_start_time = 0
+                self.last_speech_time = 0
+
+            if not just_interrupted and not in_overlap_hysteresis:
                 is_hearing_agent = (self.speech_start_time > 0) and \
                                    (current_time - self.speech_start_time) > (self.listen_threshold_ms / 1000.0)
 
                 if is_hearing_agent:
                     self.state = AgentState.LISTEN
                 elif self.state == AgentState.LISTEN:
-                    # We were listening, now it's quiet. Return to IDLE.
                     self.state = AgentState.IDLE
 
                 # LISTEN→SPEAK recovery: if we're in LISTEN (from IDLE, not from
@@ -213,7 +277,6 @@ class AgentiveController:
                 # to SPEAK so the agent can continue its utterance.
                 if (
                     self.state == AgentState.LISTEN
-                    and not just_interrupted  # don't override genuine SPEAK→LISTEN
                     and res.verdict == SourceVerdict.BOTH
                     and res.is_speech
                     and res.self_match_score >= 0.03  # above noise floor
@@ -222,6 +285,10 @@ class AgentiveController:
                     self.state = AgentState.SPEAK
                     self.active_utterance = self.deferred_utterance
                     self.deferred_utterance = None
+            elif in_overlap_hysteresis:
+                # During hysteresis, force stay in LISTEN
+                self.state = AgentState.LISTEN
+                self.active_utterance = None
 
         # 4. Decision Making
         can_speak = (self.state != AgentState.LISTEN)
