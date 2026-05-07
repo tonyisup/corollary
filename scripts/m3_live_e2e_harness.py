@@ -55,42 +55,42 @@ class LiveScenario:
     description: str = ""
 
 
-DATA_DIR = Path("data/m3_interrupt_v2")
+DATA_DIR = Path("data/m3_interrupt_v3-mic_adjusted")
 
 SCENARIOS: dict[str, LiveScenario] = {
     "human_early": LiveScenario(
         name="human_early",
-        captured_audio_file="data/m3_interrupt_v2/human_early/captured.npy",
-        agent_pcm_file="data/m3_interrupt_v2/human_early/agent_pcm.npy",
+        captured_audio_file="data/m3_interrupt_v3-mic_adjusted/human_early/captured.npy",
+        agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_early/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
         description="Human starts mid-utterance",
     ),
     "human_late": LiveScenario(
         name="human_late",
-        captured_audio_file="data/m3_interrupt_v2/human_late/captured.npy",
-        agent_pcm_file="data/m3_interrupt_v2/human_late/agent_pcm.npy",
+        captured_audio_file="data/m3_interrupt_v3-mic_adjusted/human_late/captured.npy",
+        agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_late/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
         description="Human starts near end of utterance",
     ),
     "human_before": LiveScenario(
         name="human_before",
-        captured_audio_file="data/m3_interrupt_v2/human_before/captured.npy",
-        agent_pcm_file="data/m3_interrupt_v2/human_before/agent_pcm.npy",
+        captured_audio_file="data/m3_interrupt_v3-mic_adjusted/human_before/captured.npy",
+        agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_before/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
         description="Human speaks before agent starts",
     ),
     "human_after": LiveScenario(
         name="human_after",
-        captured_audio_file="data/m3_interrupt_v2/human_after/captured.npy",
-        agent_pcm_file="data/m3_interrupt_v2/human_after/agent_pcm.npy",
+        captured_audio_file="data/m3_interrupt_v3-mic_adjusted/human_after/captured.npy",
+        agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_after/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
         description="Human speaks after agent finishes",
     ),
     "overlap_self_first": LiveScenario(
         name="overlap_self_first",
-        captured_audio_file="data/m3_interrupt_v2/overlap_self_first/captured.npy",
-        agent_pcm_file="data/m3_interrupt_v2/overlap_self_first/agent_pcm.npy",
-        agent_text="I was speaking, then paused.",
+        captured_audio_file="data/m3_interrupt_v3-mic_adjusted/overlap_self_first/captured.npy",
+        agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/overlap_self_first/agent_pcm.npy",
+        agent_text="I'm Corollary. I started speaking first.",
         description="Human and agent overlap from the start",
     ),
 }
