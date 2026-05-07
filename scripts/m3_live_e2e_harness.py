@@ -52,10 +52,12 @@ class LiveScenario:
     captured_audio_file: str       # Path to .npy file with pre-recorded captured audio
     agent_pcm_file: str            # Path to .npy file with agent TTS
     agent_text: str
+    human_audio_file: str = None   # Path to clean human speech .npy (for dual-speaker)
     description: str = ""
 
 
 DATA_DIR = Path("data/m3_interrupt_v3-mic_adjusted")
+HUMAN_SPEECH_DIR = Path("data/m3_human_speech")
 
 SCENARIOS: dict[str, LiveScenario] = {
     "human_early": LiveScenario(
@@ -63,6 +65,7 @@ SCENARIOS: dict[str, LiveScenario] = {
         captured_audio_file="data/m3_interrupt_v3-mic_adjusted/human_early/captured.npy",
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_early/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
+        human_audio_file="data/m3_human_speech/human_speech_00.npy",
         description="Human starts mid-utterance",
     ),
     "human_late": LiveScenario(
@@ -70,6 +73,7 @@ SCENARIOS: dict[str, LiveScenario] = {
         captured_audio_file="data/m3_interrupt_v3-mic_adjusted/human_late/captured.npy",
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_late/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
+        human_audio_file="data/m3_human_speech/human_speech_01.npy",
         description="Human starts near end of utterance",
     ),
     "human_before": LiveScenario(
@@ -77,6 +81,7 @@ SCENARIOS: dict[str, LiveScenario] = {
         captured_audio_file="data/m3_interrupt_v3-mic_adjusted/human_before/captured.npy",
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_before/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
+        human_audio_file="data/m3_human_speech/human_speech_02.npy",
         description="Human speaks before agent starts",
     ),
     "human_after": LiveScenario(
@@ -84,6 +89,7 @@ SCENARIOS: dict[str, LiveScenario] = {
         captured_audio_file="data/m3_interrupt_v3-mic_adjusted/human_after/captured.npy",
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_after/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
+        human_audio_file="data/m3_human_speech/human_speech_03.npy",
         description="Human speaks after agent finishes",
     ),
     "overlap_self_first": LiveScenario(
@@ -91,6 +97,7 @@ SCENARIOS: dict[str, LiveScenario] = {
         captured_audio_file="data/m3_interrupt_v3-mic_adjusted/overlap_self_first/captured.npy",
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/overlap_self_first/agent_pcm.npy",
         agent_text="I'm Corollary. I started speaking first.",
+        human_audio_file="data/m3_human_speech/human_speech_04.npy",
         description="Human and agent overlap from the start",
     ),
 }
@@ -234,19 +241,24 @@ async def run_live_replay_capture(
     else:
         tts_output = agent_pcm.copy()
     
-    # If dual-speaker mode, also prepare human speech output
+    # If dual-speaker mode, prepare clean human speech output
     dual_output = human_output_device is not None
     if dual_output:
         human_sr = int(sd.query_devices(human_output_device)["default_samplerate"])
-        # Use the captured audio as human speech source (it contains both TTS and human)
-        # In a more advanced setup, we'd extract just the human portion
+        # Load clean human speech if available, otherwise fall back to captured audio
+        if scenario.human_audio_file and Path(scenario.human_audio_file).exists():
+            human_pcm = np.load(scenario.human_audio_file).astype(np.float32)
+            print(f"  Human speech: {scenario.human_audio_file} ({len(human_pcm)} samples)")
+        else:
+            human_pcm = replay_audio_16k
+            print(f"  Human speech: using captured audio (no clean sample)")
         if human_sr != SR:
             human_output = scipy_resample(
-                replay_audio_16k,
-                int(len(replay_audio_16k) * human_sr / SR)
+                human_pcm,
+                int(len(human_pcm) * human_sr / SR)
             ).astype(np.float32)
         else:
-            human_output = replay_audio_16k.copy()
+            human_output = human_pcm.copy()
     
     # Total duration
     total_duration_s = len(replay_audio_16k) / SR + 1.0

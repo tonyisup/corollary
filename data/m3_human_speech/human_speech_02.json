@@ -1,0 +1,9 @@
+{
+  "phrase": "Hello, can I ask something?",
+  "phrase_idx": 2,
+  "duration_s": 4.5,
+  "speech_frames": 144,
+  "input_sr": 48000,
+  "recorded_at": "2026-05-07T16:05:04.661964",
+  "quality_ok": true
+}
