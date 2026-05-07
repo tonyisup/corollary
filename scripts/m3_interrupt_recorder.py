@@ -441,7 +441,7 @@ def main():
                         help="Comma-separated names, or 'all'")
     parser.add_argument("--output-dir", default="data/m3_interrupt_v2")
     parser.add_argument("--input-device", type=int, default=3)
-    parser.add_argument("--output-device", type=int, default=5)
+    parser.add_argument("--output-device", type=int, default=4)
     parser.add_argument("--list-devices", action="store_true")
     parser.add_argument("--list-scenarios", action="store_true")
     parser.add_argument("--redo", nargs="*", metavar="SCENARIO",

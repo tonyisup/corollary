@@ -1,0 +1,25 @@
+{
+  "scenario_name": "human_double",
+  "description": "Human interrupts twice",
+  "expected_behavior": "interrupt_defer_resume_interrupt",
+  "agent_text": "I'm Corollary. I'm trying to finish my thought.",
+  "agent_start_s": 0.5,
+  "agent_duration_s": 4.3021875,
+  "agent_samples": 68835,
+  "speak_windows": [
+    [
+      1.5,
+      2.0
+    ],
+    [
+      3.5,
+      4.0
+    ]
+  ],
+  "total_duration_s": 7.3021875,
+  "input_sr": 48000,
+  "output_sr": 48000,
+  "lead_in_s": 0.5,
+  "tail_s": 1.0,
+  "recorded_at": "2026-05-07T11:04:40.769244"
+}
