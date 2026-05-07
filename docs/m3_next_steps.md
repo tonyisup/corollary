@@ -1,21 +1,20 @@
 # M3 Next Steps — Current Status
 
 > **Date:** 2026-05-07
-> **Status:** Controller validated on real data, all 4 targets met
+> **Status:** Offline validation complete, live E2E harness ready
 
 ## Where We Are
 
 | Component | Status | Evidence |
 |-----------|--------|----------|
-| M3 controller controller | ✓ Validated | 8/8 synthetic scenarios, 33/33 decision checks pass |
-| M3 controller real data | ✓ Validated | 0% FI, 0% FD, 1.1% MI, 100% resume on 10 scenarios |
+| M3 controller (synthetic) | ✓ Validated | 8/8 scenarios, 33/33 decision checks pass |
+| M3 controller (offline real) | ✓ Validated | 0% FI, 0% FD, 1.1% MI, 100% resume on 10 scenarios |
 | Per-frame self-match | ✓ Implemented | Energy ratio computed per-frame in attributor |
 | Overlap detection | ✓ Working | Hysteresis + sustained evidence + post-interrupt resume |
-| M4 self-voice | ~ Calibrated | Threshold 0.50, combined M2+M4 gating |
-| M2 attribution | ~ Functional | Geometry-sensitive, ambient noise causes false WORLD |
-| Live end-to-end test | ✗ Not done | Everything validated offline only |
+| Live E2E harness | ✓ Built | `scripts/m3_live_e2e_harness.py` — ready to run |
+| Live E2E test | ✗ Not run | Needs real-time audio I/O |
 
-## Key Metrics (data/m3_interrupt_v2/)
+## Key Metrics (offline, data/m3_interrupt_v2/)
 
 | Metric | Target | Result |
 |--------|--------|--------|
@@ -37,31 +36,48 @@
 - Hysteresis: 300ms minimum LISTEN duration after overlap interrupt
 - Post-interrupt resume: Return to IDLE after 2x min_listen_duration if agent not playing
 
-### Known limitations
-- **Pre-agent human speech**: Overlap detector only fires during agent playback. Human speech before agent starts is handled by the post-agent-finished LISTEN path (17 MI in `overlap_human_first`).
-- **Post-agent human speech**: Same limitation (10 MI in `human_after`).
-- **Energy ratio ceiling**: TTS peaks produce ratios up to 4.3-4.4, overlapping with human speech. The sustained-frame requirement helps but can't fully separate.
+### Live E2E harness (`scripts/m3_live_e2e_harness.py`)
+- Replays pre-recorded captured audio through speaker
+- Re-captures through mic (tests full room acoustics chain)
+- Runs attribution + controller pipeline in real-time
+- Compares live results against offline analysis
+- Scenarios: human_early, human_late, human_before, human_after, overlap_self_first
 
 ## Recommended Next Steps
 
-### 1. Live end-to-end test (highest priority, ~2-4 hours)
+### 1. Run live E2E validation (highest priority, ~2-4 hours)
 
-Everything validated offline. The real test is running the full pipeline live:
-- Play TTS through the speaker
-- Speak at various points (before, during, after TTS)
-- Measure: does Corollary correctly yield? Does it resume after you stop?
-- Record and run through offline analysis
+```bash
+# Run all scenarios
+python scripts/m3_live_e2e_harness.py --all --save-dir data/m3_live_e2e/
 
-### 2. Tune overlap detector for live use (medium priority, ~1 hour)
+# Run single scenario
+python scripts/m3_live_e2e_harness.py --scenario human_early --save-dir data/m3_live_e2e/
+```
 
-Current settings are conservative (0 FI/FD). For live use, may want to:
-- Lower `both_external_min_frames` to 5 for faster response
-- Lower `both_external_energy_ratio_threshold` to 1.5 for quieter human speech
-- Accept some false positives for better responsiveness
+Expected outcomes:
+- Validate that controller behaves correctly with real room acoustics
+- Measure live latency (capture + attribution + controller)
+- Identify any timing drift or jitter issues
+- Compare live traces against offline assumptions
 
-### 3. Handle pre-agent human speech (medium priority, ~1-2 hours)
+### 2. Analyze live vs offline comparison (~1-2 hours)
 
-Add a "pre-agent deferral" path: if the controller deferred output before the agent started (due to WORLD speech), and the human speech ends, resume after a timeout.
+After running the harness, compare:
+- Verdict distributions (live vs offline)
+- State transition timing
+- Energy ratio distributions
+- Latency measurements
+
+### 3. Mic position sweep (later milestone)
+
+Once the live harness is validated, test with mic at different positions:
+- Close to speaker (current)
+- 1 meter away
+- 2 meters away
+- Different angles
+
+This measures how geometry changes the attribution landscape and whether the controller remains robust.
 
 ### 4. M2 attribution quality (longer term)
 
