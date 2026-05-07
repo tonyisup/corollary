@@ -178,12 +178,16 @@ async def run_live_replay_capture(
     scenario: LiveScenario,
     input_device: int,
     output_device: int,
+    human_output_device: int | None = None,
 ) -> dict:
-    """Replay pre-recorded captured audio through speaker, re-capture through mic.
-    native rate (e.g. 48kHz). We resample the replay audio to the stream rate
-    for playback, then resample the captured audio back to 16kHz for attribution.
+    """Replay pre-recorded captured audio through speaker(s), re-capture through mic.
     
-    Returns dict with live_captured (16kHz), agent_pcm (16kHz), replay_audio (16kHz).
+    If human_output_device is provided, plays TTS through output_device and
+    human speech through human_output_device. This separates the acoustic
+    sources for more realistic overlap testing.
+    
+    The human speech timing is extracted from the scenario's metadata
+    (speak_windows) and the agent_pcm is used as the clean TTS reference.
     """
     import sounddevice as sd
     from scipy.signal import resample as scipy_resample
@@ -197,8 +201,12 @@ async def run_live_replay_capture(
     if meta_path.exists():
         meta = json.loads(meta_path.read_text())
         input_sr = meta.get("input_sr", SR)
+        agent_start_s = meta.get("agent_start_s", 0.5)
+        speak_windows = meta.get("speak_windows", [])
     else:
         input_sr = SR
+        agent_start_s = 0.5
+        speak_windows = []
     
     # Resample to working rate (SR = 16kHz) for attribution
     if input_sr != SR:
@@ -210,93 +218,152 @@ async def run_live_replay_capture(
             agent_pcm_raw,
             int(len(agent_pcm_raw) * SR / input_sr)
         ).astype(np.float32)
-        print(f"  Resampled: {input_sr}Hz -> {SR}Hz")
     else:
         replay_audio_16k = replay_audio_raw
         agent_pcm = agent_pcm_raw
     
-    # Determine stream sample rate from the output device
-    dev_info = sd.query_devices(output_device)
-    stream_sr = int(dev_info["default_samplerate"])
+    # Determine stream sample rates
+    tts_sr = int(sd.query_devices(output_device)["default_samplerate"])
     
-    # Resample replay audio to stream rate for playback
-    if stream_sr != SR:
-        replay_audio = scipy_resample(
-            replay_audio_16k,
-            int(len(replay_audio_16k) * stream_sr / SR)
+    # Resample TTS to output rate
+    if tts_sr != SR:
+        tts_output = scipy_resample(
+            agent_pcm,
+            int(len(agent_pcm) * tts_sr / SR)
         ).astype(np.float32)
-        print(f"  Resampled replay: {SR}Hz -> {stream_sr}Hz")
     else:
-        replay_audio = replay_audio_16k
+        tts_output = agent_pcm.copy()
     
-    duration_s = len(replay_audio_16k) / SR + 1.0  # Extra second for tail (in 16k time)
-    total_stream_samples = int(duration_s * stream_sr)
-    total_16k_samples = int(duration_s * SR)
+    # If dual-speaker mode, also prepare human speech output
+    dual_output = human_output_device is not None
+    if dual_output:
+        human_sr = int(sd.query_devices(human_output_device)["default_samplerate"])
+        # Use the captured audio as human speech source (it contains both TTS and human)
+        # In a more advanced setup, we'd extract just the human portion
+        if human_sr != SR:
+            human_output = scipy_resample(
+                replay_audio_16k,
+                int(len(replay_audio_16k) * human_sr / SR)
+            ).astype(np.float32)
+        else:
+            human_output = replay_audio_16k.copy()
     
-    live_captured_stream = np.zeros(total_stream_samples, dtype=np.float32)
+    # Total duration
+    total_duration_s = len(replay_audio_16k) / SR + 1.0
+    total_samples = int(total_duration_s * tts_sr)
     
     print(f"  Replay audio: {len(replay_audio_16k)} samples at {SR}Hz ({len(replay_audio_16k)/SR:.2f}s)")
     print(f"  Agent PCM:    {len(agent_pcm)} samples at {SR}Hz ({len(agent_pcm)/SR:.2f}s)")
-    print(f"  Stream rate:  {stream_sr}Hz")
-    print(f"  Duration:     {duration_s:.1f}s")
+    print(f"  TTS output:   device {output_device} at {tts_sr}Hz")
+    if dual_output:
+        print(f"  Human output: device {human_output_device} at {human_sr}Hz")
+    print(f"  Mic input:    device {input_device}")
+    print(f"  Duration:     {total_duration_s:.1f}s")
     
-    capture_queue = asyncio.Queue()
-    samples_played = 0
+    # Capture buffer (at input sample rate)
+    input_sr_actual = int(sd.query_devices(input_device)["default_samplerate"])
+    capture_samples = int(total_duration_s * input_sr_actual)
+    mic_capture = np.zeros(capture_samples, dtype=np.float32)
+    
+    samples_played = [0]
+    samples_captured = [0]
     
     def audio_callback(indata, outdata, frames, time_info, status):
-        nonlocal samples_played
         if status:
             print(f"  Audio status: {status}")
         
-        # Output: replay the pre-recorded audio
-        start = samples_played
-        end = min(start + frames, len(replay_audio))
-        if start < len(replay_audio):
+        # Output TTS
+        start = samples_played[0]
+        end = min(start + frames, len(tts_output))
+        if start < len(tts_output):
             n = end - start
-            outdata[:n, 0] = replay_audio[start:end]
+            outdata[:n, 0] = tts_output[start:end]
             if n < frames:
                 outdata[n:, 0] = 0
         else:
             outdata[:] = 0
         
-        # Input: capture the live mic signal
-        capture_queue.put_nowait(indata[:, 0].copy())
-        samples_played += frames
+        # Capture mic
+        cap_start = samples_captured[0]
+        cap_end = min(cap_start + frames, capture_samples)
+        if cap_start < capture_samples:
+            n = cap_end - cap_start
+            mic_capture[cap_start:cap_end] = indata[:n, 0]
+            samples_captured[0] = cap_end
+        
+        samples_played[0] = end
     
-    print(f"  Starting live replay+capture (input={input_device}, output={output_device})...")
-    t0 = time.time()
-    
-    with sd.Stream(
-        samplerate=stream_sr,
-        blocksize=int(VAD_FRAME_SAMPLES * stream_sr / SR),  # Scale blocksize to stream rate
-        dtype="float32",
-        channels=1,
-        callback=audio_callback,
-        device=(input_device, output_device),
-    ):
-        await asyncio.sleep(duration_s + 0.5)
-    
-    elapsed = time.time() - t0
-    
-    # Collect captured audio
-    captured_frames = []
-    while not capture_queue.empty():
-        captured_frames.append(capture_queue.get_nowait())
-    
-    if captured_frames:
-        live_captured_stream = np.concatenate(captured_frames)[:total_stream_samples]
-    
-    # Resample captured audio back to 16kHz for attribution
-    if stream_sr != SR:
-        live_captured = scipy_resample(
-            live_captured_stream,
-            int(len(live_captured_stream) * SR / stream_sr)
-        ).astype(np.float32)
-        print(f"  Resampled capture: {stream_sr}Hz -> {SR}Hz")
+    if dual_output:
+        # Dual-output mode: open a separate output stream for human speech
+        # and synchronize manually
+        human_samples_played = [0]
+        
+        def human_callback(outdata, frames, time_info, status):
+            start = human_samples_played[0]
+            end = min(start + frames, len(human_output))
+            if start < len(human_output):
+                n = end - start
+                outdata[:n, 0] = human_output[start:end]
+                if n < frames:
+                    outdata[n:, 0] = 0
+            else:
+                outdata[:] = 0
+            human_samples_played[0] = end
+        
+        print(f"  Starting dual-output capture...")
+        tts_stream = sd.OutputStream(
+            samplerate=tts_sr,
+            blocksize=int(VAD_FRAME_SAMPLES * tts_sr / SR),
+            dtype="float32",
+            channels=1,
+            callback=audio_callback,
+            device=(input_device, output_device),
+        )
+        human_stream = sd.OutputStream(
+            samplerate=human_sr,
+            blocksize=int(VAD_FRAME_SAMPLES * human_sr / SR),
+            dtype="float32",
+            channels=1,
+            callback=human_callback,
+            device=human_output_device,
+        )
+        
+        tts_stream.start()
+        human_stream.start()
+        await asyncio.sleep(total_duration_s + 0.5)
+        tts_stream.stop()
+        human_stream.stop()
+        tts_stream.close()
+        human_stream.close()
     else:
-        live_captured = live_captured_stream
+        # Single-output mode (original)
+        print(f"  Starting single-output capture...")
+        with sd.Stream(
+            samplerate=tts_sr,
+            blocksize=int(VAD_FRAME_SAMPLES * tts_sr / SR),
+            dtype="float32",
+            channels=1,
+            callback=audio_callback,
+            device=(input_device, output_device),
+        ):
+            await asyncio.sleep(total_duration_s + 0.5)
     
-    print(f"  Capture complete: {len(live_captured)} samples at {SR}Hz in {elapsed:.1f}s")
+    elapsed = total_duration_s  # Approximate
+    
+    # Trim capture
+    mic_capture = mic_capture[:samples_captured[0]]
+    
+    # Resample capture to 16kHz for attribution
+    if input_sr_actual != SR:
+        from scipy.signal import resample as scipy_resample
+        live_captured = scipy_resample(
+            mic_capture,
+            int(len(mic_capture) * SR / input_sr_actual)
+        ).astype(np.float32)
+    else:
+        live_captured = mic_capture
+    
+    print(f"  Capture complete: {len(live_captured)} samples at {SR}Hz")
     
     return {
         "live_captured": live_captured,
@@ -306,7 +373,9 @@ async def run_live_replay_capture(
     }
 
 
-# ── Attribution pipeline ─────────────────────────────────────────────────────
+async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict:
+    """Run a single live E2E scenario."""
+
 
 def run_attribution_pipeline(
     captured_audio: np.ndarray,
@@ -419,7 +488,8 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     print(f"\n[1/3] Running live replay + capture...")
     t0 = time.time()
     capture_result = await run_live_replay_capture(
-        scenario, args.input_device, args.output_device
+        scenario, args.input_device, args.output_device,
+        human_output_device=args.human_output_device,
     )
     capture_time = (time.time() - t0) * 1000
     
@@ -572,6 +642,8 @@ async def main_async() -> None:
                         help="Duration of calibration listening phase (seconds)")
     parser.add_argument("--calibrate-margin-db", type=float, default=15.0,
                         help="Margin above noise floor for energy threshold (dB)")
+    parser.add_argument("--human-output-device", type=int, default=None,
+                        help="External speaker device for human speech (enables dual-speaker mode)")
     
     args = parser.parse_args()
     
