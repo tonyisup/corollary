@@ -65,7 +65,7 @@ def run_turn_taking_bridge(
         should_request = request_at_s is not None and frame.time_s >= request_at_s
         should_request = should_request or (request_at_s is None and not requested and not decision.can_speak)
         if should_request and not requested:
-            accepted_initial_output = ctrl.request_output(requested_output)
+            accepted_initial_output = ctrl.request_output(requested_output, current_time=frame.time_s)
             requested = True
 
     resumed_output = None

@@ -131,3 +131,25 @@ def test_motor_window_silence_does_not_cancel_pending_speech_before_overlap_resu
     assert any(d.should_interrupt for d in result.decisions)
     assert result.deferred_output is None
     assert result.resumed_output == "resume this"
+
+
+def test_m2_turn_bridge_defers_request_at_agent_start_when_user_already_speaking() -> None:
+    ctrl = AgentiveController(listen_threshold_ms=100, cooldown_ms=200)
+    frames = [
+        M2Frame(0.00, attr(SourceVerdict.SILENCE, is_speech=False, is_in_motor_window=False)),
+        M2Frame(0.30, attr(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
+        M2Frame(0.45, attr(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
+        M2Frame(0.51, attr(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
+        M2Frame(0.90, attr(SourceVerdict.SILENCE, is_speech=False, is_in_motor_window=False)),
+    ]
+
+    result = run_turn_taking_bridge(
+        frames,
+        "wait until user finishes",
+        controller=ctrl,
+        request_at_s=0.5,
+    )
+
+    assert result.accepted_initial_output is False
+    assert result.deferred_output is None
+    assert result.resumed_output == "wait until user finishes"

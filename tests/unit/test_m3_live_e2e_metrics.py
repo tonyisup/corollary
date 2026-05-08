@@ -127,6 +127,32 @@ def test_defer_scenario_accepting_initial_output_is_false_defer() -> None:
     assert metrics.summary()["resume_rate"] == "n/a"
 
 
+def test_defer_scenario_ignores_interrupts_after_successful_initial_defer() -> None:
+    scenario = LiveScenario(
+        name="human_before",
+        captured_audio_file="",
+        agent_pcm_file="",
+        agent_text="agent",
+        expected_behavior="defer",
+    )
+
+    metrics = compute_live_metrics(
+        scenario=scenario,
+        frame_records=[both_motor_frame(gt_human_speaking=True)],
+        decisions=[decision(should_interrupt=True)],
+        accepted_initial_output=False,
+        resumed_output="agent",
+        transitions=["IDLE", "LISTEN", "IDLE", "SPEAK", "LISTEN"],
+        latency_ms=1.0,
+    )
+
+    assert metrics.false_defers == 0
+    assert metrics.false_interrupts == 0
+    assert metrics.successful_resumes == 0
+    assert metrics.total_resumes_expected == 0
+    assert "fixed-playback harness" in metrics.notes[0]
+
+
 class NoSpeechVAD:
     def process_frame(self, frame):
         return False
