@@ -503,6 +503,7 @@ def run_attribution_pipeline(
 @dataclass
 class LiveMetrics:
     scenario: str
+    expected_behavior: str = "interrupt_defer_resume"
     total_frames: int = 0
     false_interrupts: int = 0
     false_defers: int = 0
@@ -517,6 +518,7 @@ class LiveMetrics:
     def summary(self) -> dict:
         return {
             "scenario": self.scenario,
+            "expected_behavior": self.expected_behavior,
             "total_frames": self.total_frames,
             "false_interrupts": self.false_interrupts,
             "false_defers": self.false_defers,
@@ -524,11 +526,77 @@ class LiveMetrics:
             "true_interrupts": self.true_interrupts,
             "successful_resumes": self.successful_resumes,
             "total_resumes_expected": self.total_resumes_expected,
-            "resume_rate": f"{self.successful_resumes}/{self.total_resumes_expected}",
+            "resume_rate": (
+                f"{self.successful_resumes}/{self.total_resumes_expected}"
+                if self.total_resumes_expected else "n/a"
+            ),
             "state_transitions": self.state_transitions,
             "latency_ms": round(self.latency_ms, 1),
             "notes": self.notes,
         }
+
+
+def compute_live_metrics(
+    scenario: LiveScenario,
+    frame_records: list[dict],
+    decisions: list,
+    accepted_initial_output: bool,
+    resumed_output: str | None,
+    transitions: list[str],
+    latency_ms: float,
+) -> LiveMetrics:
+    """Compute behavior-aware M3 live metrics from controller outputs.
+
+    Only `interrupt_defer_resume` scenarios are scored as overlap interrupt +
+    resume tasks. `defer` and `respond` are distinct conversation phases and
+    should not be counted as ordinary overlap-interrupt/resume successes.
+    """
+    metrics = LiveMetrics(scenario=scenario.name, expected_behavior=scenario.expected_behavior)
+    metrics.total_frames = len(decisions)
+    metrics.state_transitions = transitions
+    metrics.latency_ms = latency_ms
+
+    expects_interrupt_resume = scenario.expected_behavior == "interrupt_defer_resume"
+    expects_defer = scenario.expected_behavior == "defer"
+    expects_respond = scenario.expected_behavior == "respond"
+
+    saw_expected_overlap = False
+    saw_interrupt = False
+    for i, d in enumerate(decisions):
+        if i >= len(frame_records):
+            continue
+        fr = frame_records[i]
+        is_speech = fr.get("is_speech", False)
+        is_motor = fr.get("is_in_motor_window", False)
+        verdict = fr.get("verdict", "")
+
+        gt_human_during = verdict == "BOTH" and is_speech and is_motor
+        if gt_human_during:
+            saw_expected_overlap = True
+
+        if d.should_interrupt:
+            saw_interrupt = True
+            if expects_interrupt_resume and gt_human_during:
+                metrics.true_interrupts += 1
+            else:
+                metrics.false_interrupts += 1
+
+    if expects_interrupt_resume and saw_expected_overlap and not saw_interrupt:
+        metrics.missed_interrupts += 1
+
+    if expects_defer and accepted_initial_output:
+        metrics.false_defers += 1
+        metrics.notes.append("Expected pre-agent defer, but initial output was accepted")
+
+    if expects_respond and saw_interrupt:
+        metrics.notes.append("Expected post-agent respond/listen behavior, but controller interrupted")
+
+    metrics.total_resumes_expected = 1 if expects_interrupt_resume else 0
+    metrics.successful_resumes = 1 if (expects_interrupt_resume and resumed_output) else 0
+    if (not expects_interrupt_resume) and resumed_output:
+        metrics.notes.append("Unexpected resumed output for non-interrupt scenario")
+
+    return metrics
 
 
 # ── Main harness ──────────────────────────────────────────────────────────────
@@ -644,37 +712,15 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
             prev = s
     print(f"  States: {' -> '.join(transitions[:15])}")
     
-    # Compute metrics
-    metrics = LiveMetrics(scenario=scenario.name)
-    metrics.total_frames = len(bridge.decisions)
-    metrics.state_transitions = transitions
-    metrics.latency_ms = capture_time + attr_time + ctrl_time
-    
-    # Count interrupts
-    for i, d in enumerate(bridge.decisions):
-        if i < len(frame_records):
-            fr = frame_records[i]
-            is_speech = fr.get("is_speech", False)
-            is_motor = fr.get("is_in_motor_window", False)
-            verdict = fr.get("verdict", "")
-            
-            # Human speech during motor window (BOTH) = overlap case
-            # Human speech outside motor window (WORLD) = external speech case
-            gt_human_during = verdict == "BOTH" and is_speech and is_motor
-            gt_human_after = verdict == "WORLD" and is_speech and not is_motor
-            gt_human = gt_human_during or gt_human_after
-            
-            if d.should_interrupt and not gt_human:
-                metrics.false_interrupts += 1
-            elif d.should_interrupt and gt_human:
-                metrics.true_interrupts += 1
-            elif not d.should_interrupt and gt_human_after:
-                # Missed interrupt: human speaking after motor window, controller didn't interrupt
-                metrics.missed_interrupts += 1
-    
-    # Resume
-    metrics.successful_resumes = 1 if bridge.resumed_output else 0
-    metrics.total_resumes_expected = 1
+    metrics = compute_live_metrics(
+        scenario=scenario,
+        frame_records=frame_records,
+        decisions=bridge.decisions,
+        accepted_initial_output=bridge.accepted_initial_output,
+        resumed_output=bridge.resumed_output,
+        transitions=transitions,
+        latency_ms=capture_time + attr_time + ctrl_time,
+    )
     
     print(f"\n{'='*60}")
     print(f"Results for {scenario.name}:")

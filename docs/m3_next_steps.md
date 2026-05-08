@@ -82,3 +82,9 @@ This measures how geometry changes the attribution landscape and whether the con
 ### 4. M2 attribution quality (longer term)
 
 The ambient noise sensitivity (VAD detecting speech in room noise) is the root cause of many edge cases. Improving M2 attribution would have cascading benefits.
+
+### 5. Collision repair / floor negotiation (future milestone)
+
+Do not add repair utterances to current M3 reflex validation yet. Keep M3 focused on detecting overlap, yielding, and resuming. Future phone-like conversation behavior should add a higher-level repair policy for collisions such as "Sorry, go ahead" / "No, you first" once overlap/resume metrics are stable.
+
+See `docs/m3_collision_repair_future.md`.

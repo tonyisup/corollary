@@ -1,0 +1,120 @@
+from types import SimpleNamespace
+
+from scripts.m3_live_e2e_harness import LiveScenario, compute_live_metrics
+
+
+def decision(should_interrupt: bool = False):
+    return SimpleNamespace(should_interrupt=should_interrupt)
+
+
+def both_motor_frame() -> dict:
+    return {"verdict": "BOTH", "is_speech": True, "is_in_motor_window": True}
+
+
+def world_after_frame() -> dict:
+    return {"verdict": "WORLD", "is_speech": True, "is_in_motor_window": False}
+
+
+def test_interrupt_resume_scenario_scores_overlap_interrupt_and_resume() -> None:
+    scenario = LiveScenario(
+        name="human_early",
+        captured_audio_file="",
+        agent_pcm_file="",
+        agent_text="agent",
+        expected_behavior="interrupt_defer_resume",
+    )
+
+    metrics = compute_live_metrics(
+        scenario=scenario,
+        frame_records=[both_motor_frame()],
+        decisions=[decision(should_interrupt=True)],
+        accepted_initial_output=True,
+        resumed_output="agent",
+        transitions=["IDLE", "SPEAK", "LISTEN", "IDLE"],
+        latency_ms=1.0,
+    )
+
+    assert metrics.true_interrupts == 1
+    assert metrics.false_interrupts == 0
+    assert metrics.missed_interrupts == 0
+    assert metrics.successful_resumes == 1
+    assert metrics.total_resumes_expected == 1
+    assert metrics.summary()["resume_rate"] == "1/1"
+
+
+def test_respond_scenario_does_not_count_post_agent_world_as_missed_interrupt() -> None:
+    scenario = LiveScenario(
+        name="human_after",
+        captured_audio_file="",
+        agent_pcm_file="",
+        agent_text="agent",
+        expected_behavior="respond",
+    )
+
+    metrics = compute_live_metrics(
+        scenario=scenario,
+        frame_records=[world_after_frame()],
+        decisions=[decision(should_interrupt=False)],
+        accepted_initial_output=True,
+        resumed_output=None,
+        transitions=["IDLE", "SPEAK", "IDLE"],
+        latency_ms=1.0,
+    )
+
+    assert metrics.true_interrupts == 0
+    assert metrics.false_interrupts == 0
+    assert metrics.missed_interrupts == 0
+    assert metrics.successful_resumes == 0
+    assert metrics.total_resumes_expected == 0
+    assert metrics.summary()["resume_rate"] == "n/a"
+
+
+def test_respond_scenario_interrupt_is_not_scored_as_successful_resume() -> None:
+    scenario = LiveScenario(
+        name="human_after",
+        captured_audio_file="",
+        agent_pcm_file="",
+        agent_text="agent",
+        expected_behavior="respond",
+    )
+
+    metrics = compute_live_metrics(
+        scenario=scenario,
+        frame_records=[world_after_frame()],
+        decisions=[decision(should_interrupt=True)],
+        accepted_initial_output=True,
+        resumed_output="agent",
+        transitions=["IDLE", "SPEAK", "LISTEN", "IDLE"],
+        latency_ms=1.0,
+    )
+
+    assert metrics.true_interrupts == 0
+    assert metrics.false_interrupts == 1
+    assert metrics.successful_resumes == 0
+    assert metrics.total_resumes_expected == 0
+    assert "Expected post-agent respond/listen behavior" in metrics.notes[0]
+    assert "Unexpected resumed output" in metrics.notes[1]
+
+
+def test_defer_scenario_accepting_initial_output_is_false_defer() -> None:
+    scenario = LiveScenario(
+        name="human_before",
+        captured_audio_file="",
+        agent_pcm_file="",
+        agent_text="agent",
+        expected_behavior="defer",
+    )
+
+    metrics = compute_live_metrics(
+        scenario=scenario,
+        frame_records=[both_motor_frame()],
+        decisions=[decision(should_interrupt=False)],
+        accepted_initial_output=True,
+        resumed_output=None,
+        transitions=["IDLE", "SPEAK"],
+        latency_ms=1.0,
+    )
+
+    assert metrics.false_defers == 1
+    assert metrics.total_resumes_expected == 0
+    assert metrics.summary()["resume_rate"] == "n/a"
