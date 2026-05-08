@@ -125,20 +125,16 @@ class AgentiveController:
         # the observed frame's RMS against the expected self frame's RMS from
         # the agent PCM template.
         #
-        # Hysteresis: once we detect overlap and enter LISTEN, we stay in LISTEN
-        # for at least both_external_listen_min_ms to prevent flapping.
         both_is_external = False
         if (res.is_speech and res.verdict == SourceVerdict.BOTH 
             and res.is_in_motor_window
             and res.self_match_score_per_frame is not None):
-            # Energy ratio > threshold indicates external speech
             if res.self_match_score_per_frame > self.both_external_energy_ratio_threshold:
                 self._both_external_count += 1
+                if self._both_external_count >= self.both_external_min_frames:
+                    both_is_external = True
             else:
                 self._both_external_count = 0
-            # Require N consecutive frames of high energy ratio
-            if self._both_external_count >= self.both_external_min_frames:
-                both_is_external = True
         else:
             self._both_external_count = 0
         
@@ -191,7 +187,7 @@ class AgentiveController:
                 if self.speech_start_time == 0:
                     self.speech_start_time = current_time
                 self.last_speech_time = current_time
-                # Record when we entered LISTEN due to overlap (for hysteresis)
+                pass  # interrupt handled
                 if both_is_external:
                     self._overlap_listen_start_time = current_time
                     self._was_overlap_interrupted = True

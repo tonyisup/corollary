@@ -209,30 +209,32 @@ async def run_live_replay_capture(
         meta = json.loads(meta_path.read_text())
         input_sr = meta.get("input_sr", SR)
         agent_start_s = meta.get("agent_start_s", 0.5)
+        human_delay_s = meta.get("human_delay_s", 0.0)
         speak_windows = meta.get("speak_windows", [])
     else:
         input_sr = SR
         agent_start_s = 0.5
+        human_delay_s = 0.0
         speak_windows = []
     
-    # Resample to working rate (SR = 16kHz) for attribution
+    # Resample captured audio to working rate (SR = 16kHz) for attribution.
+    # Note: agent_pcm is always recorded at SR (16kHz) regardless of the
+    # recording's input_sr. Only the captured_audio needs resampling.
     if input_sr != SR:
         replay_audio_16k = scipy_resample(
             replay_audio_raw,
             int(len(replay_audio_raw) * SR / input_sr)
         ).astype(np.float32)
-        agent_pcm = scipy_resample(
-            agent_pcm_raw,
-            int(len(agent_pcm_raw) * SR / input_sr)
-        ).astype(np.float32)
     else:
         replay_audio_16k = replay_audio_raw
-        agent_pcm = agent_pcm_raw
+    
+    # Agent PCM is already at SR — use directly
+    agent_pcm = agent_pcm_raw.astype(np.float32)
     
     # Determine stream sample rates
     tts_sr = int(sd.query_devices(output_device)["default_samplerate"])
     
-    # Resample TTS to output rate
+    # Resample TTS from SR to output rate
     if tts_sr != SR:
         tts_output = scipy_resample(
             agent_pcm,
@@ -262,13 +264,50 @@ async def run_live_replay_capture(
     
     # Total duration
     total_duration_s = len(replay_audio_16k) / SR + 1.0
+    # Total duration and output buffer
+    total_duration_s = len(replay_audio_16k) / SR + 1.0
     total_samples = int(total_duration_s * tts_sr)
+    
+    # Build TTS output buffer (silence + TTS + silence)
+    tts_buffer = np.zeros(total_samples, dtype=np.float32)
+    tts_start_sample = int(agent_start_s * tts_sr)
+    tts_end_sample = min(tts_start_sample + len(tts_output), total_samples)
+    tts_buffer[tts_start_sample:tts_end_sample] = tts_output[:tts_end_sample - tts_start_sample]
+    
+    # Build human speech output buffer (positioned at correct offset)
+    dual_output = human_output_device is not None
+    human_buffer = np.zeros(total_samples, dtype=np.float32)
+    
+    if dual_output and scenario.human_audio_file and Path(scenario.human_audio_file).exists():
+        human_pcm = np.load(scenario.human_audio_file).astype(np.float32)
+        # Resample to output rate
+        if tts_sr != SR:
+            human_pcm_out = scipy_resample(
+                human_pcm,
+                int(len(human_pcm) * tts_sr / SR)
+            ).astype(np.float32)
+        else:
+            human_pcm_out = human_pcm.copy()
+        
+        # Position human speech at agent_start_s + human_delay_s
+        human_start_s = agent_start_s + human_delay_s
+        if human_start_s >= 0:
+            human_start_sample = int(human_start_s * tts_sr)
+        else:
+            # Human speaks before agent — start at beginning
+            human_start_sample = 0
+        human_end_sample = min(human_start_sample + len(human_pcm_out), total_samples)
+        human_buffer[human_start_sample:human_end_sample] = human_pcm_out[:human_end_sample - human_start_sample]
+        print(f"  Human speech: {len(human_pcm_out)} samples at t={max(0, human_start_s):.2f}s")
+    elif dual_output:
+        print(f"  Human speech: none (no clean sample)")
+        dual_output = False
     
     print(f"  Replay audio: {len(replay_audio_16k)} samples at {SR}Hz ({len(replay_audio_16k)/SR:.2f}s)")
     print(f"  Agent PCM:    {len(agent_pcm)} samples at {SR}Hz ({len(agent_pcm)/SR:.2f}s)")
     print(f"  TTS output:   device {output_device} at {tts_sr}Hz")
     if dual_output:
-        print(f"  Human output: device {human_output_device} at {human_sr}Hz")
+        print(f"  Human output: device {human_output_device} at {tts_sr}Hz")
     print(f"  Mic input:    device {input_device}")
     print(f"  Duration:     {total_duration_s:.1f}s")
     
@@ -286,10 +325,10 @@ async def run_live_replay_capture(
         
         # Output TTS
         start = samples_played[0]
-        end = min(start + frames, len(tts_output))
-        if start < len(tts_output):
+        end = min(start + frames, total_samples)
+        if start < total_samples:
             n = end - start
-            outdata[:n, 0] = tts_output[start:end]
+            outdata[:n, 0] = tts_buffer[start:end]
             if n < frames:
                 outdata[n:, 0] = 0
         else:
@@ -312,10 +351,10 @@ async def run_live_replay_capture(
         
         def human_callback(outdata, frames, time_info, status):
             start = human_samples_played[0]
-            end = min(start + frames, len(human_output))
-            if start < len(human_output):
+            end = min(start + frames, total_samples)
+            if start < total_samples:
                 n = end - start
-                outdata[:n, 0] = human_output[start:end]
+                outdata[:n, 0] = human_buffer[start:end]
                 if n < frames:
                     outdata[n:, 0] = 0
             else:
@@ -323,7 +362,6 @@ async def run_live_replay_capture(
             human_samples_played[0] = end
         
         print(f"  Starting dual-output capture...")
-        # Main stream: mic input + TTS output
         with sd.Stream(
             samplerate=tts_sr,
             blocksize=int(VAD_FRAME_SAMPLES * tts_sr / SR),
@@ -332,10 +370,9 @@ async def run_live_replay_capture(
             callback=audio_callback,
             device=(input_device, output_device),
         ):
-            # Human speech output (separate stream)
             with sd.OutputStream(
-                samplerate=human_sr,
-                blocksize=int(VAD_FRAME_SAMPLES * human_sr / SR),
+                samplerate=tts_sr,
+                blocksize=int(VAD_FRAME_SAMPLES * tts_sr / SR),
                 dtype="float32",
                 channels=1,
                 callback=human_callback,
@@ -542,9 +579,36 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
         listen_threshold_ms=args.listen_threshold_ms,
         cooldown_ms=args.cooldown_ms,
         both_external_min_frames=args.both_external_min_frames,
+        both_external_energy_ratio_threshold=args.both_external_energy_ratio,
     )
     
-    frames = frames_from_frame_records(frame_records, max_frames=len(frame_records))
+    # Create frames directly from attribution results (preserving self_match_score_per_frame etc.)
+    from pfc.m2_artifact_replay import M2Frame, attribution as attr_fn
+    frames = []
+    for fr in frame_records:
+        # Use the full attribution result if available, otherwise create a basic one
+        if 'self_match_score_per_frame' in fr:
+            # Reconstruct the AttributionResult from the record
+            verdict = SourceVerdict[fr.get('verdict', 'SILENCE')]
+            attr = attr_fn(
+                verdict,
+                bool(fr.get('is_speech', False)),
+                float(fr.get('energy_db', -30.0)),
+                is_in_motor_window=fr.get('is_in_motor_window', None),
+            )
+            # Override with the actual values from attribution
+            object.__setattr__(attr, 'self_match_score_per_frame', fr.get('self_match_score_per_frame'))
+            object.__setattr__(attr, 'self_match_score', fr.get('self_match_score', 0.0))
+            object.__setattr__(attr, 'causal_score', fr.get('causal_score', 0.0))
+            object.__setattr__(attr, 'confidence', fr.get('confidence', 0.9))
+        else:
+            verdict = SourceVerdict[fr.get('verdict', 'SILENCE')]
+            attr = attr_fn(verdict, bool(fr.get('is_speech', False)), float(fr.get('energy_db', -30.0)))
+        frames.append(M2Frame(float(fr.get('start_s', 0.0)), attr))
+    
+    if frames:
+        frames.append(M2Frame(frames[-1].time_s + 0.35, attr_fn(SourceVerdict.SILENCE, False, -70.0)))
+    
     t0 = time.time()
     bridge = run_turn_taking_bridge(
         frames,
@@ -654,7 +718,9 @@ async def main_async() -> None:
                         help="External speaker device for human speech (enables dual-speaker mode)")
     parser.add_argument("--both-external-min-frames", type=int, default=7,
                         help="Consecutive frames for overlap detection (default 7)")
-    
+    parser.add_argument("--both-external-energy-ratio", type=float, default=2.0,
+                        help="Energy ratio threshold for overlap detection (default 2.0)")
+
     args = parser.parse_args()
     
     if args.list:

@@ -1,0 +1,21 @@
+{
+  "scenario": "human_early",
+  "total_frames": 39,
+  "false_interrupts": 1,
+  "false_defers": 0,
+  "missed_interrupts": 0,
+  "true_interrupts": 0,
+  "successful_resumes": 1,
+  "total_resumes_expected": 1,
+  "resume_rate": "1/1",
+  "state_transitions": [
+    "IDLE",
+    "SPEAK",
+    "LISTEN",
+    "IDLE",
+    "LISTEN",
+    "IDLE"
+  ],
+  "latency_ms": 10616.6,
+  "notes": []
+}

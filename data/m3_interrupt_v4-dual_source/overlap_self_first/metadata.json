@@ -1,0 +1,18 @@
+{
+  "scenario_name": "overlap_self_first",
+  "description": "Human and agent overlap from the start",
+  "agent_text": "I'm Corollary. I started speaking first.",
+  "agent_start_s": 0.5,
+  "agent_duration_s": 4.2541875,
+  "human_delay_s": 0.5,
+  "total_duration_s": 5.7541875,
+  "input_sr": 48000,
+  "output_sr": 48000,
+  "input_device": 3,
+  "output_device": 5,
+  "recorded_at": "2026-05-07T15:31:09.959194",
+  "dual_source": true,
+  "human_frames_detected": 76,
+  "quality_ok": true,
+  "expected_behavior": "interrupt_defer_resume"
+}

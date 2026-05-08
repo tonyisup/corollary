@@ -39,6 +39,15 @@ from cochlea.capture import SR
 from cochlea.vad import VAD_FRAME_SAMPLES
 
 
+def _expected_behavior(delay_s: float) -> str:
+    if delay_s < 0:
+        return "defer"
+    elif delay_s > 2.0:
+        return "respond"
+    else:
+        return "interrupt_defer_resume"
+
+
 # ── Scenario definitions ──────────────────────────────────────────────────────
 
 SCENARIOS = {
@@ -292,6 +301,7 @@ async def record_scenario(
     np.save(output_dir / "captured.npy", mic_capture_16k)
     np.save(output_dir / "agent_pcm.npy", agent_pcm)
     np.save(output_dir / "gt_agent_playing.npy", gt_agent_16k)
+    np.save(output_dir / "gt_agent_should_speak.npy", gt_agent_16k)  # Same as playing for our purposes
     np.save(output_dir / "gt_human_speaking.npy", gt_human_16k)
     
     # Detect actual human speech from capture (for verification)
@@ -318,7 +328,8 @@ async def record_scenario(
         "recorded_at": datetime.now().isoformat(),
         "dual_source": True,
         "human_frames_detected": human_frames,
-        "quality_ok": human_frames > 10,  # Basic sanity check
+        "quality_ok": human_frames > 10,
+        "expected_behavior": _expected_behavior(human_delay_s),
     }
     
     with open(output_dir / "metadata.json", "w") as f:

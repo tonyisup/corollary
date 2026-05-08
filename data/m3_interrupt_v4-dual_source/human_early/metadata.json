@@ -10,8 +10,9 @@
   "output_sr": 48000,
   "input_device": 3,
   "output_device": 5,
-  "recorded_at": "2026-05-07T15:22:15.157019",
+  "recorded_at": "2026-05-07T15:29:55.740658",
   "dual_source": true,
-  "human_frames_detected": 44,
-  "quality_ok": true
+  "human_frames_detected": 109,
+  "quality_ok": true,
+  "expected_behavior": "interrupt_defer_resume"
 }
