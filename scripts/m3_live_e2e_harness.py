@@ -663,16 +663,32 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
 
     # Load pre-fitted room filter for room-local scoring (production-causal path)
     room_filter = None
+    room_local_threshold = args.room_local_threshold
     if args.room_filter:
         room_filter = np.load(args.room_filter)
         print(f"  Room filter loaded: {args.room_filter} ({len(room_filter)} taps)")
+        # Auto-detect threshold from companion calibration JSON
+        if room_local_threshold is None:
+            cal_path = Path(args.room_filter).with_suffix(".json")
+            if not cal_path.exists():
+                # Try the _reexport variant
+                cal_path = Path(str(args.room_filter).replace(".npy", ".json"))
+            if cal_path.exists():
+                cal = json.loads(cal_path.read_text())
+                rec = cal.get("recommended_threshold", {})
+                if rec:
+                    room_local_threshold = rec.get("threshold", 0.04)
+                    print(f"  Auto threshold from {cal_path.name}: {room_local_threshold:.3f}")
+            if room_local_threshold is None:
+                room_local_threshold = 0.04  # conservative default from fresh calibration
+                print(f"  Using default threshold: {room_local_threshold:.3f}")
 
     attributor = ThalamicAttributor(
         energy_threshold_db=energy_threshold_db,
         similarity_threshold=0.05,
         causal_tolerance_ms=175.0,
         room_filter=room_filter,
-        room_local_threshold=args.room_local_threshold if room_filter is not None else None,
+        room_local_threshold=room_local_threshold if room_filter is not None else None,
     )
     vad = SmoothedVAD()
     
@@ -831,8 +847,8 @@ async def main_async() -> None:
                         help="Energy ratio threshold for overlap detection (default 2.0)")
     parser.add_argument("--room-filter", default=None,
                         help="Path to pre-fitted room filter .npy file for room-local scoring")
-    parser.add_argument("--room-local-threshold", type=float, default=0.208,
-                        help="Room-local score threshold for SELF override (default 0.208)")
+    parser.add_argument("--room-local-threshold", type=float, default=None,
+                        help="Room-local score threshold for SELF override (default: auto from filter file)")
 
     args = parser.parse_args()
     
