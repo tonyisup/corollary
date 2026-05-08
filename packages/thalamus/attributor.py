@@ -47,6 +47,7 @@ class ThalamicAttributor:
         m4_self_threshold: float = 0.1,
         m4_window_ms: float = 1000.0,
         m4_min_buffer_ms: float = 500.0,
+        per_frame_self_min_rms_db: float = -50.0,
     ) -> None:
         self.similarity_threshold = similarity_threshold
         self.energy_threshold_db = energy_threshold_db
@@ -56,6 +57,7 @@ class ThalamicAttributor:
         self.m4_self_threshold = m4_self_threshold
         self.m4_window_samples = int(m4_window_ms * sr / 1000.0)
         self.m4_min_buffer_samples = int(m4_min_buffer_ms * sr / 1000.0)
+        self.per_frame_self_min_rms_db = per_frame_self_min_rms_db
         self._m4_buffer: Optional[np.ndarray] = None
 
     def _compute_per_frame_self_match(
@@ -128,6 +130,10 @@ class ThalamicAttributor:
         self_rms = float(np.sqrt(np.mean(expected_self_frame ** 2)))
         
         if self_rms < 1e-10:
+            return 0.0
+
+        self_rms_db = 20 * np.log10(max(self_rms, 1e-10))
+        if self_rms_db < self.per_frame_self_min_rms_db:
             return 0.0
         
         return obs_rms / self_rms

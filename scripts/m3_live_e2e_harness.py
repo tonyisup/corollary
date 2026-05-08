@@ -289,6 +289,8 @@ async def run_live_replay_capture(
     # Build human speech output buffer (positioned at correct offset)
     dual_output = human_output_device is not None
     human_buffer = np.zeros(total_samples, dtype=np.float32)
+    human_window_start_s = None
+    human_window_end_s = None
     
     if dual_output and scenario.human_audio_file and Path(scenario.human_audio_file).exists():
         human_pcm = np.load(scenario.human_audio_file).astype(np.float32)
@@ -311,6 +313,8 @@ async def run_live_replay_capture(
         human_end_sample = min(human_start_sample + len(human_pcm_out), total_samples)
         human_buffer[human_start_sample:human_end_sample] = human_pcm_out[:human_end_sample - human_start_sample]
         print(f"  Human speech: {len(human_pcm_out)} samples at t={max(0, human_start_s):.2f}s")
+        human_window_start_s = human_start_sample / tts_sr
+        human_window_end_s = human_end_sample / tts_sr
     elif dual_output:
         print(f"  Human speech: none (no clean sample)")
         dual_output = False
@@ -425,6 +429,9 @@ async def run_live_replay_capture(
         "live_captured": live_captured,
         "agent_pcm": agent_pcm,
         "replay_audio": replay_audio_16k,
+        "agent_start_s": agent_start_s,
+        "human_start_s": human_window_start_s,
+        "human_end_s": human_window_end_s,
         "capture_time_s": elapsed,
     }
 
@@ -438,6 +445,7 @@ def run_attribution_pipeline(
     agent_pcm: np.ndarray,
     attributor: ThalamicAttributor,
     vad: SmoothedVAD,
+    agent_start_s: float = 0.0,
 ) -> list[dict]:
     """Run the full attribution pipeline on captured audio.
     
@@ -446,6 +454,7 @@ def run_attribution_pipeline(
     frame_records = []
     frame_step = VAD_FRAME_SAMPLES
     num_frames = max(0, (len(captured_audio) - frame_step) // frame_step)
+    agent_start_sample = int(agent_start_s * SR)
     
     # Compute global self score
     from scripts.m2_speech_preservation_harness import normalized_xcorr
@@ -466,14 +475,14 @@ def run_attribution_pipeline(
         rms_db = 20 * np.log10(max(rms, 1e-10))
         
         # Self-match score
-        is_playing = end <= len(agent_pcm)
+        is_playing = start >= agent_start_sample and end <= agent_start_sample + len(agent_pcm)
         match_score = global_score if is_playing else 0.0
         
         # Attribution
         result = attributor.attribute(
             match_score=match_score,
             observed_onset_samples=start,
-            expected_onset_samples=0,
+            expected_onset_samples=agent_start_sample,
             rms_db=rms_db,
             is_playing=is_playing,
             self_pcm=agent_pcm,
@@ -570,7 +579,10 @@ def compute_live_metrics(
         is_motor = fr.get("is_in_motor_window", False)
         verdict = fr.get("verdict", "")
 
-        gt_human_during = verdict == "BOTH" and is_speech and is_motor
+        gt_human = fr.get("gt_human_speaking")
+        if gt_human is None:
+            gt_human = verdict == "BOTH" and is_speech and is_motor
+        gt_human_during = bool(gt_human and is_motor)
         if gt_human_during:
             saw_expected_overlap = True
 
@@ -619,6 +631,9 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     
     live_captured = capture_result["live_captured"]
     agent_pcm = capture_result["agent_pcm"]
+    agent_start_s = capture_result.get("agent_start_s", 0.0)
+    human_start_s = capture_result.get("human_start_s")
+    human_end_s = capture_result.get("human_end_s")
     
     # 1.5. Calibrate noise floor (LISTEN phase)
     if args.calibrate:
@@ -640,7 +655,10 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     vad = SmoothedVAD()
     
     t0 = time.time()
-    frame_records = run_attribution_pipeline(live_captured, agent_pcm, attributor, vad)
+    frame_records = run_attribution_pipeline(
+        live_captured, agent_pcm, attributor, vad,
+        agent_start_s=agent_start_s,
+    )
     attr_time = (time.time() - t0) * 1000
     
     print(f"  Attribution time: {attr_time:.0f}ms")
@@ -651,7 +669,18 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     for fr in frame_records:
         v = fr["verdict"].name if hasattr(fr["verdict"], "name") else str(fr["verdict"])
         verdict_counts[v] = verdict_counts.get(v, 0) + 1
-    print(f"  Verdicts: {verdict_counts}")
+    print(f"  Verdicts: {dict(verdict_counts)}")
+
+    # Annotate records with scheduled clean-human playback ground truth when
+    # dual-speaker mode is active. This avoids treating every BOTH frame as
+    # human speech; BOTH can also arise from self-playback artifacts.
+    if human_start_s is not None and human_end_s is not None:
+        for fr in frame_records:
+            t = fr.get("start_s", 0.0)
+            fr["gt_human_speaking"] = human_start_s <= t < human_end_s
+    else:
+        for fr in frame_records:
+            fr["gt_human_speaking"] = None
     
     # 3. Run controller
     print(f"\n[3/3] Running controller...")

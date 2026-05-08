@@ -1,14 +1,21 @@
 from types import SimpleNamespace
 
-from scripts.m3_live_e2e_harness import LiveScenario, compute_live_metrics
+import numpy as np
+
+from cochlea.vad import VAD_FRAME_SAMPLES
+from scripts.m3_live_e2e_harness import LiveScenario, compute_live_metrics, run_attribution_pipeline
+from thalamus.attributor import ThalamicAttributor
 
 
 def decision(should_interrupt: bool = False):
     return SimpleNamespace(should_interrupt=should_interrupt)
 
 
-def both_motor_frame() -> dict:
-    return {"verdict": "BOTH", "is_speech": True, "is_in_motor_window": True}
+def both_motor_frame(gt_human_speaking: bool | None = None) -> dict:
+    frame = {"verdict": "BOTH", "is_speech": True, "is_in_motor_window": True}
+    if gt_human_speaking is not None:
+        frame["gt_human_speaking"] = gt_human_speaking
+    return frame
 
 
 def world_after_frame() -> dict:
@@ -118,3 +125,52 @@ def test_defer_scenario_accepting_initial_output_is_false_defer() -> None:
     assert metrics.false_defers == 1
     assert metrics.total_resumes_expected == 0
     assert metrics.summary()["resume_rate"] == "n/a"
+
+
+class NoSpeechVAD:
+    def process_frame(self, frame):
+        return False
+
+
+def test_run_attribution_pipeline_offsets_motor_window_by_agent_start_s() -> None:
+    agent_pcm = np.ones(VAD_FRAME_SAMPLES * 4, dtype=np.float32) * 0.1
+    captured = np.zeros(VAD_FRAME_SAMPLES * 8, dtype=np.float32)
+    attributor = ThalamicAttributor(energy_threshold_db=-90.0)
+
+    records = run_attribution_pipeline(
+        captured,
+        agent_pcm,
+        attributor,
+        NoSpeechVAD(),
+        agent_start_s=(2 * VAD_FRAME_SAMPLES / 16000),
+    )
+
+    assert records[0]["is_in_motor_window"] is False
+    assert records[1]["is_in_motor_window"] is False
+    assert records[2]["is_in_motor_window"] is True
+    assert records[5]["is_in_motor_window"] is True
+    assert records[6]["is_in_motor_window"] is False
+
+
+def test_interrupt_resume_uses_scheduled_human_ground_truth_not_both_verdict() -> None:
+    scenario = LiveScenario(
+        name="human_late",
+        captured_audio_file="",
+        agent_pcm_file="",
+        agent_text="agent",
+        expected_behavior="interrupt_defer_resume",
+    )
+
+    metrics = compute_live_metrics(
+        scenario=scenario,
+        frame_records=[both_motor_frame(gt_human_speaking=False)],
+        decisions=[decision(should_interrupt=True)],
+        accepted_initial_output=True,
+        resumed_output="agent",
+        transitions=["IDLE", "SPEAK", "LISTEN", "IDLE"],
+        latency_ms=1.0,
+    )
+
+    assert metrics.true_interrupts == 0
+    assert metrics.false_interrupts == 1
+    assert metrics.missed_interrupts == 0

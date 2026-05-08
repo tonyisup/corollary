@@ -338,3 +338,43 @@ def test_attributor_m4_buffer_reset_conditions():
         rms_db=-30.0, is_playing=False, is_speech=True, frame_audio=frame
     )
     assert len(attributor._m4_buffer) == len_before  # Still same length
+
+def test_per_frame_energy_ratio_ignores_quiet_expected_self_frame() -> None:
+    attributor = ThalamicAttributor(per_frame_self_min_rms_db=-50.0)
+    frame_audio = np.ones(480, dtype=np.float32) * 0.1  # observed speech/noise
+    quiet_self = np.ones(480, dtype=np.float32) * 1e-4  # -80 dB expected self
+
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=0,
+        expected_onset_samples=0,
+        rms_db=-20.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=frame_audio,
+        self_pcm=quiet_self,
+        agent_start_sample=0,
+    )
+
+    assert res.self_match_score_per_frame == 0.0
+
+
+def test_per_frame_energy_ratio_keeps_loud_expected_self_frame() -> None:
+    attributor = ThalamicAttributor(per_frame_self_min_rms_db=-50.0)
+    frame_audio = np.ones(480, dtype=np.float32) * 0.2
+    loud_self = np.ones(480, dtype=np.float32) * 0.1  # -20 dB expected self
+
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=0,
+        expected_onset_samples=0,
+        rms_db=-20.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=frame_audio,
+        self_pcm=loud_self,
+        agent_start_sample=0,
+    )
+
+    assert res.self_match_score_per_frame is not None
+    assert 1.9 < res.self_match_score_per_frame < 2.1
