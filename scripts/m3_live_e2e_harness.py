@@ -676,9 +676,14 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
             if cal_path.exists():
                 cal = json.loads(cal_path.read_text())
                 rec = cal.get("recommended_threshold", {})
-                if rec:
+                # Handle both formats: dict with "threshold" key, or bare float
+                if isinstance(rec, dict):
                     room_local_threshold = rec.get("threshold", 0.04)
-                    print(f"  Auto threshold from {cal_path.name}: {room_local_threshold:.3f}")
+                elif isinstance(rec, (int, float)):
+                    room_local_threshold = float(rec)
+                else:
+                    room_local_threshold = 0.04
+                print(f"  Auto threshold from {cal_path.name}: {room_local_threshold:.3f}")
             if room_local_threshold is None:
                 room_local_threshold = 0.04  # conservative default from fresh calibration
                 print(f"  Using default threshold: {room_local_threshold:.3f}")

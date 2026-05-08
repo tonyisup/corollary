@@ -1,0 +1,57 @@
+{
+  "broca_text": "I was speaking, then paused.",
+  "world_speech": "data/world_speech_sample.npy",
+  "capture_devices": {
+    "input_device": 3,
+    "output_device": 5,
+    "noise_device": 4
+  },
+  "cases": [
+    {
+      "name": "silence",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_fresh/silence_rep00"
+    },
+    {
+      "name": "world_only",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_fresh/world_only_rep00"
+    },
+    {
+      "name": "overlap",
+      "threshold_role": "diagnostic",
+      "path": "data/m3_broca_controls_fresh/overlap_rep00"
+    },
+    {
+      "name": "silence",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_fresh/silence_rep01"
+    },
+    {
+      "name": "world_only",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_fresh/world_only_rep01"
+    },
+    {
+      "name": "overlap",
+      "threshold_role": "diagnostic",
+      "path": "data/m3_broca_controls_fresh/overlap_rep01"
+    },
+    {
+      "name": "silence",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_fresh/silence_rep02"
+    },
+    {
+      "name": "world_only",
+      "threshold_role": "negative",
+      "path": "data/m3_broca_controls_fresh/world_only_rep02"
+    },
+    {
+      "name": "overlap",
+      "threshold_role": "diagnostic",
+      "path": "data/m3_broca_controls_fresh/overlap_rep02"
+    }
+  ],
+  "threshold_command": null
+}
