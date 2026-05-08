@@ -178,6 +178,33 @@ def test_run_attribution_pipeline_offsets_motor_window_by_agent_start_s() -> Non
     assert records[6]["is_in_motor_window"] is False
 
 
+def test_annotate_metric_mode_marks_gated_metrics_as_suppression_not_reflex() -> None:
+    from scripts.m3_live_e2e_harness import annotate_metric_mode
+
+    summary = {
+        "missed_interrupts": 3,
+        "true_interrupts": 0,
+        "resume_rate": "0/3",
+        "notes": [],
+    }
+
+    annotated = annotate_metric_mode(summary, gated_playback=True)
+
+    assert annotated["metric_mode"] == "gated_suppression"
+    assert annotated["reflex_metrics_are_diagnostic"] is True
+    assert "suppression analyzer" in annotated["notes"][0]
+
+
+def test_annotate_metric_mode_keeps_ungated_metrics_as_reflex() -> None:
+    from scripts.m3_live_e2e_harness import annotate_metric_mode
+
+    annotated = annotate_metric_mode({"notes": []}, gated_playback=False)
+
+    assert annotated["metric_mode"] == "reflex_interrupt_resume"
+    assert annotated["reflex_metrics_are_diagnostic"] is False
+    assert annotated["notes"] == []
+
+
 def test_interrupt_resume_uses_scheduled_human_ground_truth_not_both_verdict() -> None:
     scenario = LiveScenario(
         name="human_late",

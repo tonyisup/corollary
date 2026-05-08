@@ -718,6 +718,29 @@ class LiveMetrics:
         }
 
 
+def annotate_metric_mode(summary: dict, gated_playback: bool) -> dict:
+    """Mark whether metrics should be interpreted as reflex or gated-suppression.
+
+    In gated mode, physical playback is intentionally scheduled to avoid human
+    speech windows, so legacy interrupt/resume fields are diagnostic only: a
+    successful suppression run can legitimately report MI>0/TI=0/resume=0/N.
+    """
+    annotated = dict(summary)
+    notes = list(annotated.get("notes") or [])
+    if gated_playback:
+        annotated["metric_mode"] = "gated_suppression"
+        annotated["reflex_metrics_are_diagnostic"] = True
+        notes.append(
+            "Gated playback mode: legacy interrupt/resume metrics are diagnostic; "
+            "use suppression analyzer fields as pass/fail criteria."
+        )
+    else:
+        annotated["metric_mode"] = "reflex_interrupt_resume"
+        annotated["reflex_metrics_are_diagnostic"] = False
+    annotated["notes"] = notes
+    return annotated
+
+
 def compute_live_metrics(
     scenario: LiveScenario,
     frame_records: list[dict],
@@ -986,7 +1009,7 @@ async def run_scenario(
     
     print(f"\n{'='*60}")
     print(f"Results for {scenario.name}:")
-    summary = metrics.summary()
+    summary = annotate_metric_mode(metrics.summary(), gated_playback=gated_playback)
     summary["gated_playback"] = gated_playback
     summary["tts_segments"] = tts_segments
     for k, v in summary.items():
