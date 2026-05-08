@@ -17,6 +17,19 @@ def attr(verdict: SourceVerdict, is_speech: bool, is_in_motor_window: bool | Non
     )
 
 
+def attr_with_ratio(
+    verdict: SourceVerdict,
+    is_speech: bool,
+    is_in_motor_window: bool,
+    ratio: float | None,
+    match_score: float = 0.1,
+) -> AttributionResult:
+    result = attr(verdict, is_speech=is_speech, is_in_motor_window=is_in_motor_window)
+    object.__setattr__(result, "self_match_score_per_frame", ratio)
+    object.__setattr__(result, "self_match_score", match_score)
+    return result
+
+
 def test_controller_treats_both_speech_as_agentive_external_speech() -> None:
     ctrl = AgentiveController(listen_threshold_ms=100)
     # BOTH with is_in_motor_window=False = external overlap (not self-caused)
@@ -88,3 +101,33 @@ def test_m2_turn_bridge_interrupts_speaking_then_resumes_after_overlap() -> None
     assert result.decisions[1].state == AgentState.LISTEN
     assert result.deferred_output is None
     assert result.resumed_output == "speaking now"
+
+
+def test_motor_window_silence_does_not_cancel_pending_speech_before_overlap_resume() -> None:
+    ctrl = AgentiveController(
+        listen_threshold_ms=100,
+        cooldown_ms=200,
+        both_external_energy_ratio_threshold=1.2,
+        both_external_min_frames=3,
+    )
+    frames = [
+        # request_output happens after this frame; subsequent low-energy motor
+        # silence must not kick SPEAK back to IDLE before playback/overlap.
+        M2Frame(0.00, attr(SourceVerdict.SILENCE, is_speech=False, is_in_motor_window=False)),
+        M2Frame(0.03, attr(SourceVerdict.SILENCE, is_speech=False, is_in_motor_window=True)),
+        M2Frame(0.06, attr_with_ratio(SourceVerdict.BOTH, True, True, ratio=0.5, match_score=0.5)),
+        M2Frame(1.00, attr_with_ratio(SourceVerdict.BOTH, True, True, ratio=20.0, match_score=20.0)),
+        M2Frame(1.03, attr_with_ratio(SourceVerdict.BOTH, True, True, ratio=30.0, match_score=30.0)),
+        M2Frame(1.06, attr_with_ratio(SourceVerdict.BOTH, True, True, ratio=40.0, match_score=40.0)),
+        # After overlap hysteresis expires, low ratio means human overlap ended.
+        # High match_score should not consume deferred output via pre-playback
+        # LISTEN→SPEAK recovery because this was a real overlap interruption.
+        M2Frame(1.50, attr_with_ratio(SourceVerdict.BOTH, True, True, ratio=0.0, match_score=0.5)),
+    ]
+
+    result = run_turn_taking_bridge(frames, "resume this", controller=ctrl, request_at_s=0.0)
+
+    assert result.accepted_initial_output is True
+    assert any(d.should_interrupt for d in result.decisions)
+    assert result.deferred_output is None
+    assert result.resumed_output == "resume this"

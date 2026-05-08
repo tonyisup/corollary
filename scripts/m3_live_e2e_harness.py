@@ -53,6 +53,8 @@ class LiveScenario:
     agent_pcm_file: str            # Path to .npy file with agent TTS
     agent_text: str
     human_audio_file: str = None   # Path to clean human speech .npy (for dual-speaker)
+    human_delay_s: float = 0.0     # Human onset relative to agent_start_s
+    expected_behavior: str = "interrupt_defer_resume"
     description: str = ""
 
 
@@ -66,6 +68,8 @@ SCENARIOS: dict[str, LiveScenario] = {
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_early/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
         human_audio_file="data/m3_human_speech/human_speech_00.npy",
+        human_delay_s=0.8,
+        expected_behavior="interrupt_defer_resume",
         description="Human starts mid-utterance",
     ),
     "human_late": LiveScenario(
@@ -74,6 +78,8 @@ SCENARIOS: dict[str, LiveScenario] = {
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_late/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
         human_audio_file="data/m3_human_speech/human_speech_01.npy",
+        human_delay_s=1.8,
+        expected_behavior="interrupt_defer_resume",
         description="Human starts near end of utterance",
     ),
     "human_before": LiveScenario(
@@ -82,6 +88,8 @@ SCENARIOS: dict[str, LiveScenario] = {
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_before/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
         human_audio_file="data/m3_human_speech/human_speech_02.npy",
+        human_delay_s=-1.0,
+        expected_behavior="defer",
         description="Human speaks before agent starts",
     ),
     "human_after": LiveScenario(
@@ -90,6 +98,8 @@ SCENARIOS: dict[str, LiveScenario] = {
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/human_after/agent_pcm.npy",
         agent_text="I was speaking, then paused.",
         human_audio_file="data/m3_human_speech/human_speech_03.npy",
+        human_delay_s=3.0,
+        expected_behavior="respond",
         description="Human speaks after agent finishes",
     ),
     "overlap_self_first": LiveScenario(
@@ -98,6 +108,8 @@ SCENARIOS: dict[str, LiveScenario] = {
         agent_pcm_file="data/m3_interrupt_v3-mic_adjusted/overlap_self_first/agent_pcm.npy",
         agent_text="I'm Corollary. I started speaking first.",
         human_audio_file="data/m3_human_speech/human_speech_04.npy",
+        human_delay_s=0.5,
+        expected_behavior="interrupt_defer_resume",
         description="Human and agent overlap from the start",
     ),
 }
@@ -209,12 +221,12 @@ async def run_live_replay_capture(
         meta = json.loads(meta_path.read_text())
         input_sr = meta.get("input_sr", SR)
         agent_start_s = meta.get("agent_start_s", 0.5)
-        human_delay_s = meta.get("human_delay_s", 0.0)
+        human_delay_s = meta.get("human_delay_s", scenario.human_delay_s)
         speak_windows = meta.get("speak_windows", [])
     else:
         input_sr = SR
         agent_start_s = 0.5
-        human_delay_s = 0.0
+        human_delay_s = scenario.human_delay_s
         speak_windows = []
     
     # Resample captured audio to working rate (SR = 16kHz) for attribution.

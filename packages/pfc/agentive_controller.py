@@ -194,9 +194,13 @@ class AgentiveController:
             elif is_self_activity:
                 self.last_self_time = current_time
             else:
-                self.active_utterance = None
-                self.last_self_time = 0
-                self.state = AgentState.IDLE
+                # SILENCE/non-agentive frames during the motor window are just
+                # low-energy portions of playback. Only end SPEAK once the
+                # motor window has actually ended.
+                if (not res.is_in_motor_window) and self._motor_end_time > 0:
+                    self.active_utterance = None
+                    self.last_self_time = 0
+                    self.state = AgentState.IDLE
 
         # 3. Update external speech timing when not handled by SPEAK interrupt.
         if self.state != AgentState.SPEAK:
@@ -298,6 +302,7 @@ class AgentiveController:
                 # to SPEAK so the agent can continue its utterance.
                 if (
                     self.state == AgentState.LISTEN
+                    and not self._was_overlap_interrupted
                     and res.verdict == SourceVerdict.BOTH
                     and res.is_speech
                     and res.self_match_score >= 0.03  # above noise floor
