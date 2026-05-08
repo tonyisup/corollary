@@ -378,3 +378,119 @@ def test_per_frame_energy_ratio_keeps_loud_expected_self_frame() -> None:
 
     assert res.self_match_score_per_frame is not None
     assert 1.9 < res.self_match_score_per_frame < 2.1
+
+
+def test_room_local_score_computed_when_filter_provided() -> None:
+    attributor = ThalamicAttributor(
+        room_filter=np.array([1.0, 0.0, 0.0], dtype=np.float64),
+        room_local_threshold=0.208,
+    )
+    frame = np.ones(480, dtype=np.float32) * 0.1
+    self_pcm = np.ones(480 * 10, dtype=np.float32) * 0.1
+
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=0,
+        expected_onset_samples=0,
+        rms_db=-20.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=frame,
+        self_pcm=self_pcm,
+        agent_start_sample=0,
+    )
+
+    assert res.room_local_score is not None
+    assert res.room_local_score > 0.0
+
+
+def test_room_local_score_none_without_filter() -> None:
+    attributor = ThalamicAttributor()
+    frame = np.ones(480, dtype=np.float32) * 0.1
+    self_pcm = np.ones(480 * 10, dtype=np.float32) * 0.1
+
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=0,
+        expected_onset_samples=0,
+        rms_db=-20.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=frame,
+        self_pcm=self_pcm,
+        agent_start_sample=0,
+    )
+
+    assert res.room_local_score is None
+
+
+def test_room_local_self_override_boosts_verdict() -> None:
+    """When room-local score exceeds threshold and dry match is weak,
+    the verdict should shift from BOTH toward SELF."""
+    # Identity room filter (no coloring)
+    attributor = ThalamicAttributor(
+        similarity_threshold=0.5,
+        room_filter=np.array([1.0, 0.0, 0.0], dtype=np.float64),
+        room_local_threshold=0.208,
+    )
+    frame = np.ones(480, dtype=np.float32) * 0.1
+    self_pcm = np.ones(480 * 10, dtype=np.float32) * 0.1
+
+    res = attributor.attribute(
+        match_score=0.3,  # below similarity_threshold
+        observed_onset_samples=0,
+        expected_onset_samples=0,
+        rms_db=-20.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=frame,
+        self_pcm=self_pcm,
+        agent_start_sample=0,
+    )
+
+    # Room-local score should be high (identical signals)
+    assert res.room_local_score is not None
+    assert res.room_local_score >= 0.208
+    # Verdict should be SELF due to room-local override
+    assert res.verdict == SourceVerdict.SELF
+
+
+def test_room_local_score_with_exported_filter() -> None:
+    """Integration test: load the exported room filter and verify it produces
+    a room_local_score when given a matching self capture."""
+    from pathlib import Path
+
+    filter_path = "data/m3_broca_room_threshold_calibration_broca_controls_reexport.npy"
+    h = np.load(filter_path)
+
+    attributor = ThalamicAttributor(
+        room_filter=h,
+        room_local_threshold=0.208,
+    )
+
+    # Create a realistic self PCM (sine wave + noise, like TTS)
+    frame_len = 480
+    t = np.arange(frame_len * 10, dtype=np.float32) / 16000.0
+    self_pcm = (np.sin(2 * np.pi * 440.0 * t) * 0.05).astype(np.float32)
+    self_pcm += np.random.randn(len(t)).astype(np.float32) * 0.005
+
+    # Make the observed frame a room-colored version of the self PCM
+    # by convolving with the room filter (simulating what the mic hears)
+    room_colored = np.convolve(self_pcm, h, mode="same").astype(np.float32)
+    frame = room_colored[frame_len:frame_len * 2].copy()
+
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=frame_len,
+        expected_onset_samples=frame_len,
+        rms_db=-20.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=frame,
+        self_pcm=self_pcm,
+        agent_start_sample=0,
+    )
+
+    # Room-local score should be computed and positive for room-colored self
+    assert res.room_local_score is not None
+    assert res.room_local_score > 0.0, f"self capture room_local_score={res.room_local_score}"

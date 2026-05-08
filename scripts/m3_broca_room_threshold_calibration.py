@@ -141,6 +141,14 @@ async def main_async() -> None:
     fallback_shift = int(np.median([s["self_expected_shift_samples"] for _, s, _ in positives]))
     filters = fit_filters(positives, template, taps=args.taps, ridge=args.ridge, search_ms=args.search_ms)
 
+    # Export the fitted room filter for production use
+    if filters:
+        # Average the per-positive filters into a single production filter
+        avg_filter = np.mean([f["h"] for f in filters], axis=0)
+        filter_path = Path(args.output).with_suffix(".npy")
+        np.save(filter_path, avg_filter.astype(np.float64))
+        print(f"Saved room filter: {filter_path}")
+
     pos_scores = [score_artifact(p, filters, template, fallback_shift=fallback_shift, search_ms=args.search_ms) for p in positives]
     neg_scores = [score_artifact(n, filters, template, fallback_shift=fallback_shift, search_ms=args.search_ms) for n in negatives]
     ranked_thresholds = threshold_rows(pos_scores, neg_scores, args.score_key)

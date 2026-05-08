@@ -1,6 +1,6 @@
 """Thalamus — Source Attribution.
 
-M1C: Source attribution logic combining playback state, forward-model 
+M1C: Source attribution logic combining playback state, forward-model
 predictions (efference copy), and acoustic similarity.
 """
 
@@ -29,6 +29,7 @@ class AttributionResult:
     onset_error_ms: Optional[float] = None
     metadata: Optional[Dict[str, Any]] = None
     self_match_score_per_frame: Optional[float] = None  # Per-frame local self-match
+    room_local_score: Optional[float] = None  # Room-colored self-match score
 
 class ThalamicAttributor:
     """The source attribution unit of the Thalamus.
@@ -48,6 +49,9 @@ class ThalamicAttributor:
         m4_window_ms: float = 1000.0,
         m4_min_buffer_ms: float = 500.0,
         per_frame_self_min_rms_db: float = -50.0,
+        room_filter: Optional[np.ndarray] = None,
+        room_local_threshold: Optional[float] = None,
+        room_local_search_ms: float = 250.0,
     ) -> None:
         self.similarity_threshold = similarity_threshold
         self.energy_threshold_db = energy_threshold_db
@@ -59,6 +63,12 @@ class ThalamicAttributor:
         self.m4_min_buffer_samples = int(m4_min_buffer_ms * sr / 1000.0)
         self.per_frame_self_min_rms_db = per_frame_self_min_rms_db
         self._m4_buffer: Optional[np.ndarray] = None
+        # Room-local scoring: pre-fitted FIR filter that maps dry self PCM to
+        # the expected room-colored version.  When provided, the attributor
+        # computes a room-local correlation score alongside the global xcorr.
+        self.room_filter = room_filter
+        self.room_local_threshold = room_local_threshold
+        self.room_local_search_ms = room_local_search_ms
 
     def _compute_per_frame_self_match(
         self,
@@ -138,6 +148,50 @@ class ThalamicAttributor:
         
         return obs_rms / self_rms
 
+    def _compute_room_local_score(
+        self,
+        frame_audio: np.ndarray,
+        self_pcm: np.ndarray,
+        agent_start_sample: int,
+        observed_onset_samples: int,
+        expected_onset_samples: int,
+    ) -> Optional[float]:
+        """Compute room-local self-match score using a pre-fitted room filter.
+        
+        The room filter is applied to the dry self template to produce a
+        room-colored reference, which is then correlated against the observed
+        frame.  This is the production-causal path: the filter must be fitted
+        *before* the current capture (e.g. from a prior calibration run).
+        
+        Returns:
+            Normalized correlation between observed frame and room-colored
+            self reference.  None if room_filter or self_pcm is not available.
+        """
+        if self.room_filter is None or self_pcm is None:
+            return None
+
+        frame_len = len(frame_audio)
+        rel_pos = observed_onset_samples - expected_onset_samples
+        self_start = agent_start_sample + rel_pos
+        self_end = self_start + frame_len
+
+        if self_start < 0 or self_end > len(self_pcm):
+            return None
+
+        expected_self_frame = self_pcm[self_start:self_end]
+
+        # Apply room filter to get room-colored reference
+        room_colored = np.convolve(expected_self_frame, self.room_filter, mode="same")
+        room_colored = room_colored.astype(np.float32)
+
+        obs_norm = float(np.linalg.norm(frame_audio))
+        room_norm = float(np.linalg.norm(room_colored))
+
+        if obs_norm < 1e-9 or room_norm < 1e-9:
+            return 0.0
+
+        return float(np.dot(frame_audio, room_colored) / (obs_norm * room_norm))
+
     def attribute(
         self,
         match_score: float,
@@ -196,11 +250,26 @@ class ThalamicAttributor:
                     frame_audio, self_pcm, agent_start_sample,
                     observed_onset_samples, expected_onset_samples
                 )
-        
+
+        # Compute room-local self-match score when a pre-fitted room filter is
+        # available.  This is the production-causal path: the filter is fitted
+        # before the current capture (e.g. from a prior calibration run).
+        room_local_score = None
+        if (
+            self.room_filter is not None
+            and self_pcm is not None
+            and expected_onset_samples is not None
+            and is_playing
+        ):
+            room_local_score = self._compute_room_local_score(
+                frame_audio, self_pcm, agent_start_sample,
+                observed_onset_samples, expected_onset_samples,
+            )
+
         # 1. Check for silence
         if rms_db < self.energy_threshold_db:
             return AttributionResult(
-                verdict= SourceVerdict.SILENCE,
+                verdict=SourceVerdict.SILENCE,
                 confidence=1.0,
                 self_match_score=match_score,
                 is_in_motor_window=is_playing,
@@ -209,8 +278,9 @@ class ThalamicAttributor:
                 is_speech=is_speech,
                 metadata=m4_metadata,
                 self_match_score_per_frame=0.0,
+                room_local_score=0.0,
             )
-
+        
         # 2. Compute causal score (timing alignment)
         causal_score = 0.0
         onset_error_ms = None
@@ -262,8 +332,18 @@ class ThalamicAttributor:
                     causal_score=causal_score, energy_db=rms_db, is_speech=is_speech,
                     onset_error_ms=onset_error_ms, metadata=m4_metadata,
                     self_match_score_per_frame=self_match_score_per_frame,
+                    room_local_score=room_local_score,
                 )
         
+        # Room-local score can boost SELF confidence when the room-colored
+        # reference matches better than the dry template.  If the room-local
+        # score exceeds the threshold, we treat the frame as more likely SELF.
+        room_local_self = (
+            room_local_score is not None
+            and self.room_local_threshold is not None
+            and room_local_score >= self.room_local_threshold
+        )
+
         # M2 logic
         if is_playing and is_self_like and is_timely and is_speech:
             verdict = SourceVerdict.BOTH
@@ -277,6 +357,15 @@ class ThalamicAttributor:
         else:
             verdict = SourceVerdict.WORLD
             confidence = 0.9 if is_speech else 0.8
+
+        # Room-local override: if the room-colored reference matches well,
+        # boost confidence that this is SELF rather than WORLD/BOTH.
+        if room_local_self and verdict == SourceVerdict.BOTH:
+            # Room-local evidence suggests this is self-playback, not overlap.
+            # Only override if the dry match is not already strong.
+            if match_score < 0.5:
+                verdict = SourceVerdict.SELF
+                confidence = (match_score + causal_score + room_local_score) / 3.0
         
         return AttributionResult(
             verdict=verdict, confidence=confidence,
@@ -284,4 +373,5 @@ class ThalamicAttributor:
             causal_score=causal_score, energy_db=rms_db, is_speech=is_speech,
             onset_error_ms=onset_error_ms, metadata=m4_metadata,
             self_match_score_per_frame=self_match_score_per_frame,
+            room_local_score=room_local_score,
         )
