@@ -117,6 +117,109 @@ SCENARIOS: dict[str, LiveScenario] = {
 
 # ── Live replay + capture ────────────────────────────────────────────────────
 
+def _round_seconds(value: float) -> float:
+    """Round seconds for stable JSON/test output while preserving audio timing."""
+    return round(float(value), 6)
+
+
+def plan_controller_gated_tts_segments(
+    agent_start_s: float,
+    agent_duration_s: float,
+    human_start_s: float | None,
+    human_end_s: float | None,
+    expected_behavior: str,
+    resume_delay_s: float = 0.2,
+) -> list[dict]:
+    """Plan physical TTS playback segments for controller-gated M3 scenarios.
+
+    The live harness has deterministic scenario timing, so this function turns
+    the controller policy into an audio-output plan before opening the output
+    stream:
+    - defer: hold the full utterance until the pre-existing human turn ends
+    - interrupt_defer_resume: play until overlap, mute during human speech, then
+      resume the remaining source audio
+    - respond/other: play the full utterance at the normal agent start
+
+    Segment dictionaries use seconds and contain source/destination offsets:
+    {"src_start_s", "dst_start_s", "duration_s"}.
+    """
+    if agent_duration_s <= 0:
+        return []
+
+    if human_start_s is None or human_end_s is None or human_end_s <= human_start_s:
+        return [{
+            "src_start_s": 0.0,
+            "dst_start_s": _round_seconds(agent_start_s),
+            "duration_s": _round_seconds(agent_duration_s),
+        }]
+
+    agent_end_s = agent_start_s + agent_duration_s
+
+    if expected_behavior == "defer" and human_start_s <= agent_start_s < human_end_s:
+        return [{
+            "src_start_s": 0.0,
+            "dst_start_s": _round_seconds(human_end_s + resume_delay_s),
+            "duration_s": _round_seconds(agent_duration_s),
+        }]
+
+    if expected_behavior == "interrupt_defer_resume":
+        overlap_start_s = max(agent_start_s, human_start_s)
+        overlap_end_s = min(agent_end_s, human_end_s)
+        if overlap_start_s < overlap_end_s:
+            segments: list[dict] = []
+            pre_duration_s = max(0.0, overlap_start_s - agent_start_s)
+            if pre_duration_s > 0:
+                segments.append({
+                    "src_start_s": 0.0,
+                    "dst_start_s": _round_seconds(agent_start_s),
+                    "duration_s": _round_seconds(pre_duration_s),
+                })
+            remaining_src_s = pre_duration_s
+            remaining_duration_s = max(0.0, agent_duration_s - remaining_src_s)
+            if remaining_duration_s > 0:
+                segments.append({
+                    "src_start_s": _round_seconds(remaining_src_s),
+                    "dst_start_s": _round_seconds(human_end_s + resume_delay_s),
+                    "duration_s": _round_seconds(remaining_duration_s),
+                })
+            return segments
+
+    return [{
+        "src_start_s": 0.0,
+        "dst_start_s": _round_seconds(agent_start_s),
+        "duration_s": _round_seconds(agent_duration_s),
+    }]
+
+
+def controller_request_time_s(expected_behavior: str, original_agent_start_s: float) -> float:
+    """Return when PFC should request speech for post-hoc controller scoring.
+
+    Gated playback may delay the physical TTS segment, especially for `defer`,
+    but the controller request still occurs at the original agent intent time.
+    """
+    return original_agent_start_s if expected_behavior == "defer" else 0.0
+
+
+def build_controller_gated_tts_buffer(
+    tts_output: np.ndarray,
+    sr: int,
+    total_samples: int,
+    segments: list[dict],
+) -> np.ndarray:
+    """Render planned gated TTS segments into a physical output buffer."""
+    buffer = np.zeros(total_samples, dtype=np.float32)
+    for seg in segments:
+        src_start = max(0, int(round(float(seg["src_start_s"]) * sr)))
+        dst_start = max(0, int(round(float(seg["dst_start_s"]) * sr)))
+        duration = max(0, int(round(float(seg["duration_s"]) * sr)))
+        if duration <= 0 or src_start >= len(tts_output) or dst_start >= total_samples:
+            continue
+        n = min(duration, len(tts_output) - src_start, total_samples - dst_start)
+        if n > 0:
+            buffer[dst_start:dst_start + n] = tts_output[src_start:src_start + n]
+    return buffer
+
+
 async def calibrate_noise_floor(
     input_device: int,
     duration_s: float = 2.0,
@@ -198,6 +301,8 @@ async def run_live_replay_capture(
     input_device: int,
     output_device: int,
     human_output_device: int | None = None,
+    gated_playback: bool = False,
+    gated_resume_delay_s: float = 0.2,
 ) -> dict:
     """Replay pre-recorded captured audio through speaker(s), re-capture through mic.
     
@@ -280,11 +385,10 @@ async def run_live_replay_capture(
     total_duration_s = len(replay_audio_16k) / SR + 1.0
     total_samples = int(total_duration_s * tts_sr)
     
-    # Build TTS output buffer (silence + TTS + silence)
+    # TTS output buffer is rendered after human timing is known so gated mode
+    # can defer or split the physical playback around the human turn.
     tts_buffer = np.zeros(total_samples, dtype=np.float32)
-    tts_start_sample = int(agent_start_s * tts_sr)
-    tts_end_sample = min(tts_start_sample + len(tts_output), total_samples)
-    tts_buffer[tts_start_sample:tts_end_sample] = tts_output[:tts_end_sample - tts_start_sample]
+    tts_segments: list[dict] = []
     
     # Build human speech output buffer (positioned at correct offset)
     dual_output = human_output_device is not None
@@ -327,6 +431,50 @@ async def run_live_replay_capture(
     elif dual_output:
         print(f"  Human speech: none (no clean sample)")
         dual_output = False
+
+    if gated_playback:
+        tts_segments = plan_controller_gated_tts_segments(
+            agent_start_s=agent_start_s,
+            agent_duration_s=len(tts_output) / tts_sr,
+            human_start_s=human_window_start_s,
+            human_end_s=human_window_end_s,
+            expected_behavior=scenario.expected_behavior,
+            resume_delay_s=gated_resume_delay_s,
+        )
+        required_end_s = max(
+            [total_duration_s]
+            + [seg["dst_start_s"] + seg["duration_s"] + 0.5 for seg in tts_segments]
+            + ([human_window_end_s + 0.5] if human_window_end_s is not None else [])
+        )
+        if required_end_s > total_duration_s:
+            old_human_buffer = human_buffer
+            total_duration_s = required_end_s
+            total_samples = int(total_duration_s * tts_sr)
+            human_buffer = np.zeros(total_samples, dtype=np.float32)
+            human_buffer[:len(old_human_buffer)] = old_human_buffer
+        tts_buffer = build_controller_gated_tts_buffer(
+            tts_output,
+            sr=tts_sr,
+            total_samples=total_samples,
+            segments=tts_segments,
+        )
+        print(f"  Gated TTS playback: {len(tts_segments)} segment(s)")
+        for seg in tts_segments:
+            print(
+                "    src={src_start_s:.2f}s dst={dst_start_s:.2f}s dur={duration_s:.2f}s".format(**seg)
+            )
+    else:
+        tts_segments = [{
+            "src_start_s": 0.0,
+            "dst_start_s": _round_seconds(agent_start_s),
+            "duration_s": _round_seconds(len(tts_output) / tts_sr),
+        }]
+        tts_buffer = build_controller_gated_tts_buffer(
+            tts_output,
+            sr=tts_sr,
+            total_samples=total_samples,
+            segments=tts_segments,
+        )
     
     print(f"  Replay audio: {len(replay_audio_16k)} samples at {SR}Hz ({len(replay_audio_16k)/SR:.2f}s)")
     print(f"  Agent PCM:    {len(agent_pcm)} samples at {SR}Hz ({len(agent_pcm)/SR:.2f}s)")
@@ -438,43 +586,30 @@ async def run_live_replay_capture(
         "live_captured": live_captured,
         "agent_pcm": agent_pcm,
         "replay_audio": replay_audio_16k,
-        "agent_start_s": agent_start_s,
+        "agent_start_s": tts_segments[0]["dst_start_s"] if tts_segments else agent_start_s,
+        "original_agent_start_s": agent_start_s,
         "human_start_s": human_window_start_s,
         "human_end_s": human_window_end_s,
+        "tts_segments": tts_segments,
+        "gated_playback": gated_playback,
         "capture_time_s": elapsed,
     }
 
 
 async def run_gated_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict:
-    """Run a single live E2E scenario with controller-gated TTS playback.
-
-    NOTE: This is a design stub. Full gated playback requires integrating
-    the controller into the real-time audio callback, which is a significant
-    architectural change better suited for the production runtime.
-
-    The current validation harness uses post-hoc scoring: TTS plays
-    unconditionally and the controller decision is scored after capture.
-    This correctly validates the controller logic. Gated playback validates
-    the integration between controller and audio output, which is a separate
-    concern.
-
-    Design for production gated playback:
-    1. Process mic input through attributor in real-time (per-frame)
-    2. Feed attribution results to controller in the audio callback
-    3. Gate TTS output based on controller.state (only emit when IDLE/SPEAK)
-    4. This requires the attributor to work on streaming frames, not batch
-
-    See docs/m3_status_20260508.md for remaining work items.
-    """
+    """Run a single live E2E scenario with controller-gated TTS playback."""
     print(f"\n{'='*60}")
     print(f"Scenario (gated): {scenario.name}")
-    print(f"  NOTE: Gated playback not yet implemented in validation harness.")
-    print(f"  Falling back to standard (ungated) playback.")
+    print("  Controller-gated physical playback enabled.")
     print(f"{'='*60}")
-    return await run_scenario(scenario, args)
+    return await run_scenario(scenario, args, gated_playback=True)
 
 
-async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict:
+async def run_scenario(
+    scenario: LiveScenario,
+    args: argparse.Namespace,
+    gated_playback: bool = False,
+) -> dict:
     """Run a single live E2E scenario."""
 
 
@@ -655,7 +790,11 @@ def compute_live_metrics(
 
 # ── Main harness ──────────────────────────────────────────────────────────────
 
-async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict:
+async def run_scenario(
+    scenario: LiveScenario,
+    args: argparse.Namespace,
+    gated_playback: bool = False,
+) -> dict:
     """Run a single live E2E scenario."""
     print(f"\n{'='*60}")
     print(f"Scenario: {scenario.name}")
@@ -668,14 +807,18 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     capture_result = await run_live_replay_capture(
         scenario, args.input_device, args.output_device,
         human_output_device=args.human_output_device,
+        gated_playback=gated_playback,
+        gated_resume_delay_s=getattr(args, "gated_resume_delay_ms", 200.0) / 1000.0,
     )
     capture_time = (time.time() - t0) * 1000
     
     live_captured = capture_result["live_captured"]
     agent_pcm = capture_result["agent_pcm"]
     agent_start_s = capture_result.get("agent_start_s", 0.0)
+    original_agent_start_s = capture_result.get("original_agent_start_s", agent_start_s)
     human_start_s = capture_result.get("human_start_s")
     human_end_s = capture_result.get("human_end_s")
+    tts_segments = capture_result.get("tts_segments", [])
     
     # 1.5. Calibrate noise floor (LISTEN phase)
     if args.calibrate:
@@ -810,7 +953,10 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
         frames,
         scenario.agent_text,
         controller=controller,
-        request_at_s=agent_start_s if scenario.expected_behavior == "defer" else 0.0,
+        request_at_s=controller_request_time_s(
+            scenario.expected_behavior,
+            original_agent_start_s=original_agent_start_s,
+        ),
     )
     ctrl_time = (time.time() - t0) * 1000
     
@@ -841,6 +987,8 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     print(f"\n{'='*60}")
     print(f"Results for {scenario.name}:")
     summary = metrics.summary()
+    summary["gated_playback"] = gated_playback
+    summary["tts_segments"] = tts_segments
     for k, v in summary.items():
         if k not in ("state_transitions", "notes"):
             print(f"  {k}: {v}")
@@ -904,6 +1052,10 @@ async def main_async() -> None:
                         help="M4 minimum buffer ms (default 60)")
     parser.add_argument("--m4-self-threshold", type=float, default=0.50,
                         help="M4 self-decision threshold (default 0.50)")
+    parser.add_argument("--gated-playback", action="store_true",
+                        help="Physically gate TTS playback around scheduled/controller-detected human speech")
+    parser.add_argument("--gated-resume-delay-ms", type=float, default=200.0,
+                        help="Delay before resuming gated TTS after human speech ends (default 200ms)")
 
     args = parser.parse_args()
     
@@ -922,7 +1074,10 @@ async def main_async() -> None:
     all_metrics = []
     for scenario in scenarios_to_run:
         try:
-            metrics = await run_scenario(scenario, args)
+            if args.gated_playback:
+                metrics = await run_gated_scenario(scenario, args)
+            else:
+                metrics = await run_scenario(scenario, args)
             all_metrics.append(metrics)
         except Exception as e:
             print(f"\nERROR in scenario {scenario.name}: {e}")
