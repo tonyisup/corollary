@@ -700,12 +700,10 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
         if room_local_threshold is None:
             cal_path = Path(args.room_filter).with_suffix(".json")
             if not cal_path.exists():
-                # Try the _reexport variant
                 cal_path = Path(str(args.room_filter).replace(".npy", ".json"))
             if cal_path.exists():
                 cal = json.loads(cal_path.read_text())
                 rec = cal.get("recommended_threshold", {})
-                # Handle both formats: dict with "threshold" key, or bare float
                 if isinstance(rec, dict):
                     room_local_threshold = rec.get("threshold", 0.04)
                 elif isinstance(rec, (int, float)):
@@ -714,8 +712,22 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
                     room_local_threshold = 0.04
                 print(f"  Auto threshold from {cal_path.name}: {room_local_threshold:.3f}")
             if room_local_threshold is None:
-                room_local_threshold = 0.04  # conservative default from fresh calibration
+                room_local_threshold = 0.04
                 print(f"  Using default threshold: {room_local_threshold:.3f}")
+
+    # Build M4 speaker-embedding detector from the agent's self PCM
+    m4_detector = None
+    if args.m4_enable:
+        try:
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
+            from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
+            identifier = SpeakerIdentifier(use_real=False)  # mock mode for validation
+            m4_detector = SelfVoiceDetector(identifier, threshold=args.m4_self_threshold)
+            m4_detector.register_self(agent_pcm.astype(np.float32))
+            print(f"  M4 detector enabled (mock mode, threshold={args.m4_self_threshold})")
+        except Exception as e:
+            print(f"  WARNING: M4 detector failed to initialize: {e}")
+            m4_detector = None
 
     attributor = ThalamicAttributor(
         energy_threshold_db=energy_threshold_db,
@@ -723,6 +735,9 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
         causal_tolerance_ms=175.0,
         room_filter=room_filter,
         room_local_threshold=room_local_threshold if room_filter is not None else None,
+        m4_detector=m4_detector,
+        m4_self_threshold=args.m4_self_threshold,
+        m4_min_buffer_ms=args.m4_min_buffer_ms,
     )
     vad = SmoothedVAD()
     
@@ -883,6 +898,12 @@ async def main_async() -> None:
                         help="Path to pre-fitted room filter .npy file for room-local scoring")
     parser.add_argument("--room-local-threshold", type=float, default=None,
                         help="Room-local score threshold for SELF override (default: auto from filter file)")
+    parser.add_argument("--m4-enable", action="store_true",
+                        help="Enable M4 speaker-embedding self-voice detector")
+    parser.add_argument("--m4-min-buffer-ms", type=float, default=60.0,
+                        help="M4 minimum buffer ms (default 60)")
+    parser.add_argument("--m4-self-threshold", type=float, default=0.50,
+                        help="M4 self-decision threshold (default 0.50)")
 
     args = parser.parse_args()
     
