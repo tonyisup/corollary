@@ -445,6 +445,35 @@ async def run_live_replay_capture(
     }
 
 
+async def run_gated_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict:
+    """Run a single live E2E scenario with controller-gated TTS playback.
+
+    NOTE: This is a design stub. Full gated playback requires integrating
+    the controller into the real-time audio callback, which is a significant
+    architectural change better suited for the production runtime.
+
+    The current validation harness uses post-hoc scoring: TTS plays
+    unconditionally and the controller decision is scored after capture.
+    This correctly validates the controller logic. Gated playback validates
+    the integration between controller and audio output, which is a separate
+    concern.
+
+    Design for production gated playback:
+    1. Process mic input through attributor in real-time (per-frame)
+    2. Feed attribution results to controller in the audio callback
+    3. Gate TTS output based on controller.state (only emit when IDLE/SPEAK)
+    4. This requires the attributor to work on streaming frames, not batch
+
+    See docs/m3_status_20260508.md for remaining work items.
+    """
+    print(f"\n{'='*60}")
+    print(f"Scenario (gated): {scenario.name}")
+    print(f"  NOTE: Gated playback not yet implemented in validation harness.")
+    print(f"  Falling back to standard (ungated) playback.")
+    print(f"{'='*60}")
+    return await run_scenario(scenario, args)
+
+
 async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict:
     """Run a single live E2E scenario."""
 
