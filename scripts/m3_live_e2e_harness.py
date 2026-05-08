@@ -660,10 +660,19 @@ async def run_scenario(scenario: LiveScenario, args: argparse.Namespace) -> dict
     
     # 2. Run attribution pipeline
     print(f"\n[2/3] Running attribution pipeline...")
+
+    # Load pre-fitted room filter for room-local scoring (production-causal path)
+    room_filter = None
+    if args.room_filter:
+        room_filter = np.load(args.room_filter)
+        print(f"  Room filter loaded: {args.room_filter} ({len(room_filter)} taps)")
+
     attributor = ThalamicAttributor(
         energy_threshold_db=energy_threshold_db,
         similarity_threshold=0.05,
         causal_tolerance_ms=175.0,
+        room_filter=room_filter,
+        room_local_threshold=args.room_local_threshold if room_filter is not None else None,
     )
     vad = SmoothedVAD()
     
@@ -820,6 +829,10 @@ async def main_async() -> None:
                         help="Consecutive frames for overlap detection (default 7)")
     parser.add_argument("--both-external-energy-ratio", type=float, default=2.0,
                         help="Energy ratio threshold for overlap detection (default 2.0)")
+    parser.add_argument("--room-filter", default=None,
+                        help="Path to pre-fitted room filter .npy file for room-local scoring")
+    parser.add_argument("--room-local-threshold", type=float, default=0.208,
+                        help="Room-local score threshold for SELF override (default 0.208)")
 
     args = parser.parse_args()
     
