@@ -18,14 +18,20 @@ The following figures are recommended for inclusion in grant applications to dem
 *   **Key Message:** "Project Corollary preserves the intelligibility of human speech during full-duplex interaction, maintaining a 10% WER ceiling while active."
 
 ### Figure 4: Agentive Contingency (M3 Proto-Turn-Taking)
-*   **Source Data:** Output from `scripts/m3_turn_taking_demo.py`.
-*   **Description:** A temporal timing diagram (multi-track).
+*   **Source Data:** `scripts/m3_turn_taking_demo.py` and embodied TTS-to-Mic logs.
+*   **Description:** A temporal timing diagram (multi-track) showing state transitions (`IDLE` -> `LISTEN` -> `SPEAK` -> `LISTEN` -> `IDLE`).
     *   Track 1: External Agent Voice (On/Off)
     *   Track 2: Corollary Intent to Speak (On/Off)
     *   Track 3: Corollary Actual Audio Output
-*   **Key Message:** "The Agentive Controller demonstrates natural social contingency, automatically deferring its own output when external vocal agents are detected."
+*   **Key Message:** "The Agentive Controller demonstrates natural social contingency, automatically deferring its own output when external vocal agents are detected, and recovering seamlessly after mid-speech interruption."
 
-### Figure 5: Semantic Abstraction Graph (SAG) Grounding
+### Figure 5: M4 Self-Modeling Impact
+*   **Source Data:** Benchmark data from M4 detector integration.
+*   **Description:** A bar chart comparing `SELF` vs `BOTH` frame verdicts under two conditions: M4 OFF (Baseline) vs M4 ON.
+*   **Key Message:** "The M4 speaker-embedding validator yields a 19,700% increase in self-voice detection (197 vs. 0 SELF frames), allowing the system to correctly classify its own voice in ambiguous overlap frames and enabling high-confidence full-duplex operation."
+
+### Figure 6: Semantic Abstraction Graph (SAG) Grounding
 *   **Source Data:** `docs/sag.md`.
 *   **Description:** A simplified node-edge diagram showing a "Self-Concept" subtree (e.g., `Corollary.voice_id`, `Corollary.last_statement`) and its relation to "World-Concepts."
 *   **Key Message:** "The SAG provides a grounded, immutable knowledge layer that protects the agent from semantic drift and adversarial prompt injection."
+
