@@ -4,8 +4,7 @@
 __pycache__
 *.pyc
 .DS_Store
-data/archive/
-docs/archive/
+archive/
 ~/.cache/.worktrees/
 data/m3_live_e2e_v*/
 data/m3_interrupt_v*/
