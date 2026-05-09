@@ -480,6 +480,12 @@ class StreamingRuntime:
 
         if self.config.save_path:
             self._save_logs(self.config.save_path)
+
+        # Feed frame logs to SelfModel (M6)
+        if self.config.self_model is not None and self._logs:
+            frame_dicts = [self._log_to_dict(l) for l in self._logs]
+            self.config.self_model.process_frame_log(frame_dicts)
+
         return self._logs
 
     def _process_frame(self, mic_frame: np.ndarray) -> tuple[np.ndarray, StreamingFrameLog]:
@@ -629,6 +635,11 @@ class StreamingRuntime:
         # Save logs
         if self.config.save_path:
             self._save_logs(self.config.save_path)
+
+        # Feed frame logs to SelfModel (M6)
+        if self.config.self_model is not None and self._logs:
+            frame_dicts = [self._log_to_dict(l) for l in self._logs]
+            self.config.self_model.process_frame_log(frame_dicts)
 
         return self._logs
 
