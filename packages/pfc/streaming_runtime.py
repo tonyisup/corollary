@@ -73,6 +73,7 @@ class StreamingConfig:
     cooldown_ms: float = 200.0
     both_external_min_frames: int = 7
     both_external_energy_ratio: float = 2.0
+    collision_repair_text: Optional[str] = "Sorry, go ahead."
 
     # Attributor params
     energy_threshold_db: float = -55.0
@@ -104,6 +105,7 @@ class StreamingFrameLog:
     is_in_motor_window: bool
     deferred: bool
     resumed: bool
+    collision_repair_text: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -159,6 +161,7 @@ class StreamingRuntime:
             cooldown_ms=config.cooldown_ms,
             both_external_min_frames=config.both_external_min_frames,
             both_external_energy_ratio_threshold=config.both_external_energy_ratio,
+            collision_repair_text=config.collision_repair_text,
         )
 
         # Room filter
@@ -301,6 +304,7 @@ class StreamingRuntime:
         deferred: bool,
         resumed: bool,
         self_match_score: float,
+        collision_repair_text: Optional[str] = None,
     ) -> StreamingFrameLog:
         m4_metadata = attr_result.metadata or {}
         log = StreamingFrameLog(
@@ -326,6 +330,7 @@ class StreamingRuntime:
             is_in_motor_window=attr_result.is_in_motor_window,
             deferred=deferred,
             resumed=resumed,
+            collision_repair_text=collision_repair_text,
         )
         self._logs.append(log)
         self._frame_index += 1
@@ -350,6 +355,7 @@ class StreamingRuntime:
             deferred=request_deferred or resume_deferred,
             resumed=request_resumed or resume_resumed,
             self_match_score=self_match_score,
+            collision_repair_text=decision.collision_repair_text,
         )
         log.should_interrupt = decision.should_interrupt
         log.can_speak = decision.can_speak
@@ -623,6 +629,7 @@ class StreamingRuntime:
                     "is_in_motor_window": log.is_in_motor_window,
                     "deferred": log.deferred,
                     "resumed": log.resumed,
+                    "collision_repair_text": log.collision_repair_text,
                 }
                 f.write(json.dumps(entry) + "\n")
         print(f"  Saved {len(self._logs)} log entries to {path}")
@@ -642,6 +649,7 @@ class StreamingRuntime:
         deferred_frames = sum(1 for l in self._logs if l.deferred)
         resumed_frames = sum(1 for l in self._logs if l.resumed)
         interrupt_frames = sum(1 for l in self._logs if l.should_interrupt)
+        collision_repair_events = sum(1 for l in self._logs if l.collision_repair_text)
 
         verdict_counts: dict[str, int] = {}
         state_counts: dict[str, int] = {}
@@ -657,6 +665,7 @@ class StreamingRuntime:
             "deferred_events": deferred_frames,
             "resumed_events": resumed_frames,
             "interrupt_events": interrupt_frames,
+            "collision_repair_events": collision_repair_events,
             "verdict_counts": verdict_counts,
             "controller_state_counts": state_counts,
             "final_controller_state": self._logs[-1].controller_state if self._logs else None,

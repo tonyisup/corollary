@@ -146,9 +146,13 @@ def _run_synthetic_overlap_interrupt() -> dict:
     summary = runtime.get_summary()
     listen_positions = [l.tts_position_s for l in logs if l.controller_state == "LISTEN"]
     position_held = bool(listen_positions) and (max(listen_positions) - min(listen_positions) <= 0.031)
+    repair_texts = [l.collision_repair_text for l in logs if l.collision_repair_text]
+    collision_repair_passed = repair_texts == ["Sorry, go ahead."]
     passed = (
         summary["interrupt_events"] >= 1
         and summary["resumed_events"] >= 1
+        and summary["collision_repair_events"] == 1
+        and collision_repair_passed
         and summary["tts_played_frames"] > 0
         and summary["tts_completed"]
         and position_held
@@ -158,6 +162,8 @@ def _run_synthetic_overlap_interrupt() -> dict:
         "pass": passed,
         "summary": summary,
         "listen_position_held": position_held,
+        "collision_repair_passed": collision_repair_passed,
+        "collision_repair_texts": repair_texts,
         "listen_tts_position_range_s": (
             None if not listen_positions else round(max(listen_positions) - min(listen_positions), 6)
         ),
@@ -227,6 +233,7 @@ def main() -> int:
         "acceptance_criteria": {
             "synthetic_pre_agent_defer_passed": checks[0]["pass"],
             "synthetic_overlap_interrupt_resume_passed": checks[1]["pass"],
+            "synthetic_collision_repair_passed": checks[1].get("collision_repair_passed", False),
             "offline_audio_replay_smoke_passed": checks[2]["pass"],
         },
         "interpretation": (

@@ -24,6 +24,7 @@ class ControllerDecision:
     can_speak: bool
     should_interrupt: bool
     deferred_text: Optional[str] = None
+    collision_repair_text: Optional[str] = None
 
 class AgentiveController:
     """The PFC controller responsible for social Contingency.
@@ -42,6 +43,7 @@ class AgentiveController:
         both_external_energy_ratio_threshold: float = 2.0,
         both_external_min_frames: int = 7,
         both_external_listen_min_ms: float = 300.0,
+        collision_repair_text: Optional[str] = "Sorry, go ahead.",
     ) -> None:
         self.state = AgentState.IDLE
         self.listen_threshold_ms = listen_threshold_ms
@@ -51,6 +53,7 @@ class AgentiveController:
         self.both_external_energy_ratio_threshold = both_external_energy_ratio_threshold
         self.both_external_min_frames = both_external_min_frames
         self.both_external_listen_min_ms = both_external_listen_min_ms
+        self.collision_repair_text = collision_repair_text
 
         self.last_speech_time: float = 0.0
         self.speech_start_time: float = 0.0
@@ -161,6 +164,7 @@ class AgentiveController:
 
         should_interrupt = False
         just_interrupted = False
+        collision_repair_text: Optional[str] = None
 
         # 2. SPEAK is a real lifecycle: self frames sustain it; external speech
         # interrupts it immediately and queues the active utterance for later.
@@ -180,6 +184,7 @@ class AgentiveController:
             if is_agentive_external_speech and not in_post_motor_holdoff:
                 should_interrupt = True
                 just_interrupted = True
+                collision_repair_text = self.collision_repair_text
                 if self.active_utterance is not None:
                     self.deferred_utterance = self.active_utterance
                 self.active_utterance = None
@@ -323,7 +328,8 @@ class AgentiveController:
             state=self.state,
             can_speak=can_speak,
             should_interrupt=should_interrupt,
-            deferred_text=self.deferred_utterance if not can_speak else None
+            deferred_text=self.deferred_utterance if not can_speak else None,
+            collision_repair_text=collision_repair_text,
         )
 
     def request_output(self, text: str, current_time: float = None) -> bool:

@@ -101,6 +101,40 @@ def test_m2_turn_bridge_interrupts_speaking_then_resumes_after_overlap() -> None
     assert result.decisions[1].state == AgentState.LISTEN
     assert result.deferred_output is None
     assert result.resumed_output == "speaking now"
+    assert result.decisions[1].collision_repair_text == "Sorry, go ahead."
+
+
+def test_collision_repair_can_be_disabled_or_customized() -> None:
+    ctrl = AgentiveController(
+        listen_threshold_ms=100,
+        cooldown_ms=200,
+        collision_repair_text="Pardon me — you go first.",
+    )
+    frames = [
+        M2Frame(1.00, attr(SourceVerdict.SELF, is_speech=False)),
+        M2Frame(1.15, attr(SourceVerdict.BOTH, is_speech=True, is_in_motor_window=False)),
+        M2Frame(1.50, attr(SourceVerdict.SILENCE, is_speech=False)),
+    ]
+
+    result = run_turn_taking_bridge(frames, "speaking now", controller=ctrl, request_at_s=1.0)
+
+    repair_texts = [d.collision_repair_text for d in result.decisions if d.collision_repair_text]
+    assert repair_texts == ["Pardon me — you go first."]
+    assert result.resumed_output == "speaking now"
+
+    no_repair_ctrl = AgentiveController(
+        listen_threshold_ms=100,
+        cooldown_ms=200,
+        collision_repair_text=None,
+    )
+    result_without_repair = run_turn_taking_bridge(
+        frames,
+        "speaking now",
+        controller=no_repair_ctrl,
+        request_at_s=1.0,
+    )
+    assert any(d.should_interrupt for d in result_without_repair.decisions)
+    assert all(d.collision_repair_text is None for d in result_without_repair.decisions)
 
 
 def test_motor_window_silence_does_not_cancel_pending_speech_before_overlap_resume() -> None:

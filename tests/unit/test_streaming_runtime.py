@@ -139,6 +139,7 @@ class TestStreamingRuntimeOffline:
             assert "tts_playing" in entry
             assert "tts_position_s" in entry
             assert "m4_outcome" in entry
+            assert "collision_repair_text" in entry
         finally:
             log_path.unlink(missing_ok=True)
 
@@ -301,11 +302,13 @@ class TestStreamingRuntimeSyntheticValidation:
         summary = runtime.get_summary()
 
         assert summary["interrupt_events"] >= 1
+        assert summary["collision_repair_events"] == 1
         assert summary["resumed_events"] >= 1
         assert summary["tts_played_frames"] > 0
         assert summary["tts_completed"] is True
         interrupted = [l for l in logs if l.should_interrupt]
         assert interrupted
+        assert [l.collision_repair_text for l in interrupted] == ["Sorry, go ahead."]
         held_positions = [l.tts_position_s for l in logs if l.controller_state == "LISTEN"]
         assert held_positions
         assert max(held_positions) - min(held_positions) <= 0.031
@@ -396,6 +399,7 @@ class TestStreamingRuntimeFrameLog:
         assert isinstance(log.is_in_motor_window, bool)
         assert isinstance(log.deferred, bool)
         assert isinstance(log.resumed, bool)
+        assert log.collision_repair_text is None or isinstance(log.collision_repair_text, str)
 
 
 class TestStreamingAcceptanceScript:
@@ -421,4 +425,5 @@ class TestStreamingAcceptanceScript:
         assert verdict["pass"] is True
         assert verdict["acceptance_criteria"]["synthetic_pre_agent_defer_passed"] is True
         assert verdict["acceptance_criteria"]["synthetic_overlap_interrupt_resume_passed"] is True
+        assert verdict["acceptance_criteria"]["synthetic_collision_repair_passed"] is True
         assert verdict["acceptance_criteria"]["offline_audio_replay_smoke_passed"] is True
