@@ -1,0 +1,31 @@
+{
+  "scenario": "human_before",
+  "expected_behavior": "defer",
+  "total_frames": 267,
+  "false_interrupts": 0,
+  "false_defers": 0,
+  "missed_interrupts": 0,
+  "true_interrupts": 0,
+  "successful_resumes": 0,
+  "total_resumes_expected": 0,
+  "resume_rate": "n/a",
+  "state_transitions": [
+    "IDLE",
+    "LISTEN",
+    "IDLE",
+    "LISTEN",
+    "IDLE",
+    "LISTEN",
+    "IDLE"
+  ],
+  "latency_ms": 9197.9,
+  "notes": [],
+  "gated_playback": true,
+  "tts_segments": [
+    {
+      "src_start_s": 0.0,
+      "dst_start_s": 3.800021,
+      "duration_s": 3.726187
+    }
+  ]
+}

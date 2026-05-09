@@ -136,3 +136,26 @@ def test_analyze_run_flags_missing_gated_playback(tmp_path: Path) -> None:
 
     assert summary["scenarios"][0]["suppression_passed"] is False
     assert "gated_playback is false" in summary["scenarios"][0]["notes"]
+
+
+def test_acceptance_script_passes_on_saved_artifact() -> None:
+    """The acceptance script should pass on the tracked gated playback artifact."""
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/m3_gated_playback_acceptance.py",
+            "--run-dir",
+            "data/m3_gated_playback_test",
+        ],
+        capture_output=True,
+        text=True,
+        cwd="/Users/juicebox/Projects/corollary",
+    )
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    verdict = json.loads(result.stdout)
+    assert verdict["pass"] is True
+    assert verdict["all_suppression_passed"] is True
+    assert verdict["acceptance_criteria"]["all_gated_playback"] is True

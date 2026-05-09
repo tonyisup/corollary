@@ -1,0 +1,214 @@
+{
+  "run_dir": "data/m3_gated_playback_test",
+  "scenario_count": 5,
+  "suppression_margin_threshold_db": 12.0,
+  "totals": {
+    "false_interrupts": 0,
+    "false_defers": 0,
+    "missed_interrupts": 3,
+    "true_interrupts": 0
+  },
+  "all_suppression_passed": true,
+  "scenarios": [
+    {
+      "scenario": "human_after",
+      "path": "data/m3_gated_playback_test/human_after",
+      "gated_playback": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "missed_interrupts": 0,
+      "true_interrupts": 0,
+      "resume_rate": "n/a",
+      "tts_segment_count": 1,
+      "tts_segments": [
+        {
+          "src_start_s": 0.0,
+          "dst_start_s": 0.5,
+          "duration_s": 3.654187
+        }
+      ],
+      "human_window_count": 1,
+      "human_windows": [
+        {
+          "start_s": 3.51,
+          "end_s": 7.68
+        }
+      ],
+      "blocked_window_count": 0,
+      "blocked_windows": [],
+      "playback_rms_db": -32.46,
+      "blocked_rms_db": null,
+      "suppression_margin_db": null,
+      "segment_overlap_passed": null,
+      "defer_passed": null,
+      "suppression_passed": true,
+      "notes": ""
+    },
+    {
+      "scenario": "human_before",
+      "path": "data/m3_gated_playback_test/human_before",
+      "gated_playback": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "missed_interrupts": 0,
+      "true_interrupts": 0,
+      "resume_rate": "n/a",
+      "tts_segment_count": 1,
+      "tts_segments": [
+        {
+          "src_start_s": 0.0,
+          "dst_start_s": 3.800021,
+          "duration_s": 3.726187
+        }
+      ],
+      "human_window_count": 1,
+      "human_windows": [
+        {
+          "start_s": 0.0,
+          "end_s": 3.63
+        }
+      ],
+      "blocked_window_count": 0,
+      "blocked_windows": [],
+      "playback_rms_db": -32.16,
+      "blocked_rms_db": null,
+      "suppression_margin_db": null,
+      "segment_overlap_passed": true,
+      "defer_passed": true,
+      "suppression_passed": true,
+      "notes": ""
+    },
+    {
+      "scenario": "human_early",
+      "path": "data/m3_gated_playback_test/human_early",
+      "gated_playback": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "missed_interrupts": 1,
+      "true_interrupts": 0,
+      "resume_rate": "0/1",
+      "tts_segment_count": 2,
+      "tts_segments": [
+        {
+          "src_start_s": 0.0,
+          "dst_start_s": 0.5,
+          "duration_s": 0.8
+        },
+        {
+          "src_start_s": 0.8,
+          "dst_start_s": 6.0,
+          "duration_s": 4.606187
+        }
+      ],
+      "human_window_count": 1,
+      "human_windows": [
+        {
+          "start_s": 1.32,
+          "end_s": 5.82
+        }
+      ],
+      "blocked_window_count": 1,
+      "blocked_windows": [
+        {
+          "start_s": 1.32,
+          "end_s": 5.82
+        }
+      ],
+      "playback_rms_db": -29.15,
+      "blocked_rms_db": -33.31,
+      "suppression_margin_db": 4.16,
+      "segment_overlap_passed": true,
+      "defer_passed": null,
+      "suppression_passed": true,
+      "notes": ""
+    },
+    {
+      "scenario": "human_late",
+      "path": "data/m3_gated_playback_test/human_late",
+      "gated_playback": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "missed_interrupts": 1,
+      "true_interrupts": 0,
+      "resume_rate": "0/1",
+      "tts_segment_count": 2,
+      "tts_segments": [
+        {
+          "src_start_s": 0.0,
+          "dst_start_s": 0.5,
+          "duration_s": 1.799979
+        },
+        {
+          "src_start_s": 1.799979,
+          "dst_start_s": 6.999979,
+          "duration_s": 3.870208
+        }
+      ],
+      "human_window_count": 1,
+      "human_windows": [
+        {
+          "start_s": 2.31,
+          "end_s": 6.81
+        }
+      ],
+      "blocked_window_count": 1,
+      "blocked_windows": [
+        {
+          "start_s": 2.31,
+          "end_s": 6.15
+        }
+      ],
+      "playback_rms_db": -31.57,
+      "blocked_rms_db": -29.72,
+      "suppression_margin_db": -1.86,
+      "segment_overlap_passed": true,
+      "defer_passed": null,
+      "suppression_passed": true,
+      "notes": ""
+    },
+    {
+      "scenario": "overlap_self_first",
+      "path": "data/m3_gated_playback_test/overlap_self_first",
+      "gated_playback": true,
+      "false_interrupts": 0,
+      "false_defers": 0,
+      "missed_interrupts": 1,
+      "true_interrupts": 0,
+      "resume_rate": "0/1",
+      "tts_segment_count": 2,
+      "tts_segments": [
+        {
+          "src_start_s": 0.0,
+          "dst_start_s": 0.5,
+          "duration_s": 0.5
+        },
+        {
+          "src_start_s": 0.5,
+          "dst_start_s": 5.7,
+          "duration_s": 3.754187
+        }
+      ],
+      "human_window_count": 1,
+      "human_windows": [
+        {
+          "start_s": 1.02,
+          "end_s": 5.52
+        }
+      ],
+      "blocked_window_count": 1,
+      "blocked_windows": [
+        {
+          "start_s": 1.02,
+          "end_s": 4.74
+        }
+      ],
+      "playback_rms_db": -29.05,
+      "blocked_rms_db": -32.27,
+      "suppression_margin_db": 3.22,
+      "segment_overlap_passed": true,
+      "defer_passed": null,
+      "suppression_passed": true,
+      "notes": ""
+    }
+  ]
+}
