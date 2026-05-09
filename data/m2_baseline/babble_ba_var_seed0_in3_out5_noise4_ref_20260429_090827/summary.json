@@ -1,0 +1,16 @@
+{
+  "raw_text": "This is a test of world speed conservation.",
+  "gated_text": "This is a test of world speed conservation.",
+  "self_score": 0.42662274837493896,
+  "speech_ratio": 0.98125,
+  "self_frames": 0,
+  "both_frames": 12,
+  "world_frames": 148,
+  "both_gain": 0.5,
+  "metrics": {
+    "expected_text": "this is a test of world speech conservation",
+    "raw_wer": 0.125,
+    "gated_wer": 0.125,
+    "wer_delta": 0.0
+  }
+}

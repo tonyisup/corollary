@@ -1,0 +1,11 @@
+{
+  "raw_text": ". . . .",
+  "gated_text": "",
+  "self_score": 0.006922328844666481,
+  "speech_ratio": 1.0,
+  "self_frames": 0,
+  "both_frames": 12,
+  "world_frames": 148,
+  "both_gain": 0.5,
+  "metrics": {}
+}

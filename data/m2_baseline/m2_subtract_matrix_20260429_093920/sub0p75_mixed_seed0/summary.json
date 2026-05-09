@@ -1,0 +1,32 @@
+{
+  "raw_text": "",
+  "gated_text": "",
+  "self_score": 0.33919352293014526,
+  "speech_ratio": 1.0,
+  "self_frames": 0,
+  "both_frames": 30,
+  "world_frames": 130,
+  "both_gain": 1.0,
+  "both_mode": "subtract",
+  "both_subtract_gain": 0.75,
+  "seed": 0,
+  "self_duration_ms": 900,
+  "self_amplitude": 1.0,
+  "self_only": false,
+  "world_only": false,
+  "similarity_threshold": 0.2,
+  "speech_override": "vad",
+  "onset_latency_ms": 400.0,
+  "onset_method": "energy",
+  "self_shift_samples": 33579,
+  "self_xcorr_shift_samples": 30576,
+  "self_expected_shift_samples": 33579,
+  "self_onset_error_ms": 0.0,
+  "causal_tolerance_ms": 75.0,
+  "metrics": {
+    "expected_text": "this is a test of world speech conservation",
+    "raw_wer": 1.0,
+    "gated_wer": 1.0,
+    "wer_delta": 0.0
+  }
+}

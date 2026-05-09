@@ -1,0 +1,18 @@
+{
+  "raw_text": "T-T-T-T-T-T",
+  "gated_text": "",
+  "self_score": 0.39195573329925537,
+  "speech_ratio": 0.0,
+  "self_frames": 0,
+  "both_frames": 29,
+  "world_frames": 131,
+  "both_gain": 0.5,
+  "seed": 0,
+  "self_duration_ms": 900,
+  "self_amplitude": 1.0,
+  "self_only": true,
+  "world_only": false,
+  "similarity_threshold": 0.2,
+  "speech_override": "false",
+  "metrics": {}
+}

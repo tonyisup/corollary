@@ -1,0 +1,27 @@
+{
+  "raw_text": "This is a test of rules. Oh, oh, oh, oh, oh, oh, oh, oh, oh, oh.",
+  "gated_text": "This is a test of rules.",
+  "self_score": 0.3624441623687744,
+  "speech_ratio": 1.0,
+  "self_frames": 0,
+  "both_frames": 28,
+  "world_frames": 132,
+  "both_gain": 0.5,
+  "seed": 1,
+  "self_duration_ms": 900,
+  "self_amplitude": 1.0,
+  "self_only": false,
+  "world_only": false,
+  "similarity_threshold": 0.2,
+  "speech_override": "vad",
+  "onset_latency_ms": 400.0,
+  "self_shift_samples": 28674,
+  "self_expected_shift_samples": 33763,
+  "self_onset_error_ms": -318.0625,
+  "metrics": {
+    "expected_text": "this is a test of world speech conservation",
+    "raw_wer": 1.375,
+    "gated_wer": 0.375,
+    "wer_delta": -1.0
+  }
+}
