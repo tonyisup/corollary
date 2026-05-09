@@ -156,7 +156,136 @@ def build_test_battery():
     return cases, n_frames
 
 
-# ── Benchmark runner ─────────────────────────────────────────────────────────
+# -- Replay mode ---------------------------------------------------------------
+
+
+@dataclass
+class ReplayCase:
+    name: str
+    audio: np.ndarray
+    agent_pcm: np.ndarray
+    gt_verdicts: list[str]
+    sr: int = SR
+
+
+def build_replay_cases(replay_dir: str) -> list[ReplayCase]:
+    """Load captured gated playback audio + agent PCM for M4 replay scoring."""
+    from pathlib import Path
+    replay_path = Path(replay_dir)
+    cases = []
+    for scenario_dir in sorted(replay_path.iterdir()):
+        if not scenario_dir.is_dir():
+            continue
+        audio_path = scenario_dir / "live_captured.npy"
+        agent_path = scenario_dir / "agent_pcm.npy"
+        records_path = scenario_dir / "frame_records.json"
+        if not audio_path.exists() or not agent_path.exists() or not records_path.exists():
+            continue
+        audio = np.load(audio_path).astype(np.float32)
+        agent_pcm = np.load(agent_path).astype(np.float32)
+        with open(records_path) as f:
+            records = json.load(f)
+        gt_verdicts = [r.get("verdict", "SILENCE") for r in records]
+        cases.append(ReplayCase(
+            name=f"replay_{scenario_dir.name}",
+            audio=audio,
+            agent_pcm=agent_pcm,
+            gt_verdicts=gt_verdicts,
+        ))
+    return cases
+
+
+def run_replay_case(case: ReplayCase, attributor, verbose=False) -> dict:
+    """Replay one captured scenario through the M4 pipeline and score F1."""
+    if hasattr(attributor, "_m4_buffer"):
+        attributor._m4_buffer = None
+    frame_samples = FRAME_SAMPLES
+    n_frames = min(len(case.gt_verdicts), len(case.audio) // frame_samples)
+    tp = fp = tn = fn = 0
+    eligible_tp = eligible_fp = eligible_tn = eligible_fn = 0
+    warmup_fn = 0
+    m4_attempted = 0
+    m4_accepted = 0
+    for fi in range(n_frames):
+        s_start = fi * frame_samples
+        s_end = s_start + frame_samples
+        if s_end > len(case.audio):
+            break
+        frame_audio = case.audio[s_start:s_end]
+        rms = float(np.sqrt(np.mean(frame_audio ** 2)))
+        rms_db = 20 * np.log10(max(rms, 1e-9))
+        ref_start = min(s_start, len(case.agent_pcm) - frame_samples)
+        ref_end = ref_start + frame_samples
+        if ref_start < 0 or ref_end > len(case.agent_pcm):
+            match_score = 0.0
+        else:
+            ref_frame = case.agent_pcm[ref_start:ref_end]
+            obs_norm = float(np.linalg.norm(frame_audio))
+            ref_norm = float(np.linalg.norm(ref_frame))
+            match_score = 0.0 if obs_norm < 1e-9 or ref_norm < 1e-9 else float(
+                np.dot(frame_audio, ref_frame) / (obs_norm * ref_norm))
+        is_playing = s_start < len(case.agent_pcm)
+        is_speech = rms_db > -40.0
+        result = attributor.attribute(
+            match_score=match_score, observed_onset_samples=s_start,
+            expected_onset_samples=s_start, rms_db=rms_db,
+            is_playing=is_playing, is_speech=is_speech, frame_audio=frame_audio,
+            self_pcm=case.agent_pcm, agent_start_sample=0,
+        )
+        predicted_self = (result.verdict == SourceVerdict.SELF)
+        gt = case.gt_verdicts[fi] if fi < len(case.gt_verdicts) else "SILENCE"
+        actual_self = (gt == "SELF")
+        if predicted_self and actual_self:
+            tp += 1
+        elif predicted_self and not actual_self:
+            fp += 1
+        elif not predicted_self and not actual_self:
+            tn += 1
+        else:
+            fn += 1
+        m4_meta = result.metadata or {}
+        is_m4_eligible = bool(m4_meta.get("m4_attempted"))
+        if m4_meta.get("m4_attempted"):
+            m4_attempted += 1
+        if m4_meta.get("m4_outcome") == "accepted":
+            m4_accepted += 1
+        if actual_self and not predicted_self and m4_meta.get("m4_outcome") == "buffer_too_short":
+            warmup_fn += 1
+        if is_m4_eligible:
+            if predicted_self and actual_self:
+                eligible_tp += 1
+            elif predicted_self and not actual_self:
+                eligible_fp += 1
+            elif not predicted_self and not actual_self:
+                eligible_tn += 1
+            else:
+                eligible_fn += 1
+    total = tp + fp + tn + fn
+    precision = tp / max(tp + fp, 1)
+    recall = tp / max(tp + fn, 1)
+    f1 = 2 * precision * recall / max(precision + recall, 1e-9)
+    eligible_frames = eligible_tp + eligible_fp + eligible_tn + eligible_fn
+    eligible_precision = eligible_tp / max(eligible_tp + eligible_fp, 1)
+    eligible_recall = eligible_tp / max(eligible_tp + eligible_fn, 1)
+    eligible_f1 = 2 * eligible_precision * eligible_recall / max(
+        eligible_precision + eligible_recall, 1e-9)
+    return {
+        "name": case.name, "total_frames": total,
+        "tp": tp, "fp": fp, "tn": tn, "fn": fn,
+        "precision": round(precision, 4), "recall": round(recall, 4), "f1": round(f1, 4),
+        "eligible_frames": eligible_frames,
+        "eligible_tp": eligible_tp, "eligible_fp": eligible_fp,
+        "eligible_tn": eligible_tn, "eligible_fn": eligible_fn,
+        "eligible_precision": round(eligible_precision, 4),
+        "eligible_recall": round(eligible_recall, 4),
+        "eligible_f1": round(eligible_f1, 4),
+        "warmup_fn": warmup_fn,
+        "m4_attempted_frames": m4_attempted, "m4_accepted_frames": m4_accepted,
+    }
+
+
+# -- Benchmark runner ----------------------------------------------------------
+
 
 def run_case(case, attributor, n_frames, verbose=False):
     """Run a single test case, return per-frame results."""
@@ -308,7 +437,8 @@ class BenchmarkResult:
     duration_s: float = 0.0
 
 
-def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer_ms=300.0):
+def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer_ms=300.0,
+                 replay_dir=None):
     from datetime import datetime
     t0 = time.time()
 
@@ -329,10 +459,6 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer
         m4_min_buffer_ms=m4_min_buffer_ms,
     )
 
-    cases, n_frames = build_test_battery()
-    for case in cases:
-        m4_detector.register_self(case.tts_pcm)
-
     result = BenchmarkResult(
         timestamp=datetime.now().isoformat(),
         threshold=threshold,
@@ -341,18 +467,40 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer
         m4_min_buffer_ms=m4_min_buffer_ms,
     )
 
-    for case in cases:
-        if verbose:
-            print(f"\nCase: {case.name}")
-        cr = run_case(case, attributor, n_frames, verbose)
-        result.cases.append(cr)
-        result.total_tp += cr["tp"]
-        result.total_fp += cr["fp"]
-        result.total_fn += cr["fn"]
-        result.total_eligible_tp += cr["eligible_tp"]
-        result.total_eligible_fp += cr["eligible_fp"]
-        result.total_eligible_fn += cr["eligible_fn"]
-        result.total_warmup_fn += cr["warmup_fn"]
+    if replay_dir:
+        replay_cases = build_replay_cases(replay_dir)
+        for case in replay_cases:
+            if verbose:
+                print(f"\nReplay case: {case.name}")
+            m4_detector.register_self(case.agent_pcm)
+            if hasattr(attributor, "_m4_buffer"):
+                attributor._m4_buffer = None
+            cr = run_replay_case(case, attributor, verbose)
+            result.cases.append(cr)
+            result.total_tp += cr["tp"]
+            result.total_fp += cr["fp"]
+            result.total_fn += cr["fn"]
+            result.total_eligible_tp += cr["eligible_tp"]
+            result.total_eligible_fp += cr["eligible_fp"]
+            result.total_eligible_fn += cr["eligible_fn"]
+            result.total_warmup_fn += cr["warmup_fn"]
+    else:
+        cases, n_frames = build_test_battery()
+        for case in cases:
+            m4_detector.register_self(case.tts_pcm)
+
+        for case in cases:
+            if verbose:
+                print(f"\nCase: {case.name}")
+            cr = run_case(case, attributor, n_frames, verbose)
+            result.cases.append(cr)
+            result.total_tp += cr["tp"]
+            result.total_fp += cr["fp"]
+            result.total_fn += cr["fn"]
+            result.total_eligible_tp += cr["eligible_tp"]
+            result.total_eligible_fp += cr["eligible_fp"]
+            result.total_eligible_fn += cr["eligible_fn"]
+            result.total_warmup_fn += cr["warmup_fn"]
 
     precision = result.total_tp / max(result.total_tp + result.total_fp, 1)
     recall = result.total_tp / max(result.total_tp + result.total_fn, 1)
@@ -379,18 +527,22 @@ def main():
     parser.add_argument("--threshold", type=float, default=0.10)
     parser.add_argument("--m4-min-buffer-ms", type=float, default=300.0,
                         help="Minimum rolling buffer before M4 classification")
+    parser.add_argument("--replay-dir", type=str, default=None,
+                        help="Replay captured gated playback data through M4 and score F1")
     parser.add_argument("--real-ecapa", action="store_true",
                         help="Use real ECAPA-TDNN model (requires speechbrain)")
     parser.add_argument("--output", type=str, default=None)
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args()
 
-    model_label = "ECAPA-TDNN (real)" if args.real_ecapa else "mock (pipeline verify)"
+    mode = "replay" if args.replay_dir else ("ECAPA-TDNN (real)" if args.real_ecapa else "mock (pipeline verify)")
     print("=" * 60)
-    print(f"M4 FRAME-LEVEL F1 BENCHMARK — {model_label}")
+    print(f"M4 FRAME-LEVEL F1 BENCHMARK \u2014 {mode}")
     print("=" * 60)
     print(f"  Threshold: {args.threshold}")
     print(f"  M4 min buffer: {args.m4_min_buffer_ms} ms")
+    if args.replay_dir:
+        print(f"  Replay dir: {args.replay_dir}")
     print()
 
     result = run_benchmark(
@@ -398,6 +550,7 @@ def main():
         real_ecapa=args.real_ecapa,
         verbose=args.verbose,
         m4_min_buffer_ms=args.m4_min_buffer_ms,
+        replay_dir=args.replay_dir,
     )
 
     if args.output is None:
