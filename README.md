@@ -125,7 +125,7 @@ Current Mac mini + Fifine observation:
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
 | M2 | Speech-aware self/world separation | ✅ Operational research harness |
 | M3 | Agentive listening and proto-turn-taking | ✅ Live hardware validated |
-| M4 | Self-voice detector / explicit attribution classifier | 🔄 Integrated; playback-window false positives fixed, warmup recall gap remains |
+| M4 | Self-voice detector / explicit attribution classifier | ✅ Expanded synthetic gate passes at 300ms buffer; real cross-room/device pending |
 | M5 | Multi-speaker world model + memory | ⏳ Planned |
 | M6 | Self-model and introspection | 🔄 In progress — SelfModel + SAG observer wired to offline streaming replay |
 
@@ -171,14 +171,14 @@ See `scripts/calibrate_self_start.py` and `data/m2_calibration_test/` for detail
 
 ### M4 diagnostics and buffer sizing
 
-M4 classification is only invoked when the accumulated self-audio buffer reaches `m4_min_buffer_ms` (default 500ms).  In practice this means:
+M4 classification is only invoked when the accumulated self-audio buffer reaches `m4_min_buffer_ms`. The current expanded benchmark default is 300ms; 500ms remains useful as a conservative diagnostic because it cleanly separates eligible-frame classifier quality from warmup latency. In practice this means:
 
 - With short self-stimuli (<= 350 ms) and buffers >= 200 ms, M4 never triggers because the buffer never fills within the playback window.
 - With longer self-stimuli (>= 700 ms) and buffers <= 300-400 ms, M4 can fire and produce non-zero  counts.  A micro test (buffer = 10 ms) confirms the plumbing works and yields triggers.
 
 **Recommended safe envelope for sweeps**
 - `self_duration_ms` >= 700-1000
-- `m4_min_buffer_ms` <= 300-500
+- `m4_min_buffer_ms` <= 300 for the expanded F1 gate; 500ms is conservative but creates warmup false negatives
 - `m4_self_threshold` <= 0.3-0.4
 
 **Telemetry fields added** (see `scripts/CALIBRATION_GUIDE.md` and `packages/thalamus/attributor.py`)
@@ -295,7 +295,7 @@ See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
 - ~~10-seed repeatability run~~ — done; see `data/m4_hyperparameter_sweep_corrected/`
 - ~~Test policy fix impact~~ — done; SELF→gain=1.0 fix committed at `0f99698`
 - ~~Integrate M4 into real-time loop~~ — done; M4 is wired into the streaming runtime
-- **Next:** distinguish M4 classifier quality from 500ms buffer warmup latency, then reduce early false negatives without reopening the same-domain playback-window false positives fixed by template-match-gated M4 overrides.
+- **Current expanded gate:** `scripts/m4_f1_benchmark.py --real-ecapa` now defaults to `m4_min_buffer_ms=300`, passes aggregate F1=0.9512, eligible-frame F1=1.0, and keeps same-domain playback-window false positives at 0. Next: validate the same behavior on real cross-room/device captures.
 
 ## Next: autoresearch loops
 

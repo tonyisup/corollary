@@ -374,6 +374,49 @@ class TestM4FrameLevelF1Benchmark:
         assert result["fn"] == 0
         assert result["tn"] > 0
 
+    def test_run_case_reports_warmup_adjusted_eligible_metrics(self):
+        """Benchmark should distinguish classifier F1 after M4 is eligible from buffer warmup FNs."""
+        class NeverSelfDetector:
+            def is_self(self, pcm):
+                return False, 0.0
+
+        case = m4_f1_benchmark.TestCase(
+            name="warmup_accounting_unit",
+            audio=make_pcm(seed=42, duration_s=3.0),
+            tts_pcm=make_pcm(seed=42, duration_s=3.0),
+            is_playing=True,
+            expected_self=True,
+        )
+        attributor = ThalamicAttributor(
+            sr=SR,
+            m4_detector=NeverSelfDetector(),
+            m4_min_buffer_ms=500.0,
+        )
+
+        result = m4_f1_benchmark.run_case(case, attributor, n_frames=20)
+
+        assert result["warmup_fn"] > 0
+        assert result["eligible_frames"] > 0
+        assert "eligible_f1" in result
+        assert result["fn"] >= result["warmup_fn"]
+
+    def test_run_benchmark_accepts_m4_min_buffer_override(self):
+        """Benchmark runner should expose buffer size so warmup latency can be measured separately."""
+        result = m4_f1_benchmark.run_benchmark(
+            threshold=0.10,
+            real_ecapa=False,
+            m4_min_buffer_ms=60.0,
+        )
+
+        assert result.m4_min_buffer_ms == 60.0
+        assert hasattr(result, "aggregate_eligible_f1")
+
+    def test_run_benchmark_default_buffer_matches_current_acceptance_setting(self):
+        """Default benchmark buffer should reflect the current accepted latency/quality tradeoff."""
+        result = m4_f1_benchmark.run_benchmark(threshold=0.10, real_ecapa=False)
+
+        assert result.m4_min_buffer_ms == 300.0
+
 
 if __name__ == "__main__":
     import pytest

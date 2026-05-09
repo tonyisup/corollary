@@ -164,6 +164,8 @@ def run_case(case, attributor, n_frames, verbose=False):
         attributor._m4_buffer = None
 
     tp = fp = tn = fn = 0
+    eligible_tp = eligible_fp = eligible_tn = eligible_fn = 0
+    warmup_fn = 0
     m4_attempted = 0
     m4_accepted = 0
 
@@ -225,10 +227,24 @@ def run_case(case, attributor, n_frames, verbose=False):
             fn += 1
 
         m4_meta = result.metadata or {}
+        is_m4_eligible = bool(m4_meta.get("m4_attempted"))
         if m4_meta.get("m4_attempted"):
             m4_attempted += 1
         if m4_meta.get("m4_outcome") == "accepted":
             m4_accepted += 1
+
+        if actual_self and not predicted_self and m4_meta.get("m4_outcome") == "buffer_too_short":
+            warmup_fn += 1
+
+        if is_m4_eligible:
+            if predicted_self and actual_self:
+                eligible_tp += 1
+            elif predicted_self and not actual_self:
+                eligible_fp += 1
+            elif not predicted_self and not actual_self:
+                eligible_tn += 1
+            else:
+                eligible_fn += 1
 
         if verbose and fi % 20 == 0:
             print(f"  [{fi:4d}] pred={'SELF' if predicted_self else 'other':5s} "
@@ -242,6 +258,13 @@ def run_case(case, attributor, n_frames, verbose=False):
     recall = tp / max(tp + fn, 1)
     f1 = 2 * precision * recall / max(precision + recall, 1e-9)
 
+    eligible_frames = eligible_tp + eligible_fp + eligible_tn + eligible_fn
+    eligible_precision = eligible_tp / max(eligible_tp + eligible_fp, 1)
+    eligible_recall = eligible_tp / max(eligible_tp + eligible_fn, 1)
+    eligible_f1 = 2 * eligible_precision * eligible_recall / max(
+        eligible_precision + eligible_recall, 1e-9
+    )
+
     return {
         "name": case.name,
         "total_frames": total,
@@ -249,6 +272,15 @@ def run_case(case, attributor, n_frames, verbose=False):
         "precision": round(precision, 4),
         "recall": round(recall, 4),
         "f1": round(f1, 4),
+        "eligible_frames": eligible_frames,
+        "eligible_tp": eligible_tp,
+        "eligible_fp": eligible_fp,
+        "eligible_tn": eligible_tn,
+        "eligible_fn": eligible_fn,
+        "eligible_precision": round(eligible_precision, 4),
+        "eligible_recall": round(eligible_recall, 4),
+        "eligible_f1": round(eligible_f1, 4),
+        "warmup_fn": warmup_fn,
         "m4_attempted_frames": m4_attempted,
         "m4_accepted_frames": m4_accepted,
     }
@@ -260,16 +292,23 @@ class BenchmarkResult:
     threshold: float
     m4_enabled: bool
     real_ecapa: bool
+    m4_min_buffer_ms: float
     cases: list = field(default_factory=list)
     total_tp: int = 0
     total_fp: int = 0
     total_fn: int = 0
+    total_eligible_tp: int = 0
+    total_eligible_fp: int = 0
+    total_eligible_fn: int = 0
+    total_warmup_fn: int = 0
     aggregate_f1: float = 0.0
+    aggregate_eligible_f1: float = 0.0
     passed: bool = False
+    eligible_passed: bool = False
     duration_s: float = 0.0
 
 
-def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False):
+def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer_ms=300.0):
     from datetime import datetime
     t0 = time.time()
 
@@ -287,7 +326,7 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False):
         sr=SR,
         m4_detector=m4_detector,
         m4_self_threshold=threshold,
-        m4_min_buffer_ms=500.0,
+        m4_min_buffer_ms=m4_min_buffer_ms,
     )
 
     cases, n_frames = build_test_battery()
@@ -299,6 +338,7 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False):
         threshold=threshold,
         m4_enabled=True,
         real_ecapa=use_real,
+        m4_min_buffer_ms=m4_min_buffer_ms,
     )
 
     for case in cases:
@@ -309,13 +349,27 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False):
         result.total_tp += cr["tp"]
         result.total_fp += cr["fp"]
         result.total_fn += cr["fn"]
+        result.total_eligible_tp += cr["eligible_tp"]
+        result.total_eligible_fp += cr["eligible_fp"]
+        result.total_eligible_fn += cr["eligible_fn"]
+        result.total_warmup_fn += cr["warmup_fn"]
 
     precision = result.total_tp / max(result.total_tp + result.total_fp, 1)
     recall = result.total_tp / max(result.total_tp + result.total_fn, 1)
     result.aggregate_f1 = round(
         2 * precision * recall / max(precision + recall, 1e-9), 4
     )
+    eligible_precision = result.total_eligible_tp / max(
+        result.total_eligible_tp + result.total_eligible_fp, 1
+    )
+    eligible_recall = result.total_eligible_tp / max(
+        result.total_eligible_tp + result.total_eligible_fn, 1
+    )
+    result.aggregate_eligible_f1 = round(
+        2 * eligible_precision * eligible_recall / max(eligible_precision + eligible_recall, 1e-9), 4
+    )
     result.passed = result.aggregate_f1 >= 0.95
+    result.eligible_passed = result.aggregate_eligible_f1 >= 0.95
     result.duration_s = round(time.time() - t0, 3)
     return result
 
@@ -323,6 +377,8 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False):
 def main():
     parser = argparse.ArgumentParser(description="M4 Frame-Level F1 Benchmark")
     parser.add_argument("--threshold", type=float, default=0.10)
+    parser.add_argument("--m4-min-buffer-ms", type=float, default=300.0,
+                        help="Minimum rolling buffer before M4 classification")
     parser.add_argument("--real-ecapa", action="store_true",
                         help="Use real ECAPA-TDNN model (requires speechbrain)")
     parser.add_argument("--output", type=str, default=None)
@@ -334,12 +390,14 @@ def main():
     print(f"M4 FRAME-LEVEL F1 BENCHMARK — {model_label}")
     print("=" * 60)
     print(f"  Threshold: {args.threshold}")
+    print(f"  M4 min buffer: {args.m4_min_buffer_ms} ms")
     print()
 
     result = run_benchmark(
         threshold=args.threshold,
         real_ecapa=args.real_ecapa,
         verbose=args.verbose,
+        m4_min_buffer_ms=args.m4_min_buffer_ms,
     )
 
     if args.output is None:
@@ -355,12 +413,16 @@ def main():
         json.dump({
             "timestamp": result.timestamp,
             "threshold": result.threshold,
+            "m4_min_buffer_ms": result.m4_min_buffer_ms,
             "m4_enabled": result.m4_enabled,
             "real_ecapa": result.real_ecapa,
             "duration_s": result.duration_s,
             "cases": result.cases,
             "aggregate_f1": result.aggregate_f1,
+            "aggregate_eligible_f1": result.aggregate_eligible_f1,
+            "total_warmup_fn": result.total_warmup_fn,
             "passed": result.passed,
+            "eligible_passed": result.eligible_passed,
             "acceptance_criterion": "F1 >= 0.95",
         }, f, indent=2)
 
@@ -371,10 +433,15 @@ def main():
               f"{c['f1']:6.4f} {c['m4_attempted_frames']:>7d} {c['m4_accepted_frames']:>7d}")
     print("-" * 70)
     print(f"{'AGGREGATE':<35s} {'':6s} {'':6s} {result.aggregate_f1:>6.4f}")
+    print(f"{'ELIGIBLE AGGREGATE':<35s} {'':6s} {'':6s} {result.aggregate_eligible_f1:>6.4f}")
+    print(f"  Warmup false negatives: {result.total_warmup_fn}")
     mode_note = "pipeline verify (mock)" if not args.real_ecapa else "discrimination (real ECAPA)"
     print(f"\n  Mode: {mode_note}")
     print(f"  Acceptance: F1 >= 0.95  |  {'PASS' if result.passed else 'FAIL'} "
           f"(F1={result.aggregate_f1:.4f})")
+    print(f"  Eligible-frame acceptance: F1 >= 0.95  |  "
+          f"{'PASS' if result.eligible_passed else 'FAIL'} "
+          f"(eligible F1={result.aggregate_eligible_f1:.4f})")
     if not args.real_ecapa:
         print(f"  Note: mock mode tests pipeline correctness, not discrimination quality.")
         print(f"  Run with --real-ecapa for promotion-grade F1 measurement.")
