@@ -125,11 +125,11 @@ Current Mac mini + Fifine observation:
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
 | M2 | Speech-aware self/world separation | ✅ Operational research harness |
 | M3 | Agentive listening and proto-turn-taking | ✅ Live hardware validated |
-| M4 | Self-voice detector / explicit attribution classifier | ✅ Real ECAPA synthetic F1 gate passed; broader generalization pending |
+| M4 | Self-voice detector / explicit attribution classifier | 🔄 Integrated; expanded same-domain negative gate exposes generalization gap |
 | M5 | Multi-speaker world model + memory | ⏳ Planned |
 | M6 | Self-model and introspection | 🔄 In progress — SelfModel + SAG observer wired to offline streaming replay |
 
-Immediate next steps: productize the validated M3 streaming path, keep deterministic acceptance as the default regression gate, extend SelfModel observation beyond offline replay if live introspection is desired, and run broader M4 same-domain negative / cross-room-device validation before claiming production-grade self-voice generalization.
+Immediate next steps: productize the validated M3 streaming path, keep deterministic acceptance as the default regression gate, extend SelfModel observation beyond offline replay if live introspection is desired, and harden M4 against same-domain playback-window negatives before claiming production-grade self-voice generalization.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 
@@ -295,7 +295,7 @@ See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
 - ~~10-seed repeatability run~~ — done; see `data/m4_hyperparameter_sweep_corrected/`
 - ~~Test policy fix impact~~ — done; SELF→gain=1.0 fix committed at `0f99698`
 - ~~Integrate M4 into real-time loop~~ — done; M4 is wired into the streaming runtime
-- **Next:** broader same-domain negative validation and cross-room/device testing before promotion-grade M4 claim
+- **Next:** harden M4 against the expanded same-domain playback-window negative exposed by `scripts/m4_f1_benchmark.py --real-ecapa` (8-case aggregate F1 currently 0.9058, below the 0.95 criterion), then extend to real cross-room/device captures before promotion-grade M4 claims.
 
 ## Next: autoresearch loops
 

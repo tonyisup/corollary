@@ -7,12 +7,20 @@ self/world discrimination, and frame-level metadata flow.
 import sys
 import os
 import subprocess
+import importlib.util
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages"))
 
 from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
 from thalamus.attributor import ThalamicAttributor, SourceVerdict
+
+
+SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "scripts", "m4_f1_benchmark.py")
+_spec = importlib.util.spec_from_file_location("m4_f1_benchmark", SCRIPT_PATH)
+m4_f1_benchmark = importlib.util.module_from_spec(_spec)
+sys.modules["m4_f1_benchmark"] = m4_f1_benchmark
+_spec.loader.exec_module(m4_f1_benchmark)
 
 
 SR = 16000
@@ -296,6 +304,37 @@ class TestM4FrameLevelF1Benchmark:
             f"Got {false_positives} false positives on world audio "
             f"(out of {total_world_frames} speech frames)"
         )
+
+    def test_battery_includes_generalization_pressure_cases(self):
+        """Benchmark should include playback-window negatives and room/device positives."""
+        cases, _ = m4_f1_benchmark.build_test_battery()
+        by_name = {case.name: case for case in cases}
+
+        assert "same_domain_negative_playback_window" in by_name
+        assert by_name["same_domain_negative_playback_window"].is_playing is True
+        assert by_name["same_domain_negative_playback_window"].expected_self is False
+
+        assert "self_room_colored" in by_name
+        assert by_name["self_room_colored"].expected_self is True
+
+        assert "self_device_eq" in by_name
+        assert by_name["self_device_eq"].expected_self is True
+
+    def test_playback_window_negative_scores_as_true_negative_not_false_negative(self):
+        """A non-self speaker during playback opportunity must not be ground-truthed as SELF."""
+        case = m4_f1_benchmark.TestCase(
+            name="negative_playback_window_unit",
+            audio=make_pcm(seed=123, duration_s=3.0),
+            tts_pcm=make_pcm(seed=42, duration_s=3.0),
+            is_playing=True,
+            expected_self=False,
+        )
+        attributor = ThalamicAttributor(sr=SR, m4_detector=None)
+
+        result = m4_f1_benchmark.run_case(case, attributor, n_frames=20)
+
+        assert result["fn"] == 0
+        assert result["tn"] > 0
 
 
 if __name__ == "__main__":

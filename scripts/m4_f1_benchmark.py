@@ -76,6 +76,26 @@ def add_overlap(base, overlay, overlay_delay_s=0.5, overlay_gain=0.4):
     return out.astype(np.float32)
 
 
+def apply_room_coloring(pcm: np.ndarray) -> np.ndarray:
+    """Apply a deterministic mild room-coloring FIR to simulate room transfer."""
+    fir = np.array([1.0, 0.0, 0.0, 0.28, 0.0, -0.12, 0.06], dtype=np.float32)
+    out = np.convolve(pcm, fir, mode="same")
+    peak = np.max(np.abs(out))
+    if peak > 0:
+        out = out / peak * 0.7
+    return out.astype(np.float32)
+
+
+def apply_device_eq(pcm: np.ndarray) -> np.ndarray:
+    """Apply deterministic speaker/mic coloration without changing identity."""
+    delayed = np.concatenate([np.zeros(1, dtype=np.float32), pcm[:-1]])
+    out = (0.85 * pcm) - (0.18 * delayed)
+    peak = np.max(np.abs(out))
+    if peak > 0:
+        out = out / peak * 0.7
+    return out.astype(np.float32)
+
+
 # ── Test battery ─────────────────────────────────────────────────────────────
 
 @dataclass
@@ -84,7 +104,7 @@ class TestCase:
     audio: np.ndarray
     tts_pcm: np.ndarray
     is_playing: bool
-    expected_m4_detects_self: Optional[bool] = None  # None = don't check
+    expected_self: Optional[bool] = None  # None = infer from playback+speech
 
 
 def build_test_battery():
@@ -110,7 +130,24 @@ def build_test_battery():
     impostor = synthetic_speech(seed=123, duration_s=dur)
     cases.append(TestCase("same_domain_negative", impostor, tts.copy(), False, False))
 
-    # 5. self_silence_self — tests buffer persistence across silence
+    # 5. same_domain_negative_playback_window — impostor audio in a playback
+    # opportunity. This is the decisive negative: M4 must reject an other voice
+    # even when the controller would otherwise consider the agent to be speaking.
+    cases.append(TestCase(
+        "same_domain_negative_playback_window",
+        impostor.copy(),
+        tts.copy(),
+        True,
+        False,
+    ))
+
+    # 6. self_room_colored — same speaker through a simple room transfer
+    cases.append(TestCase("self_room_colored", apply_room_coloring(tts), tts.copy(), True, True))
+
+    # 7. self_device_eq — same speaker through deterministic device coloration
+    cases.append(TestCase("self_device_eq", apply_device_eq(tts), tts.copy(), True, True))
+
+    # 8. self_silence_self — tests buffer persistence across silence
     half = len(tts) // 2
     silence = np.zeros(int(SR * 0.5), dtype=np.float32)
     gap_audio = np.concatenate([tts[:half], silence, tts[half:]])
@@ -123,6 +160,9 @@ def build_test_battery():
 
 def run_case(case, attributor, n_frames, verbose=False):
     """Run a single test case, return per-frame results."""
+    if hasattr(attributor, "_m4_buffer"):
+        attributor._m4_buffer = None
+
     tp = fp = tn = fn = 0
     m4_attempted = 0
     m4_accepted = 0
@@ -167,8 +207,13 @@ def run_case(case, attributor, n_frames, verbose=False):
 
         predicted_self = (result.verdict == SourceVerdict.SELF)
 
-        # Ground truth: SELF when playing and speech detected
-        actual_self = is_playing and is_speech
+        # Ground truth: most cases infer SELF from playback+speech, but
+        # playback-window negatives intentionally exercise "the system is in a
+        # speaking opportunity, but the acoustic speaker is not self."
+        if case.expected_self is None:
+            actual_self = is_playing and is_speech
+        else:
+            actual_self = bool(case.expected_self) and is_speech
 
         if predicted_self and actual_self:
             tp += 1
