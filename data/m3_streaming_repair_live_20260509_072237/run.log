@@ -1,0 +1,36 @@
+/Users/juicebox/Projects/corollary/.venv/lib/python3.14/site-packages/webrtcvad.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+Synthesizing repair cue: 'Sorry, go ahead.'
+Repair PCM: 35174 samples (2.20s)
+Synthesizing agent utterance: 'I was speaking, then paused, and then I continued my thought.'
+Agent PCM:  68056 samples (4.25s)
+Synthesizing human stimulus: 'Excuse me, I need to say something here.'
+Human PCM:  49682 samples (3.11s)
+Starting delayed human stimulus on device 4 after 0.45s
+Starting streaming runtime (12.0s)...
+  Gated playback: True
+  M4 enabled: True
+  TTS duration: 4.25s
+  Completed: 360 frames in 12.41s
+  Saved 360 log entries to data/m3_streaming_repair_live_20260509_072237/streaming_log.jsonl
+
+--- Streaming Summary ---
+  total_frames: 360
+  speech_frames: 168
+  tts_played_frames: 216
+  repair_played_frames: 74
+  tts_total_duration_s: 4.2535
+  repair_total_duration_s: 2.198375
+  deferred_events: 0
+  resumed_events: 1
+  interrupt_events: 1
+  collision_repair_events: 1
+  repair_audio_completed: True
+  verdict_counts: {'SILENCE': 154, 'BOTH': 104, 'WORLD': 102}
+  controller_state_counts: {'SPEAK': 142, 'LISTEN': 56, 'IDLE': 162}
+  final_controller_state: IDLE
+  tts_completed: True
+  gated_playback: True
+  m4_enabled: True
+
+Saved summary to: data/m3_streaming_repair_live_20260509_072237/summary.json

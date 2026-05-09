@@ -1,0 +1,27 @@
+{
+  "total_frames": 360,
+  "speech_frames": 168,
+  "tts_played_frames": 216,
+  "repair_played_frames": 74,
+  "tts_total_duration_s": 4.2535,
+  "repair_total_duration_s": 2.198375,
+  "deferred_events": 0,
+  "resumed_events": 1,
+  "interrupt_events": 1,
+  "collision_repair_events": 1,
+  "repair_audio_completed": true,
+  "verdict_counts": {
+    "SILENCE": 154,
+    "BOTH": 104,
+    "WORLD": 102
+  },
+  "controller_state_counts": {
+    "SPEAK": 142,
+    "LISTEN": 56,
+    "IDLE": 162
+  },
+  "final_controller_state": "IDLE",
+  "tts_completed": true,
+  "gated_playback": true,
+  "m4_enabled": true
+}

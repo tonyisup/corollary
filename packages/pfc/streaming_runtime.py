@@ -618,10 +618,7 @@ class StreamingRuntime:
             callback=callback,
             device=(self.config.input_device, self.config.output_device),
         ):
-            import asyncio
-            asyncio.get_event_loop().run_until_complete(
-                asyncio.sleep(duration_s)
-            )
+            time.sleep(duration_s)
 
         elapsed = time.time() - self._start_time
         print(f"  Completed: {self._frames} frames in {elapsed:.2f}s")

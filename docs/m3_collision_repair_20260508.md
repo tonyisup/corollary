@@ -1,7 +1,7 @@
 # M3 Collision Repair — Policy and Repair Audio
 
 > Date: 2026-05-08
-> Status: Implemented as deterministic controller policy output plus optional suppressible repair-audio playback in the streaming runtime.
+> Status: Implemented as deterministic controller policy output plus optional suppressible repair-audio playback in the streaming runtime. Live hardware validation passed in `data/m3_streaming_repair_live_20260509_072237`.
 
 ## Problem
 
@@ -97,7 +97,7 @@ The acceptance script includes:
 
 ## Evidence
 
-Targeted streaming tests:
+Deterministic streaming tests:
 
 ```bash
 .venv/bin/python -m pytest tests/unit/test_streaming_runtime.py -q
@@ -105,14 +105,29 @@ Targeted streaming tests:
 
 Result after repair-audio implementation: 17 passed.
 
-Targeted acceptance:
+Deterministic acceptance:
+
+```json
+{
+  "synthetic_collision_repair_passed": true,
+  "synthetic_repair_audio_passed": true
+}
+```
+
+Live hardware validation:
 
 ```text
-pass=True
-synthetic_repair_audio_passed=True
-repair_audio_frames=4
-original_position_held_during_repair=True
-tts_after_repair_frames=21
+data/m3_streaming_repair_live_20260509_072237/hardware_repair_validation.json
+pass=true
+interrupt_once=true
+collision_repair_once=true
+repair_audio_completed=true
+repair_audio_played=true
+repair_not_during_listen=true
+original_tts_held_during_repair=true
+tts_resumed_after_repair=true
+tts_completed=true
+final_idle=true
 ```
 
 ## Important boundary

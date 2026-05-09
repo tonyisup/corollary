@@ -203,9 +203,14 @@ class AgentiveController:
                 # low-energy portions of playback. Only end SPEAK once the
                 # motor window has actually ended.
                 if (not res.is_in_motor_window) and self._motor_end_time > 0:
-                    self.active_utterance = None
-                    self.last_self_time = 0
-                    self.state = AgentState.IDLE
+                    in_initial_motor_holdoff = (
+                        self._request_output_time > 0
+                        and (current_time - self._request_output_time) < (self.motor_holdoff_ms / 1000.0)
+                    )
+                    if not in_initial_motor_holdoff:
+                        self.active_utterance = None
+                        self.last_self_time = 0
+                        self.state = AgentState.IDLE
 
         # 3. Update external speech timing when not handled by SPEAK interrupt.
         if self.state != AgentState.SPEAK:
