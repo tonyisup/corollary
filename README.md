@@ -37,9 +37,17 @@ pip install -r requirements.txt
 
 ## Project Status Summary
 
-The initial simulated loop (M0) has been successfully validated, and the repo now contains active M1-era experiments around babbling, adaptive room learning, and forward-model convergence. The immediate focus is no longer word-level self-suppression. Instead, the next milestone is the more fundamental developmental problem: pre-linguistic source separation and self-attribution.
+Corollary has validated the early developmental audio stack through live hardware milestones. M0-M1c established simulated loop closure, pre-linguistic self-sound attribution, babbling-driven room learning, and mixed-source SELF/WORLD/BOTH attribution. M2/M4 then moved the system into speech-aware self/world separation and explicit self-voice classification. M3 now provides the current strongest milestone: live, streaming, hardware-validated proto-turn-taking with interrupt, repair, resume, and gated playback behavior.
 
-The core question for early hardware work is not yet "what word did I say?" but "did I just make that sound?"
+The core early question was "did I just make that sound?" The current M3 question is sharper: "when I am speaking and another agentive voice enters the room, can I stop, acknowledge the collision, listen, and then resume without losing my own utterance?"
+
+Current high-level state:
+
+- **M2:** operational speech-aware self/world separation harness with calibrated room-local scoring and benchmark artifacts; still research-grade rather than productized.
+- **M3:** artifact-backed and live-hardware-validated streaming turn-taking runtime. Deterministic acceptance passes synthetic defer/interrupt/repair behavior, repair-audio queue semantics, and saved-artifact replay smoke. Live repair-audio validation passed at `data/m3_streaming_repair_live_20260509_072237`.
+- **M4:** no longer only an interface stub. Self-voice detection is wired into the live harness/streaming path with frame-level metadata. Broader cross-room/device promotion still needs stronger same-domain negative validation.
+
+The immediate focus is productization and operational hardening: stable runbooks, reproducible hardware validation wrappers, cleaner runtime interfaces, and broader M4 generalization checks.
 
 ### Synthetic vs audible work
 
@@ -115,13 +123,13 @@ Current Mac mini + Fifine observation:
 | M1a | Pre-linguistic self-sound attribution | ✅ Done |
 | M1b | Babbling-driven room model learning | ✅ Done |
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
-| M2 | Speech-aware self/world separation | 🧪 Prototype / early hardware harness |
-| M3 | Agentive listening and proto-turn-taking | 🧪 Prototype / early controller demo |
-| M4 | Self-voice detector / explicit attribution classifier | 🧩 Interface stub / prototype |
+| M2 | Speech-aware self/world separation | ✅ Operational research harness |
+| M3 | Agentive listening and proto-turn-taking | ✅ Live hardware validated |
+| M4 | Self-voice detector / explicit attribution classifier | ✅ Integrated; broader generalization pending |
 | M5 | Multi-speaker world model + memory | ⏳ Planned |
 | M6 | Self-model and introspection | ⏳ Planned |
 
-Immediate next steps: lock an M2 eval set, measure overlap stability, verify external speech retention, then tune masking heuristics.
+Immediate next steps: productize the validated M3 streaming path, add a reproducible hardware-repair validation wrapper, keep deterministic acceptance as the default regression gate, and run broader M4 same-domain negative / cross-room-device validation before claiming promotion-grade self-voice generalization.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 

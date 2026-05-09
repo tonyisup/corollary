@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** Phase 1 (M1) Complete; Entering Phase 2 (M2)  
+> **Status:** M0-M1c complete; M2 operational; M3 live hardware validated; M4 integrated with broader generalization pending  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 
@@ -129,32 +129,35 @@ corollary/
 - **Hardware Success:** Implemented `ThalamicAttributor` for motor-command gating and `dual_input_fusion` for geometry-aware two-mic evidence fusion. Passed Replay Control (rejected self-like external audio). Validated SELF/WORLD/BOTH across seed `0,1,2` self-only, world-only, sequential, partial-overlap, and full-overlap hardware cases using Fifine + BL-2021 dual input.
 
 ### M2: Speech-Aware Self/World Separation
-- 🔧 **Status:** OPTIMIZING PARAMETERS
+- ✅ **Status:** OPERATIONAL RESEARCH HARNESS
 - Detect speech vs non-speech in external audio streams
 - Preserve external speech under overlap with self-generated sound
 - Enable speech-aware AEC and efference masking
 - Reintroduce lexical and ASR-oriented evaluation only after M1 attribution is stable
+- **Current evidence:** M2/M4 benchmark artifacts, calibrated onset/causal tolerance, M4-trigger metadata, and room-local scoring now support the M3/M4 evaluation path. Treat M2 as operational research infrastructure, not a fully productized duplex speech stack.
 - **Acceptance:** +15 dB suppression over AEC alone; external WER < 10% degradation; speech/non-speech discrimination remains stable under self overlap
 
 #### Immediate next steps
-1. lock a small M2 eval set for overlap / non-overlap speech tests
-2. measure speech-vs-non-speech stability with self overlap on the current hardware path
-3. verify external speech retention before tuning any stronger self suppression
-4. record baseline metrics and only then iterate on masking heuristics
-5. **Bayesian hyperparameter optimization**: use Optuna TPE to automatically search onset_latency_ms, causal_tolerance_ms, similarity_threshold, onset_method, and per-family gains. `scripts/m2_bayesian_optimizer.py` covers the original single-seed pass; `scripts/m2_bayesian_optimizer_v2.py` adds multi-seed averaging plus family-gain override wiring for experimental gain sweeps. See `docs/m2_bayesian_optimization_design.md`.
+1. keep deterministic benchmark artifacts reproducible as regression gates
+2. preserve external speech retention checks before strengthening self suppression
+3. use M2 primarily as the substrate for M3/M4 validation until a product runtime needs deeper duplex ASR hardening
+4. broaden same-domain negatives for M4/self-world classifier promotion
 
 ### M3: Agentive Listening and Proto-Turn-Taking
-- 🧪 **Status:** INTEGRATED DEMO (ARTIFACT-BACKED)
+- ✅ **Status:** LIVE HARDWARE VALIDATED
 - Distinguish agentive vocal others from non-agentive environment noise
 - Detect when external speech should suppress or defer self-output
-- **Current evidence:** `AgentiveController` provides an initial timing-based controller sketch (`IDLE`, `LISTEN`, `SPEAK`) with deferred-output logic, but the current implementation primarily validates hysteresis and queued responses rather than a fully hardware-validated turn-taking milestone.
+- Interrupt on real overlap, emit a one-shot social repair cue, hold original TTS position, play suppressible repair audio, then resume and complete the original utterance.
+- **Current evidence:** `packages/pfc/streaming_runtime.py` implements the online VAD → attribution → controller → gate loop. `scripts/m3_streaming_acceptance.py` passes deterministic synthetic defer/interrupt/repair behavior plus saved-artifact replay smoke. Live hardware repair-audio validation passed at `data/m3_streaming_repair_live_20260509_072237` with `hardware_repair_validation.json` reporting `pass=true`.
+- **Remaining work:** productization and operational hardening: stable config schema, explicit artifact writer, reproducible hardware-validation wrapper, and runbook cleanup. Core M3 behavior is validated.
 
 ### M4: Self-Voice Detector and Explicit Attribution Classifier
-- 🧩 **Status:** INTERFACE STUB / PROTOTYPE
+- ✅ **Status:** INTEGRATED; BROADER GENERALIZATION PENDING
 - ECAPA/x-vector embeddings + mel similarity classifier
 - Integrate learned attribution priors from M1 and listening priors from M2/M3 into a more explicit self-voice detector
 - Support frame-level self/world/agentive-other attribution for richer interaction contexts
-- **Current evidence:** the repo now defines the registration / embedding interface and a prototype workflow, but not yet a production-grade speaker-identification model.
+- **Current evidence:** self-voice detection is wired into the live harness and streaming runtime with frame-level metadata persisted (`m4_outcome`, `m4_confidence`). Real ECAPA-TDNN is validated in the M4 path, and streaming demos can enable M4 with `--m4-enable`.
+- **Promotion gap:** do not claim a production-grade self-voice classifier until same-domain negatives and cross-room/device validation are stronger.
 - **Acceptance:** Frame-level F1 ≥ 0.95 across rooms/devices
 
 ### M5: Multi-Speaker World Model + Episodic Memory + SAG-Grounded Learning
