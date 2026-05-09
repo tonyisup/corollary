@@ -125,7 +125,7 @@ Current Mac mini + Fifine observation:
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
 | M2 | Speech-aware self/world separation | ✅ Operational research harness |
 | M3 | Agentive listening and proto-turn-taking | ✅ Live hardware validated |
-| M4 | Self-voice detector / explicit attribution classifier | 🔄 Integrated; expanded same-domain negative gate exposes generalization gap |
+| M4 | Self-voice detector / explicit attribution classifier | 🔄 Integrated; playback-window false positives fixed, warmup recall gap remains |
 | M5 | Multi-speaker world model + memory | ⏳ Planned |
 | M6 | Self-model and introspection | 🔄 In progress — SelfModel + SAG observer wired to offline streaming replay |
 
@@ -295,7 +295,7 @@ See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
 - ~~10-seed repeatability run~~ — done; see `data/m4_hyperparameter_sweep_corrected/`
 - ~~Test policy fix impact~~ — done; SELF→gain=1.0 fix committed at `0f99698`
 - ~~Integrate M4 into real-time loop~~ — done; M4 is wired into the streaming runtime
-- **Next:** harden M4 against the expanded same-domain playback-window negative exposed by `scripts/m4_f1_benchmark.py --real-ecapa` (8-case aggregate F1 currently 0.9058, below the 0.95 criterion), then extend to real cross-room/device captures before promotion-grade M4 claims.
+- **Next:** distinguish M4 classifier quality from 500ms buffer warmup latency, then reduce early false negatives without reopening the same-domain playback-window false positives fixed by template-match-gated M4 overrides.
 
 ## Next: autoresearch loops
 

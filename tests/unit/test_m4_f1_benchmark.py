@@ -106,6 +106,16 @@ class TestM4Detector:
         assert conf == 0.0
 
 
+class AlwaysSelfDetector:
+    """Tiny fake M4 detector for attribution-decision tests."""
+
+    def register_self(self, pcm):
+        pass
+
+    def is_self(self, pcm):
+        return True, 0.95
+
+
 class TestM4AttributorIntegration:
     """Tests for M4 integration in ThalamicAttributor."""
 
@@ -239,6 +249,34 @@ class TestM4AttributorIntegration:
 
         meta = result.metadata
         assert meta["m4_outcome"] == "not_attempted"
+
+    def test_m4_acceptance_requires_template_match_evidence(self):
+        """High M4 confidence alone should not override weak acoustic self evidence."""
+        attributor = ThalamicAttributor(
+            sr=SR,
+            m4_detector=AlwaysSelfDetector(),
+            m4_self_threshold=0.1,
+            m4_min_buffer_ms=30.0,
+        )
+        frame_samples = int(SR * 30 / 1000)
+        frame = make_pcm(seed=123, duration_s=0.5)[:frame_samples]
+        rms = float(np.sqrt(np.mean(frame ** 2)))
+        rms_db = 20 * np.log10(max(rms, 1e-9))
+
+        result = attributor.attribute(
+            match_score=0.05,
+            observed_onset_samples=0,
+            expected_onset_samples=0,
+            rms_db=rms_db,
+            is_playing=True,
+            is_speech=True,
+            frame_audio=frame,
+            self_pcm=make_pcm(seed=42, duration_s=0.5),
+            agent_start_sample=0,
+        )
+
+        assert result.metadata["m4_outcome"] == "accepted"
+        assert result.verdict != SourceVerdict.SELF
 
 
 class TestM4FrameLevelF1Benchmark:

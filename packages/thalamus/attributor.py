@@ -48,6 +48,7 @@ class ThalamicAttributor:
         m4_self_threshold: float = 0.1,
         m4_window_ms: float = 1000.0,
         m4_min_buffer_ms: float = 500.0,
+        m4_template_match_threshold: float = 0.20,
         per_frame_self_min_rms_db: float = -50.0,
         room_filter: Optional[np.ndarray] = None,
         room_local_threshold: Optional[float] = None,
@@ -59,6 +60,7 @@ class ThalamicAttributor:
         self.sr = sr
         self.m4_detector = m4_detector
         self.m4_self_threshold = m4_self_threshold
+        self.m4_template_match_threshold = m4_template_match_threshold
         self.m4_window_samples = int(m4_window_ms * sr / 1000.0)
         self.m4_min_buffer_samples = int(m4_min_buffer_ms * sr / 1000.0)
         self.per_frame_self_min_rms_db = per_frame_self_min_rms_db
@@ -238,6 +240,7 @@ class ThalamicAttributor:
             'm4_outcome': 'not_attempted',
             'm4_confidence': None,
             'm4_buffer_length': 0,
+            'm4_template_match_passed': False,
         }
         
         # Compute per-frame self-match score when self_pcm is available.
@@ -290,6 +293,8 @@ class ThalamicAttributor:
         
         # Candidate for SELF
         is_self_like = match_score >= self.similarity_threshold
+        is_m4_template_match = match_score >= self.m4_template_match_threshold
+        m4_metadata['m4_template_match_passed'] = is_m4_template_match
         is_timely = causal_score > 0.0
         
         # M4 attempt
@@ -323,7 +328,7 @@ class ThalamicAttributor:
         # M4-assisted SELF attribution
         if is_playing and is_speech and m4_metadata.get('m4_outcome') == 'accepted':
             m4_conf = m4_metadata.get('m4_confidence', 0.0)
-            if is_self_like and m4_conf >= self.m4_self_threshold:
+            if is_m4_template_match and m4_conf >= self.m4_self_threshold:
                 verdict = SourceVerdict.SELF
                 confidence = (match_score + causal_score + m4_conf) / 3.0
                 return AttributionResult(
