@@ -1,0 +1,343 @@
+#!/usr/bin/env python3
+"""M4 Frame-Level F1 Benchmark — deterministic, no hardware required.
+
+Two modes:
+  1. Pipeline verification (mock): verifies the M4 integration pipeline works
+     correctly — buffer accumulation, metadata flow, verdict logic. Uses
+     synthetic speech with the mock encoder. Reports pipeline health metrics
+     but NOT discrimination F1 (mock embeddings are not a real speaker model).
+
+  2. Discrimination benchmark (real): uses SpeechBrain ECAPA-TDNN for actual
+     speaker embedding quality. Requires speechbrain package. This is the
+     promotion-grade F1 >= 0.95 acceptance gate.
+
+Usage:
+    .venv/bin/python scripts/m4_f1_benchmark.py              # mock mode (pipeline verify)
+    .venv/bin/python scripts/m4_f1_benchmark.py --real-ecapa # real mode (discrimination)
+    .venv/bin/python scripts/m4_f1_benchmark.py --output /tmp/m4_f1.json
+    .venv/bin/python scripts/m4_f1_benchmark.py --verbose
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import time
+from dataclasses import dataclass, field
+from typing import Optional
+
+import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
+from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
+from thalamus.attributor import ThalamicAttributor, SourceVerdict
+
+
+# ── Synthetic signal generators ──────────────────────────────────────────────
+
+SR = 16000
+FRAME_MS = 30
+FRAME_SAMPLES = int(SR * FRAME_MS / 1000)
+
+
+def synthetic_speech(seed: int, duration_s: float = 2.0) -> np.ndarray:
+    """Generate speech-like signal. Different seeds = different 'speakers'."""
+    rng = np.random.RandomState(seed)
+    n = int(SR * duration_s)
+    t = np.linspace(0, duration_s, n)
+    f0 = 100 + (seed % 7) * 25
+    signal = np.zeros(n)
+    for harmonic in range(1, 8):
+        amp = 1.0 / (harmonic ** 0.7)
+        phase = rng.uniform(0, 2 * np.pi)
+        signal += amp * np.sin(2 * np.pi * f0 * harmonic * t + phase)
+    formant_freq = 3 + seed * 0.5
+    signal *= 0.4 + 0.6 * np.abs(np.sin(2 * np.pi * formant_freq * t))
+    signal += rng.randn(n) * 0.03
+    peak = np.max(np.abs(signal))
+    if peak > 0:
+        signal = signal / peak * 0.7
+    return signal.astype(np.float32)
+
+
+def add_overlap(base, overlay, overlay_delay_s=0.5, overlay_gain=0.4):
+    delay_samples = int(overlay_delay_s * SR)
+    out = base.copy()
+    start = delay_samples
+    end = min(start + len(overlay), len(out))
+    if start < len(out):
+        oe = min(len(overlay), end - start)
+        out[start:end] += overlay[:oe] * overlay_gain
+    peak = np.max(np.abs(out))
+    if peak > 0:
+        out = out / peak * 0.7
+    return out.astype(np.float32)
+
+
+# ── Test battery ─────────────────────────────────────────────────────────────
+
+@dataclass
+class TestCase:
+    name: str
+    audio: np.ndarray
+    tts_pcm: np.ndarray
+    is_playing: bool
+    expected_m4_detects_self: Optional[bool] = None  # None = don't check
+
+
+def build_test_battery():
+    """Build test cases. Each case is 3s to ensure M4 buffer fills."""
+    dur = 3.0
+    tts = synthetic_speech(seed=42, duration_s=dur)
+    n_frames = len(tts) // FRAME_SAMPLES
+    cases = []
+
+    # 1. self_only — M4 should detect self
+    cases.append(TestCase("self_only", tts.copy(), tts.copy(), True, True))
+
+    # 2. world_only — M4 should NOT trigger (not playing)
+    world = synthetic_speech(seed=99, duration_s=dur)
+    cases.append(TestCase("world_only", world.copy(), tts.copy(), False, False))
+
+    # 3. self_with_overlap — M4 should detect self during solo portion
+    world_d = synthetic_speech(seed=77, duration_s=dur)
+    mixed = add_overlap(tts, world_d, overlay_delay_s=0.8, overlay_gain=0.4)
+    cases.append(TestCase("self_with_overlap", mixed, tts.copy(), True, True))
+
+    # 4. same_domain_negative — different speaker, same structure
+    impostor = synthetic_speech(seed=123, duration_s=dur)
+    cases.append(TestCase("same_domain_negative", impostor, tts.copy(), False, False))
+
+    # 5. self_silence_self — tests buffer persistence across silence
+    half = len(tts) // 2
+    silence = np.zeros(int(SR * 0.5), dtype=np.float32)
+    gap_audio = np.concatenate([tts[:half], silence, tts[half:]])
+    cases.append(TestCase("self_silence_self", gap_audio, tts.copy(), True, True))
+
+    return cases, n_frames
+
+
+# ── Benchmark runner ─────────────────────────────────────────────────────────
+
+def run_case(case, attributor, n_frames, verbose=False):
+    """Run a single test case, return per-frame results."""
+    tp = fp = tn = fn = 0
+    m4_attempted = 0
+    m4_accepted = 0
+
+    for fi in range(n_frames):
+        s_start = fi * FRAME_SAMPLES
+        s_end = s_start + FRAME_SAMPLES
+        if s_end > len(case.audio):
+            break
+        frame_audio = case.audio[s_start:s_end]
+
+        rms = float(np.sqrt(np.mean(frame_audio ** 2)))
+        rms_db = 20 * np.log10(max(rms, 1e-9))
+
+        ref_start = min(s_start, len(case.tts_pcm) - FRAME_SAMPLES)
+        ref_end = ref_start + FRAME_SAMPLES
+        if ref_start < 0 or ref_end > len(case.tts_pcm):
+            match_score = 0.0
+        else:
+            ref_frame = case.tts_pcm[ref_start:ref_end]
+            obs_norm = float(np.linalg.norm(frame_audio))
+            ref_norm = float(np.linalg.norm(ref_frame))
+            if obs_norm < 1e-9 or ref_norm < 1e-9:
+                match_score = 0.0
+            else:
+                match_score = float(np.dot(frame_audio, ref_frame) / (obs_norm * ref_norm))
+
+        is_playing = case.is_playing and s_start < len(case.tts_pcm)
+        is_speech = rms_db > -40.0
+
+        result = attributor.attribute(
+            match_score=match_score,
+            observed_onset_samples=s_start,
+            expected_onset_samples=s_start,
+            rms_db=rms_db,
+            is_playing=is_playing,
+            is_speech=is_speech,
+            frame_audio=frame_audio,
+            self_pcm=case.tts_pcm,
+            agent_start_sample=0,
+        )
+
+        predicted_self = (result.verdict == SourceVerdict.SELF)
+
+        # Ground truth: SELF when playing and speech detected
+        actual_self = is_playing and is_speech
+
+        if predicted_self and actual_self:
+            tp += 1
+        elif predicted_self and not actual_self:
+            fp += 1
+        elif not predicted_self and not actual_self:
+            tn += 1
+        else:
+            fn += 1
+
+        m4_meta = result.metadata or {}
+        if m4_meta.get("m4_attempted"):
+            m4_attempted += 1
+        if m4_meta.get("m4_outcome") == "accepted":
+            m4_accepted += 1
+
+        if verbose and fi % 20 == 0:
+            print(f"  [{fi:4d}] pred={'SELF' if predicted_self else 'other':5s} "
+                  f"gt={'SELF' if actual_self else 'other':5s} "
+                  f"verdict={result.verdict.name:8s} "
+                  f"m4={m4_meta.get('m4_outcome', 'n/a'):16s} "
+                  f"match={match_score:.3f}")
+
+    total = tp + fp + tn + fn
+    precision = tp / max(tp + fp, 1)
+    recall = tp / max(tp + fn, 1)
+    f1 = 2 * precision * recall / max(precision + recall, 1e-9)
+
+    return {
+        "name": case.name,
+        "total_frames": total,
+        "tp": tp, "fp": fp, "tn": tn, "fn": fn,
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(f1, 4),
+        "m4_attempted_frames": m4_attempted,
+        "m4_accepted_frames": m4_accepted,
+    }
+
+
+@dataclass
+class BenchmarkResult:
+    timestamp: str
+    threshold: float
+    m4_enabled: bool
+    real_ecapa: bool
+    cases: list = field(default_factory=list)
+    total_tp: int = 0
+    total_fp: int = 0
+    total_fn: int = 0
+    aggregate_f1: float = 0.0
+    passed: bool = False
+    duration_s: float = 0.0
+
+
+def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False):
+    from datetime import datetime
+    t0 = time.time()
+
+    use_real = real_ecapa
+    identifier = SpeakerIdentifier(use_real=use_real)
+    identifier._load_model()
+    model_type = "ecapa-tdnn" if identifier._model != "mock" else "mock"
+
+    m4_detector = SelfVoiceDetector(identifier, threshold=threshold) if True else None
+
+    attributor = ThalamicAttributor(
+        similarity_threshold=0.04,
+        energy_threshold_db=-50.0,
+        causal_tolerance_ms=100.0,
+        sr=SR,
+        m4_detector=m4_detector,
+        m4_self_threshold=threshold,
+        m4_min_buffer_ms=500.0,
+    )
+
+    cases, n_frames = build_test_battery()
+    for case in cases:
+        m4_detector.register_self(case.tts_pcm)
+
+    result = BenchmarkResult(
+        timestamp=datetime.now().isoformat(),
+        threshold=threshold,
+        m4_enabled=True,
+        real_ecapa=use_real,
+    )
+
+    for case in cases:
+        if verbose:
+            print(f"\nCase: {case.name}")
+        cr = run_case(case, attributor, n_frames, verbose)
+        result.cases.append(cr)
+        result.total_tp += cr["tp"]
+        result.total_fp += cr["fp"]
+        result.total_fn += cr["fn"]
+
+    precision = result.total_tp / max(result.total_tp + result.total_fp, 1)
+    recall = result.total_tp / max(result.total_tp + result.total_fn, 1)
+    result.aggregate_f1 = round(
+        2 * precision * recall / max(precision + recall, 1e-9), 4
+    )
+    result.passed = result.aggregate_f1 >= 0.95
+    result.duration_s = round(time.time() - t0, 3)
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description="M4 Frame-Level F1 Benchmark")
+    parser.add_argument("--threshold", type=float, default=0.10)
+    parser.add_argument("--real-ecapa", action="store_true",
+                        help="Use real ECAPA-TDNN model (requires speechbrain)")
+    parser.add_argument("--output", type=str, default=None)
+    parser.add_argument("--verbose", "-v", action="store_true")
+    args = parser.parse_args()
+
+    model_label = "ECAPA-TDNN (real)" if args.real_ecapa else "mock (pipeline verify)"
+    print("=" * 60)
+    print(f"M4 FRAME-LEVEL F1 BENCHMARK — {model_label}")
+    print("=" * 60)
+    print(f"  Threshold: {args.threshold}")
+    print()
+
+    result = run_benchmark(
+        threshold=args.threshold,
+        real_ecapa=args.real_ecapa,
+        verbose=args.verbose,
+    )
+
+    if args.output is None:
+        from datetime import datetime
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        tag = "real" if args.real_ecapa else "mock"
+        args.output = f"data/m4_f1_benchmark_{tag}_{ts}.json"
+
+    out_dir = os.path.dirname(args.output)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    with open(args.output, "w") as f:
+        json.dump({
+            "timestamp": result.timestamp,
+            "threshold": result.threshold,
+            "m4_enabled": result.m4_enabled,
+            "real_ecapa": result.real_ecapa,
+            "duration_s": result.duration_s,
+            "cases": result.cases,
+            "aggregate_f1": result.aggregate_f1,
+            "passed": result.passed,
+            "acceptance_criterion": "F1 >= 0.95",
+        }, f, indent=2)
+
+    print(f"\n{'Case':<35s} {'P':>6s} {'R':>6s} {'F1':>6s} {'M4 att':>7s} {'M4 ok':>7s}")
+    print("-" * 70)
+    for c in result.cases:
+        print(f"{c['name']:<35s} {c['precision']:6.4f} {c['recall']:6.4f} "
+              f"{c['f1']:6.4f} {c['m4_attempted_frames']:>7d} {c['m4_accepted_frames']:>7d}")
+    print("-" * 70)
+    print(f"{'AGGREGATE':<35s} {'':6s} {'':6s} {result.aggregate_f1:>6.4f}")
+    mode_note = "pipeline verify (mock)" if not args.real_ecapa else "discrimination (real ECAPA)"
+    print(f"\n  Mode: {mode_note}")
+    print(f"  Acceptance: F1 >= 0.95  |  {'PASS' if result.passed else 'FAIL'} "
+          f"(F1={result.aggregate_f1:.4f})")
+    if not args.real_ecapa:
+        print(f"  Note: mock mode tests pipeline correctness, not discrimination quality.")
+        print(f"  Run with --real-ecapa for promotion-grade F1 measurement.")
+    print(f"  Duration: {result.duration_s}s  |  Output: {args.output}")
+    print()
+
+    sys.exit(0 if result.passed else 1)
+
+
+if __name__ == "__main__":
+    main()

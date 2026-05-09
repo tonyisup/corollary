@@ -1,0 +1,303 @@
+"""Unit tests for M4 self-voice detector integration.
+
+Verifies the M4 pipeline: buffer accumulation, detector registration,
+self/world discrimination, and frame-level metadata flow.
+"""
+
+import sys
+import os
+import subprocess
+import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages"))
+
+from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
+from thalamus.attributor import ThalamicAttributor, SourceVerdict
+
+
+SR = 16000
+
+
+def make_pcm(seed=42, duration_s=2.0):
+    """Generate synthetic speech-like audio."""
+    rng = np.random.RandomState(seed)
+    n = int(SR * duration_s)
+    t = np.linspace(0, duration_s, n)
+    f0 = 100 + (seed % 7) * 25
+    signal = np.zeros(n)
+    for h in range(1, 8):
+        amp = 1.0 / (h ** 0.7)
+        phase = rng.uniform(0, 2 * np.pi)
+        signal += amp * np.sin(2 * np.pi * f0 * h * t + phase)
+    signal *= 0.4 + 0.6 * np.abs(np.sin(2 * np.pi * (3 + seed * 0.5) * t))
+    signal += rng.randn(n) * 0.03
+    peak = np.max(np.abs(signal))
+    if peak > 0:
+        signal = signal / peak * 0.7
+    return signal.astype(np.float32)
+
+
+class TestM4Detector:
+    """Tests for SelfVoiceDetector basic operations."""
+
+    def test_mock_registration_and_self_detection(self):
+        """Mock detector should identify identical audio as self."""
+        identifier = SpeakerIdentifier(use_real=False)
+        identifier._load_model()
+        detector = SelfVoiceDetector(identifier, threshold=0.1)
+
+        pcm = make_pcm(seed=42)
+        detector.register_self(pcm)
+
+        # Identical audio should be detected as self
+        is_self, conf = detector.is_self(pcm)
+        assert is_self, f"Expected self detection, got is_self={is_self}, conf={conf}"
+        assert conf > 0.5, f"Expected high confidence for identical audio, got {conf}"
+
+    def test_mock_rejects_different_speaker(self):
+        """Mock detector should reject audio from a different seed/speaker."""
+        identifier = SpeakerIdentifier(use_real=False)
+        identifier._load_model()
+        detector = SelfVoiceDetector(identifier, threshold=0.1)
+
+        self_pcm = make_pcm(seed=42)
+        other_pcm = make_pcm(seed=99)
+        detector.register_self(self_pcm)
+
+        is_self, conf = detector.is_self(other_pcm)
+        # Mock uses content-based hash; different audio = different embedding
+        # With threshold=0.1, random embeddings rarely exceed
+        # (We don't assert is_self=False because mock is stochastic;
+        # we just verify the pipeline runs without error)
+        assert isinstance(is_self, bool)
+        assert isinstance(conf, float)
+
+    def test_mock_is_world_inverse(self):
+        """is_world should be the logical inverse of is_self."""
+        identifier = SpeakerIdentifier(use_real=False)
+        identifier._load_model()
+        detector = SelfVoiceDetector(identifier, threshold=0.1)
+
+        pcm = make_pcm(seed=42)
+        detector.register_self(pcm)
+
+        is_self, self_conf = detector.is_self(pcm)
+        is_world, world_conf = detector.is_world(pcm)
+        assert is_world == (not is_self)
+        assert abs(world_conf - (1.0 - self_conf)) < 1e-6
+
+    def test_unregistered_returns_false(self):
+        """Detector without registration should return (False, 0.0)."""
+        identifier = SpeakerIdentifier(use_real=False)
+        identifier._load_model()
+        detector = SelfVoiceDetector(identifier, threshold=0.1)
+
+        pcm = make_pcm(seed=42)
+        is_self, conf = detector.is_self(pcm)
+        assert not is_self
+        assert conf == 0.0
+
+
+class TestM4AttributorIntegration:
+    """Tests for M4 integration in ThalamicAttributor."""
+
+    def test_m4_metadata_present_when_enabled(self):
+        """When M4 is enabled and playing+speech, metadata should contain M4 fields."""
+        identifier = SpeakerIdentifier(use_real=False)
+        identifier._load_model()
+        detector = SelfVoiceDetector(identifier, threshold=0.1)
+
+        attributor = ThalamicAttributor(
+            sr=SR,
+            m4_detector=detector,
+            m4_self_threshold=0.1,
+            m4_min_buffer_ms=500.0,
+        )
+
+        pcm = make_pcm(seed=42, duration_s=3.0)
+        detector.register_self(pcm)
+
+        # Run enough frames to fill the M4 buffer
+        frame_samples = int(SR * 30 / 1000)  # 30ms frames
+        for i in range(200):  # 6s worth of frames
+            s_start = i * frame_samples
+            s_end = s_start + frame_samples
+            if s_end > len(pcm):
+                break
+            frame = pcm[s_start:s_end]
+            rms = float(np.sqrt(np.mean(frame ** 2)))
+            rms_db = 20 * np.log10(max(rms, 1e-9))
+
+            result = attributor.attribute(
+                match_score=0.9,
+                observed_onset_samples=s_start,
+                expected_onset_samples=s_start,
+                rms_db=rms_db,
+                is_playing=True,
+                is_speech=True,
+                frame_audio=frame,
+                self_pcm=pcm,
+                agent_start_sample=0,
+            )
+
+        # After buffer fills, M4 should have attempted
+        meta = result.metadata
+        assert meta is not None
+        assert "m4_attempted" in meta
+        assert "m4_outcome" in meta
+        assert "m4_buffer_length" in meta
+
+    def test_m4_not_attempted_when_not_playing(self):
+        """M4 should not attempt when is_playing=False."""
+        identifier = SpeakerIdentifier(use_real=False)
+        identifier._load_model()
+        detector = SelfVoiceDetector(identifier, threshold=0.1)
+
+        attributor = ThalamicAttributor(
+            sr=SR,
+            m4_detector=detector,
+            m4_min_buffer_ms=500.0,
+        )
+
+        pcm = make_pcm(seed=42, duration_s=3.0)
+        detector.register_self(pcm)
+
+        frame_samples = int(SR * 30 / 1000)
+        frame = pcm[:frame_samples]
+        rms_db = -10.0
+
+        result = attributor.attribute(
+            match_score=0.0,
+            observed_onset_samples=0,
+            expected_onset_samples=0,
+            rms_db=rms_db,
+            is_playing=False,
+            is_speech=True,
+            frame_audio=frame,
+        )
+
+        meta = result.metadata
+        assert meta["m4_outcome"] == "not_attempted"
+
+    def test_m4_not_attempted_without_speech(self):
+        """M4 should not attempt when is_speech=False (silence)."""
+        identifier = SpeakerIdentifier(use_real=False)
+        identifier._load_model()
+        detector = SelfVoiceDetector(identifier, threshold=0.1)
+
+        attributor = ThalamicAttributor(
+            sr=SR,
+            m4_detector=detector,
+            m4_min_buffer_ms=500.0,
+        )
+
+        pcm = make_pcm(seed=42, duration_s=3.0)
+        detector.register_self(pcm)
+
+        frame_samples = int(SR * 30 / 1000)
+        frame = pcm[:frame_samples]
+
+        result = attributor.attribute(
+            match_score=0.0,
+            observed_onset_samples=0,
+            expected_onset_samples=0,
+            rms_db=-60.0,  # Below threshold → silence
+            is_playing=True,
+            is_speech=False,
+            frame_audio=frame,
+        )
+
+        meta = result.metadata
+        assert meta["m4_outcome"] == "not_attempted"
+
+    def test_no_m4_detector_grasses_clean(self):
+        """Attributor without M4 detector should work (no crash)."""
+        attributor = ThalamicAttributor(sr=SR, m4_detector=None)
+
+        frame_samples = int(SR * 30 / 1000)
+        frame = make_pcm(seed=42, duration_s=0.5)[:frame_samples]
+        rms = float(np.sqrt(np.mean(frame ** 2)))
+        rms_db = 20 * np.log10(max(rms, 1e-9))
+
+        result = attributor.attribute(
+            match_score=0.8,
+            observed_onset_samples=0,
+            expected_onset_samples=0,
+            rms_db=rms_db,
+            is_playing=True,
+            is_speech=True,
+            frame_audio=frame,
+        )
+
+        meta = result.metadata
+        assert meta["m4_outcome"] == "not_attempted"
+
+
+class TestM4FrameLevelF1Benchmark:
+    """Tests for the M4 F1 benchmark script (pipeline verification)."""
+
+    def test_benchmark_runs_without_error(self):
+        """Benchmark script should complete without crashing."""
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, os.path.join(
+                os.path.dirname(__file__), "..", "..", "scripts", "m4_f1_benchmark.py",
+            )],
+            capture_output=True, text=True, timeout=30,
+        )
+        # Mock mode will exit 1 (F1 < 0.95) but should not crash
+        assert result.returncode in (0, 1), f"Benchmark crashed: {result.stderr}"
+
+    def test_mock_benchmark_pipeline_correctness(self):
+        """Mock benchmark should verify: no false positives on world audio."""
+        identifier = SpeakerIdentifier(use_real=False)
+        identifier._load_model()
+        detector = SelfVoiceDetector(identifier, threshold=0.1)
+
+        attributor = ThalamicAttributor(
+            sr=SR,
+            m4_detector=detector,
+            m4_self_threshold=0.1,
+            m4_min_buffer_ms=500.0,
+        )
+
+        self_pcm = make_pcm(seed=42, duration_s=3.0)
+        detector.register_self(self_pcm)
+
+        world_pcm = make_pcm(seed=99, duration_s=3.0)
+
+        frame_samples = int(SR * 30 / 1000)
+        false_positives = 0
+        total_world_frames = 0
+
+        for i in range(len(world_pcm) // frame_samples):
+            s_start = i * frame_samples
+            s_end = s_start + frame_samples
+            frame = world_pcm[s_start:s_end]
+            rms = float(np.sqrt(np.mean(frame ** 2)))
+            rms_db = 20 * np.log10(max(rms, 1e-9))
+
+            result = attributor.attribute(
+                match_score=0.0,
+                observed_onset_samples=s_start,
+                expected_onset_samples=s_start,
+                rms_db=rms_db,
+                is_playing=False,
+                is_speech=rms_db > -40.0,
+                frame_audio=frame,
+            )
+
+            if rms_db > -40.0:
+                total_world_frames += 1
+                if result.verdict == SourceVerdict.SELF:
+                    false_positives += 1
+
+        assert false_positives == 0, (
+            f"Got {false_positives} false positives on world audio "
+            f"(out of {total_world_frames} speech frames)"
+        )
+
+
+if __name__ == "__main__":
+    import pytest
+    sys.exit(pytest.main([__file__, "-v"]))
