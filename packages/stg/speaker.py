@@ -6,9 +6,12 @@ self-voice from others. Falls back to mock if SpeechBrain not available.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+from typing import Optional
+
 import numpy as np
 import torch
-from typing import Optional
 
 
 class SpeakerIdentifier:
@@ -30,9 +33,12 @@ class SpeakerIdentifier:
             return
         try:
             from speechbrain.inference.speaker import SpeakerRecognition
+            cache_dir = Path(os.path.expanduser(
+                '~/.cache/speechbrain/spkrec-ecapa-voxceleb'
+            ))
             self._model = SpeakerRecognition.from_hparams(
                 source='speechbrain/spkrec-ecapa-voxceleb',
-                savedir='~/.cache/speechbrain/spkrec-ecapa-voxceleb',
+                savedir=str(cache_dir),
             )
         except Exception as e:
             print(f"WARNING: Could not load ECAPA model: {e}. Using mock embeddings.")

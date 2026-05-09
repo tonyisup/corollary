@@ -125,11 +125,11 @@ Current Mac mini + Fifine observation:
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
 | M2 | Speech-aware self/world separation | ✅ Operational research harness |
 | M3 | Agentive listening and proto-turn-taking | ✅ Live hardware validated |
-| M4 | Self-voice detector / explicit attribution classifier | ✅ Integrated; broader generalization pending |
+| M4 | Self-voice detector / explicit attribution classifier | ✅ Real ECAPA synthetic F1 gate passed; broader generalization pending |
 | M5 | Multi-speaker world model + memory | ⏳ Planned |
-| M6 | Self-model and introspection | ⏳ Planned |
+| M6 | Self-model and introspection | 🔄 In progress — SelfModel + SAG observer wired to offline streaming replay |
 
-Immediate next steps: productize the validated M3 streaming path, add a reproducible hardware-repair validation wrapper, keep deterministic acceptance as the default regression gate, and run broader M4 same-domain negative / cross-room-device validation before claiming promotion-grade self-voice generalization.
+Immediate next steps: productize the validated M3 streaming path, keep deterministic acceptance as the default regression gate, extend SelfModel observation beyond offline replay if live introspection is desired, and run broader M4 same-domain negative / cross-room-device validation before claiming production-grade self-voice generalization.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 

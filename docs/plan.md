@@ -156,7 +156,7 @@ corollary/
 - ECAPA/x-vector embeddings + mel similarity classifier
 - Integrate learned attribution priors from M1 and listening priors from M2/M3 into a more explicit self-voice detector
 - Support frame-level self/world/agentive-other attribution for richer interaction contexts
-- **Current evidence:** self-voice detection is wired into the live harness and streaming runtime with frame-level metadata persisted (`m4_outcome`, `m4_confidence`). Real ECAPA-TDNN is validated in the M4 path, and streaming demos can enable M4 with `--m4-enable`.
+- **Current evidence:** self-voice detection is wired into the live harness and streaming runtime with frame-level metadata persisted (`m4_outcome`, `m4_confidence`). Real ECAPA-TDNN is validated in the M4 path, streaming demos can enable M4 with `--m4-enable`, and the 2026-05-09 `scripts/m4_f1_benchmark.py --real-ecapa` audit run passed the synthetic frame-level gate with aggregate F1=0.971.
 - **Promotion gap:** do not claim a production-grade self-voice classifier until same-domain negatives and cross-room/device validation are stronger.
 - **Acceptance:** Frame-level F1 ≥ 0.95 across rooms/devices
 

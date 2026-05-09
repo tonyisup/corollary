@@ -9,3 +9,9 @@ archive/
 # Ignore ad hoc live streaming hardware captures by default.
 # Promotion artifacts can still be force-added explicitly.
 data/m3_streaming_repair_live_*/
+
+# Ignore ad hoc M4 benchmark outputs; promotion artifacts should be written to a named tracked path.
+data/m4_f1_benchmark_*.json
+
+# Guard against libraries treating '~' as a literal relative cache path.
+~/
