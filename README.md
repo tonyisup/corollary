@@ -171,15 +171,15 @@ See `scripts/calibrate_self_start.py` and `data/m2_calibration_test/` for detail
 
 ### M4 diagnostics and buffer sizing
 
-M4 classification is only invoked when the accumulated self-audio buffer reaches .  In practice this means:
+M4 classification is only invoked when the accumulated self-audio buffer reaches `m4_min_buffer_ms` (default 500ms).  In practice this means:
 
 - With short self-stimuli (<= 350 ms) and buffers >= 200 ms, M4 never triggers because the buffer never fills within the playback window.
 - With longer self-stimuli (>= 700 ms) and buffers <= 300-400 ms, M4 can fire and produce non-zero  counts.  A micro test (buffer = 10 ms) confirms the plumbing works and yields triggers.
 
 **Recommended safe envelope for sweeps**
--  >= 700-1000
--  <= 300-500
--  <= 0.3-0.4
+- `self_duration_ms` >= 700-1000
+- `m4_min_buffer_ms` <= 300-500
+- `m4_self_threshold` <= 0.3-0.4
 
 **Telemetry fields added** (see `scripts/CALIBRATION_GUIDE.md` and `packages/thalamus/attributor.py`)
 - `m4_attempted` (bool) — M4 classification was invoked on this frame
@@ -189,9 +189,8 @@ M4 classification is only invoked when the accumulated self-audio buffer reaches
 
 **M4 invocation requirement:** M4 needs >=700ms stimulus duration to accumulate meaningful audio. With 350ms stimulus, even 60ms buffer fails because playback window is only ~350ms. Testing with 700ms stimulus successfully triggered M4 (30 frames across 2/3 seeds).
 
-The 50-trial Bayesian optimization (Optuna TPE) is tagged .  A CSV dump of trials is available (if generated) under .
+The 50-trial Bayesian optimization (Optuna TPE) is tagged `v2-optuna-tpe-50`.  A CSV dump of trials is available at `data/m2_bayesian_optimization_trials.csv` (if generated).
 
-### 2026-04-20 debrief lessons
 ### 2026-04-20 debrief lessons
 
 - **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` exposes the single-channel speech-aware attribution primitive, and M1c now adds `dual_input_fusion` for geometry-aware two-mic SELF/WORLD/BOTH evidence fusion.
@@ -293,10 +292,10 @@ See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
 **To reproduce:** Run `scripts/calibrate_self_start.py --num-trials 5` on your hardware before using M4.
 
 ### Next Steps
-- ✅ **10-seed repeatability run** in progress (buffer=60ms, threshold=0.10)
-- Test policy fix impact — does SELF→no suppression improve user experience?
-- Integrate M4 into real-time loop (currently benchmark-only)
-- Test with real-world speech (not just synthetic stimuli)
+- ~~10-seed repeatability run~~ — done; see `data/m4_hyperparameter_sweep_corrected/`
+- ~~Test policy fix impact~~ — done; SELF→gain=1.0 fix committed at `0f99698`
+- ~~Integrate M4 into real-time loop~~ — done; M4 is wired into the streaming runtime
+- **Next:** broader same-domain negative validation and cross-room/device testing before promotion-grade M4 claim
 
 ## Next: autoresearch loops
 
