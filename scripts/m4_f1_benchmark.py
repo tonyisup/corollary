@@ -165,6 +165,7 @@ class ReplayCase:
     audio: np.ndarray
     agent_pcm: np.ndarray
     gt_verdicts: list[str]
+    room_filter: Optional[np.ndarray] = None
     sr: int = SR
 
 
@@ -173,6 +174,9 @@ def build_replay_cases(replay_dir: str) -> list[ReplayCase]:
     from pathlib import Path
     replay_path = Path(replay_dir)
     cases = []
+    # Try to load a pre-fitted room filter from the parent directory
+    room_filter_path = replay_path.parent / "m3_broca_room_filter_production.npy"
+    default_filter = np.load(room_filter_path).astype(np.float32) if room_filter_path.exists() else None
     for scenario_dir in sorted(replay_path.iterdir()):
         if not scenario_dir.is_dir():
             continue
@@ -186,13 +190,71 @@ def build_replay_cases(replay_dir: str) -> list[ReplayCase]:
         with open(records_path) as f:
             records = json.load(f)
         gt_verdicts = [r.get("verdict", "SILENCE") for r in records]
-        cases.append(ReplayCase(
+        case = ReplayCase(
             name=f"replay_{scenario_dir.name}",
             audio=audio,
             agent_pcm=agent_pcm,
             gt_verdicts=gt_verdicts,
-        ))
+            room_filter=default_filter,
+        )
+        # Fit a per-capture room filter from the first few SELF frames
+        case.room_filter = _fit_replay_room_filter(case)
+        cases.append(case)
     return cases
+
+
+def _fit_replay_room_filter(case: ReplayCase, n_taps: int = 32, max_frames: int = 10) -> Optional[np.ndarray]:
+    """Fit a simple room FIR filter from captured SELF frames.
+
+    Uses the first `max_frames` frames where gt=SELF to solve for a causal
+    FIR filter that maps the dry agent PCM to the captured audio via
+    least-squares deconvolution.
+    """
+    frame_samples = FRAME_SAMPLES
+    self_frames_x = []  # dry template slices
+    self_frames_y = []  # captured audio slices
+    for fi in range(len(case.gt_verdicts)):
+        if case.gt_verdicts[fi] != "SELF":
+            continue
+        s_start = fi * frame_samples
+        s_end = s_start + frame_samples
+        if s_end > len(case.audio) or s_end > len(case.agent_pcm):
+            continue
+        ref_start = min(s_start, len(case.agent_pcm) - frame_samples)
+        dry = case.agent_pcm[ref_start:ref_start + frame_samples]
+        cap = case.audio[s_start:s_end]
+        self_frames_x.append(dry)
+        self_frames_y.append(cap)
+        if len(self_frames_x) >= max_frames:
+            break
+    if len(self_frames_x) < 3:
+        return None
+    x = np.concatenate(self_frames_x)
+    y = np.concatenate(self_frames_y)
+    fir = _solve_causal_fir(x, y, n_taps)
+    if fir is None:
+        return None
+    return fir.astype(np.float32)
+
+
+def _solve_causal_fir(x: np.ndarray, y: np.ndarray, n_taps: int) -> Optional[np.ndarray]:
+    """Solve for causal FIR filter h such that conv(x, h) ~= y via least squares."""
+    n = len(y)
+    m = n_taps
+    if n < m:
+        return None
+    # Build convolution matrix X where X[i] = x[i:i+m] reversed
+    X = np.zeros((n, m), dtype=np.float64)
+    for i in range(m):
+        X[i:, i] = x[:n - i]
+    # Solve: X @ h = y
+    try:
+        h, _, _, _ = np.linalg.lstsq(X, y.astype(np.float64), rcond=None)
+    except np.linalg.LinAlgError:
+        return None
+    if np.any(np.isnan(h)) or np.any(np.isinf(h)):
+        return None
+    return h
 
 
 def run_replay_case(case: ReplayCase, attributor, verbose=False) -> dict:
@@ -220,6 +282,8 @@ def run_replay_case(case: ReplayCase, attributor, verbose=False) -> dict:
             match_score = 0.0
         else:
             ref_frame = case.agent_pcm[ref_start:ref_end]
+            if case.room_filter is not None:
+                ref_frame = np.convolve(ref_frame, case.room_filter, mode="same").astype(np.float32)
             obs_norm = float(np.linalg.norm(frame_audio))
             ref_norm = float(np.linalg.norm(ref_frame))
             match_score = 0.0 if obs_norm < 1e-9 or ref_norm < 1e-9 else float(

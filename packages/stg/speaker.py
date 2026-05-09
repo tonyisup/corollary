@@ -96,6 +96,10 @@ class SelfVoiceDetector:
         """Register Corollary's own voice template."""
         self.self_embedding = self.identifier.get_embedding(pcm)
 
+    def register_self_embedding(self, embedding: np.ndarray) -> None:
+        """Register Corollary's own voice from a pre-computed embedding."""
+        self.self_embedding = embedding.astype(np.float32)
+
     def is_self(self, pcm: np.ndarray) -> tuple[bool, float]:
         """Check if the given audio is likely Corollary's own voice.
 
