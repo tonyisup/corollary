@@ -252,4 +252,5 @@ data/m3_streaming_repair_live_20260509_072237/
 - `docs/m3_collision_repair_20260508.md` — collision repair policy and repair-audio design
 - `docs/m3_streaming_repair_hardware_validation_20260509.md` — live hardware validation details
 - `docs/m3_gated_playback_validation_20260508.md` — gated playback metric interpretation
+- `docs/m3_streaming_config_schema.md` — streaming config field reference and design invariants
 - `corollary-audio-eval-workflows` skill — detailed pitfalls and calibration procedures

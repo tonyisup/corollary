@@ -1,5 +1,4 @@
 {
-  "run_dir": "data/m3_streaming_repair_live_20260509_072237",
   "pass": true,
   "criteria": {
     "interrupt_once": true,
@@ -63,5 +62,6 @@
       6.498264
     ],
     "tts_after_repair_first_s": 6.498264
-  }
+  },
+  "run_dir": "data/m3_streaming_repair_live_20260509_072237"
 }

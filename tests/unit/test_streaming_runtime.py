@@ -448,3 +448,34 @@ class TestStreamingAcceptanceScript:
         assert verdict["acceptance_criteria"]["synthetic_collision_repair_passed"] is True
         assert verdict["acceptance_criteria"]["synthetic_repair_audio_passed"] is True
         assert verdict["acceptance_criteria"]["offline_audio_replay_smoke_passed"] is True
+
+
+def test_hardware_repair_acceptance_script():
+    """Run the hardware-repair acceptance wrapper on the tracked live artifact."""
+    import subprocess
+    import sys
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/m3_streaming_repair_hardware_acceptance.py",
+            "--run-dir",
+            "data/m3_streaming_repair_live_20260509_072237",
+            "--output",
+            "/tmp/test_hw_repair_verdict.json",
+        ],
+        capture_output=True,
+        text=True,
+        cwd="/Users/juicebox/Projects/corollary",
+    )
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    verdict = json.loads(Path("/tmp/test_hw_repair_verdict.json").read_text())
+    assert verdict["pass"] is True
+    assert verdict["criteria"]["interrupt_once"] is True
+    assert verdict["criteria"]["collision_repair_once"] is True
+    assert verdict["criteria"]["repair_audio_completed"] is True
+    assert verdict["criteria"]["repair_audio_played"] is True
+    assert verdict["criteria"]["repair_not_during_listen"] is True
+    assert verdict["criteria"]["original_tts_held_during_repair"] is True
+    assert verdict["criteria"]["tts_resumed_after_repair"] is True
+    assert verdict["criteria"]["tts_completed"] is True
+    assert verdict["criteria"]["final_idle"] is True
