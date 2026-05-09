@@ -93,6 +93,7 @@ def _run_synthetic_pre_agent_defer() -> dict:
 def _run_synthetic_overlap_interrupt() -> dict:
     runtime = StreamingRuntime(StreamingConfig(
         tts_pcm=_make_test_pcm(0.8),
+        repair_pcm=_make_test_pcm(0.12),
         tts_text="synthetic interrupt",
         gated_playback=True,
         output_request_s=0.0,
@@ -147,12 +148,26 @@ def _run_synthetic_overlap_interrupt() -> dict:
     listen_positions = [l.tts_position_s for l in logs if l.controller_state == "LISTEN"]
     position_held = bool(listen_positions) and (max(listen_positions) - min(listen_positions) <= 0.031)
     repair_texts = [l.collision_repair_text for l in logs if l.collision_repair_text]
+    repair_logs = [l for l in logs if l.output_source == "repair"]
+    tts_after_repair = [l for l in logs if repair_logs and l.output_source == "tts" and l.timestamp_s > repair_logs[-1].timestamp_s]
+    original_position_held_during_repair = (
+        bool(repair_logs)
+        and max(l.tts_position_s for l in repair_logs) == min(l.tts_position_s for l in repair_logs)
+    )
     collision_repair_passed = repair_texts == ["Sorry, go ahead."]
+    repair_audio_passed = (
+        summary["repair_played_frames"] > 0
+        and summary["repair_audio_completed"]
+        and bool(tts_after_repair)
+        and original_position_held_during_repair
+        and all(l.controller_state != "LISTEN" for l in repair_logs)
+    )
     passed = (
         summary["interrupt_events"] >= 1
         and summary["resumed_events"] >= 1
         and summary["collision_repair_events"] == 1
         and collision_repair_passed
+        and repair_audio_passed
         and summary["tts_played_frames"] > 0
         and summary["tts_completed"]
         and position_held
@@ -164,6 +179,10 @@ def _run_synthetic_overlap_interrupt() -> dict:
         "listen_position_held": position_held,
         "collision_repair_passed": collision_repair_passed,
         "collision_repair_texts": repair_texts,
+        "repair_audio_passed": repair_audio_passed,
+        "repair_audio_frames": len(repair_logs),
+        "original_position_held_during_repair": original_position_held_during_repair,
+        "tts_after_repair_frames": len(tts_after_repair),
         "listen_tts_position_range_s": (
             None if not listen_positions else round(max(listen_positions) - min(listen_positions), 6)
         ),
@@ -234,6 +253,7 @@ def main() -> int:
             "synthetic_pre_agent_defer_passed": checks[0]["pass"],
             "synthetic_overlap_interrupt_resume_passed": checks[1]["pass"],
             "synthetic_collision_repair_passed": checks[1].get("collision_repair_passed", False),
+            "synthetic_repair_audio_passed": checks[1].get("repair_audio_passed", False),
             "offline_audio_replay_smoke_passed": checks[2]["pass"],
         },
         "interpretation": (

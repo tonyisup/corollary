@@ -47,6 +47,11 @@ class StreamingConfig:
     tts_pcm: np.ndarray = None
     tts_text: str = ""
 
+    # Optional pre-synthesized repair cue audio. This is queued separately from
+    # the main utterance so it can play once after a collision without consuming
+    # or clearing the deferred original utterance.
+    repair_pcm: Optional[np.ndarray] = None
+
     # Audio devices
     input_device: int = 3
     output_device: int = 5
@@ -97,6 +102,12 @@ class StreamingFrameLog:
     tts_playing: bool
     tts_position_s: float
     tts_total_duration_s: float
+    output_source: str
+    repair_position_s: float
+    repair_total_duration_s: float
+    repair_queued: bool
+    repair_playing: bool
+    repair_completed: bool
     m4_outcome: str
     m4_confidence: Optional[float]
     energy_db: float
@@ -153,6 +164,16 @@ class StreamingRuntime:
         self._tts_position = 0  # current sample position in TTS PCM
         self._tts_chunk_samples = int(config.tts_chunk_ms * self.sr / 1000.0)
         self._tts_total_samples = len(self._tts_pcm) if self._tts_pcm is not None else 0
+
+        # Collision repair audio state. Repair audio is a separate suppressible
+        # source from the original TTS utterance: it can play once after a
+        # collision, while the original utterance remains deferred for resume.
+        self._repair_pcm = config.repair_pcm.astype(np.float32) if config.repair_pcm is not None else None
+        self._repair_position = 0
+        self._repair_total_samples = len(self._repair_pcm) if self._repair_pcm is not None else 0
+        self._repair_pending = False
+        self._repair_started = False
+        self._repair_completed = False
 
         # Pipeline components
         self._vad = SmoothedVAD()
@@ -265,6 +286,12 @@ class StreamingRuntime:
                 deferred_now = True
                 self._was_deferred = True
 
+        # Repair audio has priority over the deferred original utterance. If a
+        # collision repair cue is queued, hold the original text in the
+        # controller until the repair clip has finished.
+        if self._repair_pending or self._repair_started:
+            return deferred_now, resumed_now
+
         if (
             self._output_requested
             and self._controller.has_deferred_output
@@ -279,21 +306,54 @@ class StreamingRuntime:
 
         return deferred_now, resumed_now
 
-    def _gate_tts_chunk(self, can_speak: bool) -> tuple[np.ndarray, bool]:
-        """Return one VAD-sized TTS chunk according to current gate state.
+    def _get_repair_vad_chunk(self) -> np.ndarray:
+        """Return one repair-cue VAD chunk, or zeros when unavailable/done."""
+        if self._repair_pcm is None or self._repair_position >= self._repair_total_samples:
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32)
+        end = min(self._repair_position + VAD_FRAME_SAMPLES, self._repair_total_samples)
+        chunk = self._repair_pcm[self._repair_position:end]
+        self._repair_position = end
+        if len(chunk) < VAD_FRAME_SAMPLES:
+            padded = np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32)
+            padded[:len(chunk)] = chunk
+            chunk = padded
+        if self._repair_position >= self._repair_total_samples:
+            self._repair_pending = False
+            self._repair_started = False
+            self._repair_completed = True
+        return chunk
 
-        Gated silence holds the TTS position; it does not consume audio. This is
-        what makes interrupt/defer/resume meaningful in streaming mode.
+    def _gate_tts_chunk(self, can_speak: bool) -> tuple[np.ndarray, bool, str, bool, bool]:
+        """Return one VAD-sized output chunk according to current gate state.
+
+        Gated silence holds positions; it does not consume repair or original
+        TTS audio. This preserves defer/repair/resume semantics.
+
+        Returns:
+            (chunk, tts_playing, output_source, repair_playing, repair_completed_now)
         """
-        if self._tts_pcm is None or self._tts_position >= self._tts_total_samples:
-            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False
-        if not self._output_requested:
-            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False
+        repair_completed_before = self._repair_completed
         if self.config.gated_playback and not can_speak:
-            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False, "none", False, False
+
+        if self._repair_pending or self._repair_started:
+            if self._repair_pcm is None or self._repair_total_samples == 0:
+                self._repair_pending = False
+                self._repair_started = False
+                self._repair_completed = True
+            else:
+                self._repair_started = True
+                chunk = self._get_repair_vad_chunk()
+                completed_now = self._repair_completed and not repair_completed_before
+                return chunk, True, "repair", True, completed_now
+
+        if self._tts_pcm is None or self._tts_position >= self._tts_total_samples:
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False, "none", False, False
+        if not self._output_requested:
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False, "none", False, False
         if self.config.gated_playback and self._controller.state != AgentState.SPEAK:
-            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False
-        return self._get_tts_vad_chunk(), True
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False, "none", False, False
+        return self._get_tts_vad_chunk(), True, "tts", False, False
 
     def _log_attribution_decision(
         self,
@@ -301,6 +361,9 @@ class StreamingRuntime:
         timestamp_s: float,
         vad_speech: bool,
         tts_playing: bool,
+        output_source: str,
+        repair_playing: bool,
+        repair_completed: bool,
         deferred: bool,
         resumed: bool,
         self_match_score: float,
@@ -318,6 +381,12 @@ class StreamingRuntime:
             tts_playing=tts_playing,
             tts_position_s=round(self._tts_position / self.sr, 6),
             tts_total_duration_s=round(self._tts_total_samples / self.sr, 6) if self._tts_total_samples else 0.0,
+            output_source=output_source,
+            repair_position_s=round(self._repair_position / self.sr, 6),
+            repair_total_duration_s=round(self._repair_total_samples / self.sr, 6) if self._repair_total_samples else 0.0,
+            repair_queued=self._repair_pending,
+            repair_playing=repair_playing,
+            repair_completed=repair_completed,
             m4_outcome=m4_metadata.get("m4_outcome", "not_attempted"),
             m4_confidence=m4_metadata.get("m4_confidence"),
             energy_db=round(attr_result.energy_db, 2),
@@ -345,13 +414,21 @@ class StreamingRuntime:
     ) -> tuple[np.ndarray, StreamingFrameLog]:
         request_deferred, request_resumed = self._maybe_request_or_resume_output(timestamp_s)
         decision = self._controller.process_attribution(attr_result, current_time=timestamp_s)
+        if decision.collision_repair_text and self._repair_pcm is not None:
+            self._repair_pending = True
+            self._repair_started = False
+            self._repair_completed = False
+            self._repair_position = 0
         resume_deferred, resume_resumed = self._maybe_request_or_resume_output(timestamp_s)
-        tts_chunk, tts_playing = self._gate_tts_chunk(decision.can_speak)
+        tts_chunk, tts_playing, output_source, repair_playing, repair_completed = self._gate_tts_chunk(decision.can_speak)
         log = self._log_attribution_decision(
             attr_result=attr_result,
             timestamp_s=timestamp_s,
             vad_speech=vad_speech,
             tts_playing=tts_playing,
+            output_source=output_source,
+            repair_playing=repair_playing,
+            repair_completed=repair_completed,
             deferred=request_deferred or resume_deferred,
             resumed=request_resumed or resume_resumed,
             self_match_score=self_match_score,
@@ -368,6 +445,10 @@ class StreamingRuntime:
         self._logs = []
         self._frame_index = 0
         self._tts_position = 0
+        self._repair_position = 0
+        self._repair_pending = False
+        self._repair_started = False
+        self._repair_completed = False
         self._output_requested = False
         self._was_deferred = False
         self._was_resumed = False
@@ -566,6 +647,14 @@ class StreamingRuntime:
         self._start_time = time.time()
         self._logs = []
         self._frame_index = 0
+        self._tts_position = 0
+        self._repair_position = 0
+        self._repair_pending = False
+        self._repair_started = False
+        self._repair_completed = False
+        self._output_requested = False
+        self._was_deferred = False
+        self._was_resumed = False
 
         # Resample if needed
         if input_sr != self.sr:
@@ -621,6 +710,12 @@ class StreamingRuntime:
                     "tts_playing": log.tts_playing,
                     "tts_position_s": log.tts_position_s,
                     "tts_total_duration_s": log.tts_total_duration_s,
+                    "output_source": log.output_source,
+                    "repair_position_s": log.repair_position_s,
+                    "repair_total_duration_s": log.repair_total_duration_s,
+                    "repair_queued": log.repair_queued,
+                    "repair_playing": log.repair_playing,
+                    "repair_completed": log.repair_completed,
                     "m4_outcome": log.m4_outcome,
                     "m4_confidence": log.m4_confidence,
                     "energy_db": log.energy_db,
@@ -646,6 +741,7 @@ class StreamingRuntime:
         total = len(self._logs)
         speech_frames = sum(1 for l in self._logs if l.vad_speech)
         tts_played_frames = sum(1 for l in self._logs if l.tts_playing)
+        repair_played_frames = sum(1 for l in self._logs if l.repair_playing)
         deferred_frames = sum(1 for l in self._logs if l.deferred)
         resumed_frames = sum(1 for l in self._logs if l.resumed)
         interrupt_frames = sum(1 for l in self._logs if l.should_interrupt)
@@ -661,11 +757,14 @@ class StreamingRuntime:
             "total_frames": total,
             "speech_frames": speech_frames,
             "tts_played_frames": tts_played_frames,
+            "repair_played_frames": repair_played_frames,
             "tts_total_duration_s": self._tts_total_samples / self.sr if self._tts_total_samples else 0,
+            "repair_total_duration_s": self._repair_total_samples / self.sr if self._repair_total_samples else 0,
             "deferred_events": deferred_frames,
             "resumed_events": resumed_frames,
             "interrupt_events": interrupt_frames,
             "collision_repair_events": collision_repair_events,
+            "repair_audio_completed": self._repair_completed,
             "verdict_counts": verdict_counts,
             "controller_state_counts": state_counts,
             "final_controller_state": self._logs[-1].controller_state if self._logs else None,

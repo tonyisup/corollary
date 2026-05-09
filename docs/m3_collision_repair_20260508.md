@@ -1,15 +1,15 @@
-# M3 Collision Repair — Policy Output
+# M3 Collision Repair — Policy and Repair Audio
 
 > Date: 2026-05-08
-> Status: Implemented as deterministic controller policy/logging; synthesized repair audio remains a future integration.
+> Status: Implemented as deterministic controller policy output plus optional suppressible repair-audio playback in the streaming runtime.
 
 ## Problem
 
 M3 already interrupts and later resumes when a human overlaps with agent speech. The missing social layer was an explicit repair act: when the agent realizes it collided with the human, it should surface a cue such as "Sorry, go ahead." instead of only muting itself.
 
-## Implemented behavior
+## Controller behavior
 
-`AgentiveController` now includes `collision_repair_text` in `ControllerDecision`.
+`AgentiveController` includes `collision_repair_text` in `ControllerDecision`.
 
 On a real SPEAK → LISTEN interruption:
 
@@ -27,17 +27,45 @@ Sorry, go ahead.
 
 The text is configurable via `AgentiveController(collision_repair_text=...)` and can be disabled with `collision_repair_text=None`.
 
-## Streaming integration
+## Streaming repair-audio behavior
 
-`StreamingConfig` exposes the same `collision_repair_text` field.
+`StreamingConfig` exposes:
 
-`StreamingRuntime` carries the repair cue into each `StreamingFrameLog` and JSONL output as:
+- `collision_repair_text`: the repair cue text/policy payload
+- `repair_pcm`: optional pre-synthesized repair audio for that cue
+
+`StreamingRuntime` treats repair audio as a separate output source from the original utterance:
+
+1. Collision interrupt queues repair audio if `repair_pcm` is present.
+2. While the controller is in `LISTEN`, the repair queue is suppressed and does not advance.
+3. When the controller leaves `LISTEN`, repair audio plays before the deferred original utterance resumes.
+4. The original TTS position is held during repair playback.
+5. Once repair audio completes, the deferred original utterance resumes through the normal controller path.
+
+This separation is intentional. Calling `request_output()` for the repair cue would clear/overwrite the deferred original utterance; the runtime-level repair queue avoids that corruption.
+
+## Streaming log schema
+
+`StreamingFrameLog` and JSONL now include:
 
 ```json
-{"collision_repair_text": "Sorry, go ahead."}
+{
+  "collision_repair_text": "Sorry, go ahead.",
+  "output_source": "repair",
+  "repair_position_s": 0.03,
+  "repair_total_duration_s": 0.12,
+  "repair_queued": false,
+  "repair_playing": true,
+  "repair_completed": false
+}
 ```
 
-`get_summary()` reports `collision_repair_events`.
+`get_summary()` reports:
+
+- `collision_repair_events`
+- `repair_played_frames`
+- `repair_total_duration_s`
+- `repair_audio_completed`
 
 ## Acceptance criteria
 
@@ -47,7 +75,10 @@ The deterministic streaming acceptance gate now requires the synthetic overlap-i
 - exactly one collision repair event
 - repair text equals `Sorry, go ahead.`
 - TTS position is held during LISTEN
-- interrupted TTS resumes and completes
+- repair audio plays after LISTEN, not during LISTEN
+- original TTS position remains held while repair audio plays
+- original TTS resumes after repair audio completes
+- interrupted TTS eventually completes
 
 Command:
 
@@ -55,35 +86,39 @@ Command:
 .venv/bin/python scripts/m3_streaming_acceptance.py --run-dir data/m3_gated_playback_test
 ```
 
-## Evidence
-
-Targeted tests:
-
-```bash
-.venv/bin/python -m pytest tests/unit/test_pfc_m2_turn_bridge.py tests/unit/test_streaming_runtime.py -q
-```
-
-Result after implementation: 25 passed.
-
-The acceptance script now includes:
+The acceptance script includes:
 
 ```json
-"synthetic_collision_repair_passed": true
+{
+  "synthetic_collision_repair_passed": true,
+  "synthetic_repair_audio_passed": true
+}
+```
+
+## Evidence
+
+Targeted streaming tests:
+
+```bash
+.venv/bin/python -m pytest tests/unit/test_streaming_runtime.py -q
+```
+
+Result after repair-audio implementation: 17 passed.
+
+Targeted acceptance:
+
+```text
+pass=True
+synthetic_repair_audio_passed=True
+repair_audio_frames=4
+original_position_held_during_repair=True
+tts_after_repair_frames=21
 ```
 
 ## Important boundary
 
-This commit does not synthesize or play a separate repair audio clip. It exposes the repair act as structured controller policy output. That is the right boundary for this pass because:
+This implementation supports a pre-synthesized repair clip (`repair_pcm`) and proves suppressible playback/queue semantics. It does not yet call Broca/edge-tts live from inside the streaming callback. That is the right boundary because live synthesis in the callback path would add blocking/network risk and should be handled by an upstream orchestration layer that pre-renders repair assets.
 
-- the repo already has validated TTS gating/resume semantics
-- repair phrasing should be orchestration-visible before being attached to a second audio path
-- adding synthesized repair audio would require a priority/queue policy so the repair cue does not consume or corrupt the deferred original utterance
+## Next optional integration step
 
-## Next integration step
-
-Add a repair-audio path that can optionally render the repair cue immediately after interruption, then return to LISTEN without advancing the deferred original utterance. Acceptance should verify:
-
-1. repair clip is emitted once per collision
-2. original utterance remains deferred while repair plays
-3. repair playback is itself suppressible if the human is still speaking
-4. original utterance resumes only after human cooldown
+Wire `scripts/m3_streaming_demo.py` or the upstream orchestrator to pre-synthesize `collision_repair_text` via Broca and pass the resulting PCM into `StreamingConfig.repair_pcm` for live hardware validation.

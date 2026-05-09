@@ -139,6 +139,10 @@ class TestStreamingRuntimeOffline:
             assert "tts_playing" in entry
             assert "tts_position_s" in entry
             assert "m4_outcome" in entry
+            assert "output_source" in entry
+            assert "repair_position_s" in entry
+            assert "repair_playing" in entry
+            assert "repair_completed" in entry
             assert "collision_repair_text" in entry
         finally:
             log_path.unlink(missing_ok=True)
@@ -246,6 +250,7 @@ class TestStreamingRuntimeSyntheticValidation:
         pcm = _make_test_pcm(duration_s=0.8)
         config = StreamingConfig(
             tts_pcm=pcm,
+            repair_pcm=_make_test_pcm(duration_s=0.12),
             tts_text="test interrupt",
             gated_playback=True,
             output_request_s=0.0,
@@ -303,12 +308,21 @@ class TestStreamingRuntimeSyntheticValidation:
 
         assert summary["interrupt_events"] >= 1
         assert summary["collision_repair_events"] == 1
+        assert summary["repair_played_frames"] > 0
+        assert summary["repair_audio_completed"] is True
         assert summary["resumed_events"] >= 1
         assert summary["tts_played_frames"] > 0
         assert summary["tts_completed"] is True
         interrupted = [l for l in logs if l.should_interrupt]
         assert interrupted
         assert [l.collision_repair_text for l in interrupted] == ["Sorry, go ahead."]
+        repair_logs = [l for l in logs if l.output_source == "repair"]
+        assert repair_logs
+        tts_after_repair = [l for l in logs if l.output_source == "tts" and l.timestamp_s > repair_logs[-1].timestamp_s]
+        assert tts_after_repair
+        assert all(l.controller_state != "LISTEN" for l in repair_logs)
+        original_positions_during_repair = [l.tts_position_s for l in repair_logs]
+        assert max(original_positions_during_repair) == min(original_positions_during_repair)
         held_positions = [l.tts_position_s for l in logs if l.controller_state == "LISTEN"]
         assert held_positions
         assert max(held_positions) - min(held_positions) <= 0.031
@@ -393,6 +407,12 @@ class TestStreamingRuntimeFrameLog:
         assert isinstance(log.can_speak, bool)
         assert isinstance(log.tts_playing, bool)
         assert isinstance(log.tts_position_s, float)
+        assert log.output_source in {"none", "tts", "repair"}
+        assert isinstance(log.repair_position_s, float)
+        assert isinstance(log.repair_total_duration_s, float)
+        assert isinstance(log.repair_queued, bool)
+        assert isinstance(log.repair_playing, bool)
+        assert isinstance(log.repair_completed, bool)
         assert isinstance(log.m4_outcome, str)
         assert isinstance(log.energy_db, float)
         assert isinstance(log.self_match_score, float)
@@ -426,4 +446,5 @@ class TestStreamingAcceptanceScript:
         assert verdict["acceptance_criteria"]["synthetic_pre_agent_defer_passed"] is True
         assert verdict["acceptance_criteria"]["synthetic_overlap_interrupt_resume_passed"] is True
         assert verdict["acceptance_criteria"]["synthetic_collision_repair_passed"] is True
+        assert verdict["acceptance_criteria"]["synthetic_repair_audio_passed"] is True
         assert verdict["acceptance_criteria"]["offline_audio_replay_smoke_passed"] is True
