@@ -9,7 +9,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pfc.streaming_runtime import StreamingRuntime, StreamingConfig
+from thalamus.attributor import SourceVerdict
+from pfc.streaming_runtime import StreamingRuntime, StreamingConfig, SyntheticAttributionFrame
 
 
 def _make_test_pcm(duration_s: float = 2.0, sr: int = 16000) -> np.ndarray:
@@ -197,6 +198,120 @@ class TestStreamingRuntimeOffline:
         assert summary["total_frames"] > 0
 
 
+class TestStreamingRuntimeSyntheticValidation:
+    def test_synthetic_pre_agent_defer_holds_and_resumes_tts(self):
+        """If human is already speaking at request time, TTS should hold then resume."""
+        pcm = _make_test_pcm(duration_s=0.6)
+        config = StreamingConfig(
+            tts_pcm=pcm,
+            tts_text="test defer",
+            gated_playback=True,
+            output_request_s=0.30,
+            listen_threshold_ms=90.0,
+            cooldown_ms=120.0,
+            sr=16000,
+        )
+        runtime = StreamingRuntime(config)
+        frames = []
+        for i in range(30):
+            t = i * 0.03
+            if t < 0.60:
+                frames.append(SyntheticAttributionFrame(
+                    time_s=t,
+                    verdict=SourceVerdict.WORLD,
+                    is_speech=True,
+                    energy_db=-25.0,
+                ))
+            else:
+                frames.append(SyntheticAttributionFrame(
+                    time_s=t,
+                    verdict=SourceVerdict.SILENCE,
+                    is_speech=False,
+                    energy_db=-70.0,
+                ))
+
+        logs = runtime.run_synthetic(frames)
+        summary = runtime.get_summary()
+
+        assert summary["deferred_events"] >= 1
+        assert summary["resumed_events"] >= 1
+        assert summary["tts_played_frames"] > 0
+        first_defer = next(l for l in logs if l.deferred)
+        assert first_defer.tts_position_s == 0.0
+        assert any(l.resumed and l.tts_playing for l in logs)
+
+    def test_synthetic_overlap_interrupt_holds_position_and_resumes(self):
+        """Sustained BOTH-overlap should interrupt, hold TTS position, then resume."""
+        pcm = _make_test_pcm(duration_s=0.8)
+        config = StreamingConfig(
+            tts_pcm=pcm,
+            tts_text="test interrupt",
+            gated_playback=True,
+            output_request_s=0.0,
+            both_external_min_frames=2,
+            both_external_energy_ratio=1.2,
+            cooldown_ms=120.0,
+            sr=16000,
+        )
+        runtime = StreamingRuntime(config)
+        frames = []
+        for i in range(70):
+            t = i * 0.03
+            if i < 5:
+                frames.append(SyntheticAttributionFrame(
+                    time_s=t,
+                    verdict=SourceVerdict.SELF,
+                    is_speech=False,
+                    is_in_motor_window=True,
+                    self_match_score=0.9,
+                    self_match_score_per_frame=1.0,
+                    causal_score=1.0,
+                ))
+            elif i < 10:
+                frames.append(SyntheticAttributionFrame(
+                    time_s=t,
+                    verdict=SourceVerdict.BOTH,
+                    is_speech=True,
+                    is_in_motor_window=True,
+                    self_match_score=0.9,
+                    self_match_score_per_frame=2.0,
+                    causal_score=1.0,
+                ))
+            elif i < 16:
+                frames.append(SyntheticAttributionFrame(
+                    time_s=t,
+                    verdict=SourceVerdict.SILENCE,
+                    is_speech=False,
+                    is_in_motor_window=False,
+                    self_match_score_per_frame=0.0,
+                    energy_db=-70.0,
+                ))
+            else:
+                frames.append(SyntheticAttributionFrame(
+                    time_s=t,
+                    verdict=SourceVerdict.SELF,
+                    is_speech=False,
+                    is_in_motor_window=True,
+                    self_match_score=0.9,
+                    self_match_score_per_frame=1.0,
+                    causal_score=1.0,
+                ))
+
+        logs = runtime.run_synthetic(frames)
+        summary = runtime.get_summary()
+
+        assert summary["interrupt_events"] >= 1
+        assert summary["resumed_events"] >= 1
+        assert summary["tts_played_frames"] > 0
+        assert summary["tts_completed"] is True
+        interrupted = [l for l in logs if l.should_interrupt]
+        assert interrupted
+        held_positions = [l.tts_position_s for l in logs if l.controller_state == "LISTEN"]
+        assert held_positions
+        assert max(held_positions) - min(held_positions) <= 0.031
+        assert any(l.resumed and l.tts_playing for l in logs)
+
+
 class TestStreamingRuntimeGating:
     def test_gated_vs_ungated(self):
         """Gated mode should produce different behavior than ungated."""
@@ -281,3 +396,29 @@ class TestStreamingRuntimeFrameLog:
         assert isinstance(log.is_in_motor_window, bool)
         assert isinstance(log.deferred, bool)
         assert isinstance(log.resumed, bool)
+
+
+class TestStreamingAcceptanceScript:
+    def test_streaming_acceptance_script_passes(self):
+        """The deterministic streaming acceptance script should pass on tracked artifacts."""
+        import json
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "scripts/m3_streaming_acceptance.py",
+                "--run-dir",
+                "data/m3_gated_playback_test",
+            ],
+            capture_output=True,
+            text=True,
+            cwd="/Users/juicebox/Projects/corollary",
+        )
+        assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+        verdict = json.loads(result.stdout)
+        assert verdict["pass"] is True
+        assert verdict["acceptance_criteria"]["synthetic_pre_agent_defer_passed"] is True
+        assert verdict["acceptance_criteria"]["synthetic_overlap_interrupt_resume_passed"] is True
+        assert verdict["acceptance_criteria"]["offline_audio_replay_smoke_passed"] is True

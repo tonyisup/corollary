@@ -34,7 +34,7 @@ from typing import Optional
 
 import numpy as np
 
-from thalamus.attributor import ThalamicAttributor, SourceVerdict
+from thalamus.attributor import AttributionResult, ThalamicAttributor, SourceVerdict
 from cochlea.vad import SmoothedVAD, VAD_FRAME_SAMPLES
 from pfc.agentive_controller import AgentiveController, AgentState
 
@@ -53,7 +53,8 @@ class StreamingConfig:
     sr: int = 16000
 
     # TTS chunking
-    tts_chunk_ms: float = 200.0  # emit TTS in this-size chunks
+    tts_chunk_ms: float = 200.0  # callback/request buffer size; internally split into VAD frames
+    output_request_s: float = 0.0  # when the agent first intends to speak
 
     # Feature flags
     m4_enable: bool = False
@@ -103,6 +104,29 @@ class StreamingFrameLog:
     is_in_motor_window: bool
     deferred: bool
     resumed: bool
+
+
+@dataclass(frozen=True)
+class SyntheticAttributionFrame:
+    """Synthetic attribution frame for deterministic streaming validation.
+
+    This bypasses room acoustics and VAD so tests can validate online
+    controller/TTS-gate behavior directly. It complements offline audio replay,
+    which validates callback plumbing but can under-exercise SPEAK detection when
+    room-colored captures are compared against dry TTS templates.
+    """
+
+    time_s: float
+    verdict: SourceVerdict
+    is_speech: bool
+    energy_db: float = -30.0
+    self_match_score: float = 0.0
+    self_match_score_per_frame: Optional[float] = None
+    is_in_motor_window: bool = False
+    causal_score: float = 0.0
+    confidence: float = 0.9
+    m4_outcome: str = "not_attempted"
+    m4_confidence: Optional[float] = None
 
 
 class StreamingRuntime:
@@ -176,6 +200,7 @@ class StreamingRuntime:
         self._start_time = 0.0
 
         # Deferred output tracking
+        self._output_requested = False
         self._was_deferred = False
         self._was_resumed = False
 
@@ -196,9 +221,176 @@ class StreamingRuntime:
 
         return chunk
 
+    def _compute_normalized_xcorr(self, observed: np.ndarray, reference: np.ndarray) -> float:
+        """Small local normalized cross-correlation helper.
+
+        Kept local so streaming runtime does not import validation scripts with
+        heavyweight/side-effect dependencies.
+        """
+        n = min(len(observed), len(reference))
+        if n <= 0:
+            return 0.0
+        obs = observed[:n].astype(np.float32)
+        ref = reference[:n].astype(np.float32)
+        obs_norm = float(np.linalg.norm(obs))
+        ref_norm = float(np.linalg.norm(ref))
+        if obs_norm < 1e-9 or ref_norm < 1e-9:
+            return 0.0
+        return float(np.dot(obs, ref) / (obs_norm * ref_norm))
+
     def _advance_tts_position(self, n_samples: int) -> None:
-        """Advance TTS position by n_samples (for unplayed muted chunks)."""
+        """Advance TTS position by n_samples (for explicitly dropped chunks)."""
         self._tts_position = min(self._tts_position + n_samples, self._tts_total_samples)
+
+    def _maybe_request_or_resume_output(self, timestamp_s: float) -> tuple[bool, bool]:
+        """Issue initial output request or resume queued output if allowed.
+
+        Returns:
+            (deferred_now, resumed_now)
+        """
+        deferred_now = False
+        resumed_now = False
+
+        if (
+            not self._output_requested
+            and self._tts_pcm is not None
+            and timestamp_s >= self.config.output_request_s
+        ):
+            accepted = self._controller.request_output(self._tts_text, current_time=timestamp_s)
+            self._output_requested = True
+            if not accepted:
+                deferred_now = True
+                self._was_deferred = True
+
+        if (
+            self._output_requested
+            and self._controller.has_deferred_output
+            and self._controller.state != AgentState.LISTEN
+        ):
+            text = self._controller.pop_deferred_output()
+            if text is not None:
+                self._controller.request_output(text, current_time=timestamp_s)
+                resumed_now = True
+                self._was_resumed = True
+                self._was_deferred = False
+
+        return deferred_now, resumed_now
+
+    def _gate_tts_chunk(self, can_speak: bool) -> tuple[np.ndarray, bool]:
+        """Return one VAD-sized TTS chunk according to current gate state.
+
+        Gated silence holds the TTS position; it does not consume audio. This is
+        what makes interrupt/defer/resume meaningful in streaming mode.
+        """
+        if self._tts_pcm is None or self._tts_position >= self._tts_total_samples:
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False
+        if not self._output_requested:
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False
+        if self.config.gated_playback and not can_speak:
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False
+        if self.config.gated_playback and self._controller.state != AgentState.SPEAK:
+            return np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32), False
+        return self._get_tts_vad_chunk(), True
+
+    def _log_attribution_decision(
+        self,
+        attr_result: AttributionResult,
+        timestamp_s: float,
+        vad_speech: bool,
+        tts_playing: bool,
+        deferred: bool,
+        resumed: bool,
+        self_match_score: float,
+    ) -> StreamingFrameLog:
+        m4_metadata = attr_result.metadata or {}
+        log = StreamingFrameLog(
+            frame_index=self._frame_index,
+            timestamp_s=round(timestamp_s, 6),
+            vad_speech=vad_speech,
+            verdict=attr_result.verdict.name,
+            controller_state=self._controller.state.name,
+            can_speak=self._controller.state != AgentState.LISTEN,
+            should_interrupt=False,
+            tts_playing=tts_playing,
+            tts_position_s=round(self._tts_position / self.sr, 6),
+            tts_total_duration_s=round(self._tts_total_samples / self.sr, 6) if self._tts_total_samples else 0.0,
+            m4_outcome=m4_metadata.get("m4_outcome", "not_attempted"),
+            m4_confidence=m4_metadata.get("m4_confidence"),
+            energy_db=round(attr_result.energy_db, 2),
+            self_match_score=round(self_match_score, 4),
+            self_match_score_per_frame=(
+                round(attr_result.self_match_score_per_frame, 4)
+                if attr_result.self_match_score_per_frame is not None
+                else None
+            ),
+            is_in_motor_window=attr_result.is_in_motor_window,
+            deferred=deferred,
+            resumed=resumed,
+        )
+        self._logs.append(log)
+        self._frame_index += 1
+        return log
+
+    def _apply_controller_and_gate(
+        self,
+        attr_result: AttributionResult,
+        timestamp_s: float,
+        vad_speech: bool,
+        self_match_score: float = 0.0,
+    ) -> tuple[np.ndarray, StreamingFrameLog]:
+        request_deferred, request_resumed = self._maybe_request_or_resume_output(timestamp_s)
+        decision = self._controller.process_attribution(attr_result, current_time=timestamp_s)
+        resume_deferred, resume_resumed = self._maybe_request_or_resume_output(timestamp_s)
+        tts_chunk, tts_playing = self._gate_tts_chunk(decision.can_speak)
+        log = self._log_attribution_decision(
+            attr_result=attr_result,
+            timestamp_s=timestamp_s,
+            vad_speech=vad_speech,
+            tts_playing=tts_playing,
+            deferred=request_deferred or resume_deferred,
+            resumed=request_resumed or resume_resumed,
+            self_match_score=self_match_score,
+        )
+        log.should_interrupt = decision.should_interrupt
+        log.can_speak = decision.can_speak
+        log.controller_state = self._controller.state.name
+        return tts_chunk, log
+
+    def run_synthetic(self, frames: list[SyntheticAttributionFrame]) -> list[StreamingFrameLog]:
+        """Run deterministic streaming validation from synthetic attribution frames."""
+        self._start_time = time.time()
+        self._logs = []
+        self._frame_index = 0
+        self._tts_position = 0
+        self._output_requested = False
+        self._was_deferred = False
+        self._was_resumed = False
+
+        for frame in frames:
+            attr = AttributionResult(
+                verdict=frame.verdict,
+                confidence=frame.confidence,
+                self_match_score=frame.self_match_score,
+                is_in_motor_window=frame.is_in_motor_window,
+                causal_score=frame.causal_score,
+                energy_db=frame.energy_db,
+                is_speech=frame.is_speech,
+                metadata={
+                    "m4_outcome": frame.m4_outcome,
+                    "m4_confidence": frame.m4_confidence,
+                },
+                self_match_score_per_frame=frame.self_match_score_per_frame,
+            )
+            self._apply_controller_and_gate(
+                attr,
+                timestamp_s=frame.time_s,
+                vad_speech=frame.is_speech,
+                self_match_score=frame.self_match_score,
+            )
+
+        if self.config.save_path:
+            self._save_logs(self.config.save_path)
+        return self._logs
 
     def _process_frame(self, mic_frame: np.ndarray) -> tuple[np.ndarray, StreamingFrameLog]:
         """Process one audio frame through the full pipeline.
@@ -249,14 +441,13 @@ class StreamingRuntime:
 
             self_match_score = 0.0
             if self._tts_pcm is not None and is_playing:
-                from scripts.m2_speech_preservation_harness import normalized_xcorr
                 ref_start = self._tts_position
                 ref_end = min(ref_start + VAD_FRAME_SAMPLES, self._tts_total_samples)
                 if ref_end > ref_start:
                     ref_chunk = self._tts_pcm[ref_start:ref_end]
                     mic_chunk = vad_frame[:len(ref_chunk)]
                     if len(mic_chunk) == len(ref_chunk):
-                        self_match_score, _ = normalized_xcorr(mic_chunk, ref_chunk)
+                        self_match_score = self._compute_normalized_xcorr(mic_chunk, ref_chunk)
 
             # 5. Attribution
             attr_result = self._attributor.attribute(
@@ -271,66 +462,16 @@ class StreamingRuntime:
                 agent_start_sample=agent_start_sample,
             )
 
-            # 6. Controller
+            # 6. Controller + real-time TTS gate
             sub_timestamp = timestamp + (vad_i * VAD_FRAME_SAMPLES / self.sr)
-            decision = self._controller.process_attribution(
-                attr_result, current_time=sub_timestamp
+            tts_chunk, last_log = self._apply_controller_and_gate(
+                attr_result,
+                timestamp_s=sub_timestamp,
+                vad_speech=vad_speech,
+                self_match_score=self_match_score,
             )
-
-            # 7. TTS gating — emit one VAD-sized chunk
-            tts_chunk = np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32)
-            tts_playing = False
-            deferred = False
-            resumed = False
-
-            if self._tts_position < self._tts_total_samples:
-                if self.config.gated_playback:
-                    if decision.can_speak:
-                        if self._was_deferred and self._controller.state == AgentState.SPEAK:
-                            resumed = True
-                            self._was_resumed = True
-                            self._was_deferred = False
-                        tts_chunk = self._get_tts_vad_chunk()
-                        tts_playing = True
-                    else:
-                        self._advance_tts_position(VAD_FRAME_SAMPLES)
-                        if not self._was_deferred:
-                            deferred = True
-                            self._was_deferred = True
-                else:
-                    tts_chunk = self._get_tts_vad_chunk()
-                    tts_playing = True
 
             output[vad_start:vad_end] = tts_chunk
-
-            # 8. Build log entry
-            m4_metadata = attr_result.metadata or {}
-            last_log = StreamingFrameLog(
-                frame_index=self._frame_index,
-                timestamp_s=round(sub_timestamp, 6),
-                vad_speech=vad_speech,
-                verdict=attr_result.verdict.name,
-                controller_state=decision.state.name,
-                can_speak=decision.can_speak,
-                should_interrupt=decision.should_interrupt,
-                tts_playing=tts_playing,
-                tts_position_s=round(tts_position_s, 6),
-                tts_total_duration_s=round(self._tts_total_samples / self.sr, 6) if self._tts_total_samples else 0.0,
-                m4_outcome=m4_metadata.get("m4_outcome", "not_attempted"),
-                m4_confidence=m4_metadata.get("m4_confidence"),
-                energy_db=round(rms_db, 2),
-                self_match_score=round(self_match_score, 4),
-                self_match_score_per_frame=(
-                    round(attr_result.self_match_score_per_frame, 4)
-                    if attr_result.self_match_score_per_frame is not None
-                    else None
-                ),
-                is_in_motor_window=attr_result.is_in_motor_window,
-                deferred=deferred,
-                resumed=resumed,
-            )
-            self._logs.append(last_log)
-            self._frame_index += 1
 
         return output, last_log  # type: ignore[return-value]
 
@@ -365,14 +506,14 @@ class StreamingRuntime:
                 print(f"  Audio status: {status}")
 
             mic_frame = indata[:, 0].copy()
-            chunk, log = self._process_frame(mic_frame)
+            chunk, _ = self._process_frame(mic_frame)
 
             # Output TTS (or zeros)
             outdata[:, 0] = chunk[:frames]
             if frames < len(chunk):
                 outdata[frames:, 0] = 0
 
-            self._logs.append(log)
+            # Logs are already appended inside _process_frame.
             all_output.append(chunk[:frames].copy())
             all_input.append(mic_frame.copy())
 
