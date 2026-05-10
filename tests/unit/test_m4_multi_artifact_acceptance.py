@@ -31,7 +31,10 @@ def _mock_verdict(artifact_dir, passed=True, f1=0.966):
             "negative_fp_passed": True,
             "negative_eligible_fp_passed": True,
         },
-        "cases": [],
+        "cases": [
+            {"name": "replay_self_only", "fp": 0, "eligible_fp": 0},
+            {"name": "replay_same_domain_negative_playback_window", "fp": 0, "eligible_fp": 0},
+        ],
     }
 
 
@@ -105,7 +108,12 @@ def test_multi_artifact_includes_synthetic_when_requested(tmp_path):
             include_synthetic=True,
         )
 
-    assert verdict["artifact_count"] == 2
+    # Real artifact count is 1; synthetic is in synthetic_results
+    assert verdict["artifact_count"] == 1
+    assert len(verdict["synthetic_results"]) == 1
+    assert verdict["synthetic_results"][0]["simulated"] is True
+    assert verdict["synthetic_results"][0]["gate_exempt"] is True
+    # Overall pass depends only on real artifacts
     assert verdict["pass"] is True
 
 

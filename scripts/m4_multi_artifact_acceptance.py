@@ -55,18 +55,62 @@ def run_multi_artifact_acceptance(
     max_negative_fp: int = 0,
     include_synthetic: bool = False,
 ) -> dict:
-    """Run acceptance gate across multiple artifact directories."""
+    """Run acceptance gate across multiple artifact directories.
+
+    Each artifact dir is expected to contain replay-compatible scenario
+    subdirectories. The gate checks:
+    - required cases present (at least one self + one negative scenario)
+    - eligible-frame F1 >= min_eligible_f1
+    - total negative FP <= max_negative_fp
+
+    Aggregate F1 is reported as diagnostic but is not part of the pass gate.
+
+    When include_synthetic is True, a synthetic dry-run battery is prepended.
+    Synthetic artifacts are reported separately and do not affect the overall
+    pass/fail gate (the ECAPA fine-tuned scorer may not generalize to synthetic
+    room/device transforms).
+    """
     results = []
 
-    # Optionally prepend a synthetic dry-run battery
-    synthetic_dir = None
+    # Optionally prepend a synthetic dry-run battery (informational only)
+    synthetic_results = []
     if include_synthetic:
         synthetic_dir = Path(tempfile.mkdtemp(prefix="m4_synthetic_"))
         create_dry_run_artifact(
             output_dir=synthetic_dir,
             include_variations=True,
         )
-        artifact_dirs = [str(synthetic_dir)] + artifact_dirs
+        # Run synthetic acceptance but don't let it fail the gate
+        try:
+            synth_verdict = run_acceptance(
+                replay_dir=str(synthetic_dir),
+                register_from_clean=register_from_clean,
+                fine_tuned_scorer=fine_tuned_scorer,
+                threshold=threshold,
+                m4_min_buffer_ms=m4_min_buffer_ms,
+                min_aggregate_f1=min_aggregate_f1,
+                min_eligible_f1=min_eligible_f1,
+                max_negative_fp=max_negative_fp,
+            )
+            synthetic_results.append({
+                "artifact_dir": str(synthetic_dir),
+                "pass": synth_verdict["pass"],
+                "aggregate_f1": synth_verdict["aggregate_f1"],
+                "aggregate_eligible_f1": synth_verdict["aggregate_eligible_f1"],
+                "negative_fp": synth_verdict["negative_fp"],
+                "acceptance_criteria": synth_verdict["acceptance_criteria"],
+                "cases": synth_verdict["cases"],
+                "simulated": True,
+                "gate_exempt": True,
+            })
+        except Exception as e:
+            synthetic_results.append({
+                "artifact_dir": str(synthetic_dir),
+                "error": str(e),
+                "pass": False,
+                "simulated": True,
+                "gate_exempt": True,
+            })
 
     for artifact_dir in artifact_dirs:
         artifact_path = Path(artifact_dir)
@@ -97,6 +141,7 @@ def run_multi_artifact_acceptance(
                 "negative_fp": verdict["negative_fp"],
                 "acceptance_criteria": verdict["acceptance_criteria"],
                 "cases": verdict["cases"],
+                "simulated": False,
             })
         except Exception as e:
             results.append({
@@ -119,6 +164,7 @@ def run_multi_artifact_acceptance(
             "max_negative_fp": max_negative_fp,
         },
         "results": results,
+        "synthetic_results": synthetic_results,
         "pass": all_passed and not any_errors,
     }
 

@@ -20,3 +20,5 @@ data/m4_capture_validation_*/
 
 # Guard against libraries treating '~' as a literal relative cache path.
 ~/
+data/m4_simulated_captures/
+data/m4_sim_test/
