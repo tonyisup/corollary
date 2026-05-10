@@ -45,7 +45,7 @@ Current high-level state:
 
 - **M2:** operational speech-aware self/world separation harness with calibrated room-local scoring and benchmark artifacts; still research-grade rather than productized.
 - **M3:** artifact-backed and live-hardware-validated streaming turn-taking runtime. Deterministic acceptance passes synthetic defer/interrupt/repair behavior, repair-audio queue semantics, and saved-artifact replay smoke. Live repair-audio validation passed at `data/m3_streaming_repair_live_20260509_072237`.
-- **M4:** no longer only an interface stub. Self-voice detection is wired into the live harness/streaming path with frame-level metadata. Broader cross-room/device promotion still needs stronger same-domain negative validation.
+- **M4:** no longer only an interface stub. Self-voice detection is wired into the live harness/streaming path with frame-level metadata. The expanded synthetic ECAPA gate passes after restoring strict dry-template evidence for playback-window negatives; captured-audio replay with the fine-tuned scorer passes eligible-frame F1 but still needs strict aggregate acceptance semantics before being called fully promotion-grade.
 
 The immediate focus is productization and operational hardening: stable runbooks, reproducible hardware validation wrappers, cleaner runtime interfaces, and broader M4 generalization checks.
 
@@ -177,7 +177,7 @@ M4 classification is only invoked when the accumulated self-audio buffer reaches
 - With longer self-stimuli (>= 700 ms) and buffers <= 300-400 ms, M4 can fire and produce non-zero trigger counts.  A micro test (buffer = 10 ms) confirms the plumbing works and yields triggers.
 
 **Recommended safe envelope for sweeps**
-- `self_duration_ms` >= 700-1000
+- `self_duration_ms` >= 700-1000 ms
 - `m4_min_buffer_ms` <= 300 for the expanded F1 gate; 500ms is conservative but creates warmup false negatives
 - `m4_self_threshold` <= 0.3-0.4
 
@@ -195,8 +195,8 @@ The 50-trial Bayesian optimization (Optuna TPE) is tagged `v2-optuna-tpe-50`.  A
 
 - **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` exposes the single-channel speech-aware attribution primitive, and M1c now adds `dual_input_fusion` for geometry-aware two-mic SELF/WORLD/BOTH evidence fusion.
 - **Speech-aware separation is in prototype stage:** VAD integration plus a preservation harness now exist, but the repo should treat M2 as an early hardware experiment until results are rerun and measured more rigorously.
-- **Social contingency has a first controller sketch:** The `AgentiveController` introduces deferred-output logic and timing hysteresis, but the implementation is still an early prototype rather than a fully validated turn-taking system.
-- **Self-voice detection has moved beyond an interface stub:** M4 now wires ECAPA-backed self-voice detection into attribution and streaming metadata, and the expanded synthetic ECAPA gate passes. The remaining open problem is promotion on real room-colored captured audio, not basic wiring.
+- **Social contingency is validated as the current M3 milestone:** The `AgentiveController` plus streaming runtime now pass deterministic defer/interrupt/repair/resume gates and saved-artifact smoke checks; remaining M3 work is productization and hardware-wrapper hygiene, not basic behavior proof.
+- **Self-voice detection has moved beyond an interface stub:** M4 now wires ECAPA-backed self-voice detection into attribution and streaming metadata. The expanded synthetic ECAPA gate passes after the strict dry-template gate fix; the remaining open problem is captured-audio promotion semantics, where fine-tuned replay passes eligible-frame F1 but strict aggregate F1 still fails because warmup frames are counted.
 
 ### Developmental framing
 
@@ -295,7 +295,7 @@ See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
 - ~~10-seed repeatability run~~ — done; see `data/m4_hyperparameter_sweep_corrected/`
 - ~~Test policy fix impact~~ — done; SELF→gain=1.0 fix committed at `0f99698`
 - ~~Integrate M4 into real-time loop~~ — done; M4 is wired into the streaming runtime
-- **Current expanded gate:** `scripts/m4_f1_benchmark.py --real-ecapa` now defaults to `m4_min_buffer_ms=300`, passes aggregate F1=0.9512, eligible-frame F1=1.0, and keeps same-domain playback-window false positives at 0. Next: validate the same behavior on real cross-room/device captures.
+- **Current expanded gate:** `scripts/m4_f1_benchmark.py --real-ecapa` now defaults to `m4_min_buffer_ms=300`, passes aggregate F1=0.9512, eligible-frame F1=1.0, and keeps same-domain playback-window false positives at 0 after requiring strict template evidence on the dry/synthetic path. Captured replay with `--fine-tuned-scorer data/m4_finetuned_ecapa_aug/fine_tuned/scorer.pt` passes eligible-frame F1=0.9961 on held-out data, but strict aggregate F1=0.6766 still fails because warmup frames are included. Next: decide whether eligible-frame F1 is the official promotion criterion or reduce warmup latency enough for aggregate F1 to pass.
 
 ## Next: autoresearch loops
 

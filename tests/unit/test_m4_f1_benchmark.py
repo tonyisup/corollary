@@ -279,6 +279,37 @@ class TestM4AttributorIntegration:
         assert result.metadata["m4_outcome"] == "accepted"
         assert result.verdict != SourceVerdict.SELF
 
+    def test_m4_dry_path_requires_strict_template_match_for_playback_window_negative(self):
+        """Dry/synthetic playback-window negatives need strong template evidence, not merely positive correlation."""
+        attributor = ThalamicAttributor(
+            sr=SR,
+            m4_detector=AlwaysSelfDetector(),
+            m4_self_threshold=0.1,
+            m4_min_buffer_ms=30.0,
+            m4_template_match_threshold=0.20,
+            # No room_filter: same-domain playback-window negatives are synthetic/dry gate cases.
+        )
+        frame_samples = int(SR * 30 / 1000)
+        frame = make_pcm(seed=123, duration_s=0.5)[:frame_samples]
+        rms = float(np.sqrt(np.mean(frame ** 2)))
+        rms_db = 20 * np.log10(max(rms, 1e-9))
+
+        result = attributor.attribute(
+            match_score=0.05,  # Weak positive correlation, below the strict template gate.
+            observed_onset_samples=0,
+            expected_onset_samples=0,
+            rms_db=rms_db,
+            is_playing=True,
+            is_speech=True,
+            frame_audio=frame,
+            self_pcm=make_pcm(seed=42, duration_s=0.5),
+            agent_start_sample=0,
+        )
+
+        assert result.metadata["m4_outcome"] == "accepted"
+        assert result.metadata["m4_template_match_passed"] is False
+        assert result.verdict != SourceVerdict.SELF
+
 
 class TestM4FrameLevelF1Benchmark:
     """Tests for the M4 F1 benchmark script (pipeline verification)."""

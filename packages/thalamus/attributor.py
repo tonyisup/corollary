@@ -358,9 +358,12 @@ class ThalamicAttributor:
             _combined = 0.8 * m4_conf + 0.2 * max(match_score, 0.0)
             m4_embedding_gate = _combined >= self.m4_self_threshold
         else:
-            # Without room_filter (dry/synthetic audio), require positive
-            # template correlation.
-            m4_embedding_gate = m4_conf >= self.m4_self_threshold and match_score >= 0.0
+            # Dry/synthetic benchmark cases have reliable template alignment.
+            # In that mode, weak positive correlation is not enough evidence for
+            # SELF because same-domain playback-window negatives can still be
+            # accepted by ECAPA. Require the strict template gate instead; the
+            # embedding-primary path is only for room-colored captured audio.
+            m4_embedding_gate = False
         m4_evidence = m4_strict_gate or m4_embedding_gate
         m4_metadata['m4_template_match_passed'] = is_m4_template_match
         m4_metadata['room_local_passed'] = is_room_local_match
