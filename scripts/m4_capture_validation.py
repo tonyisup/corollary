@@ -113,8 +113,12 @@ def _tone(seed: int, duration_s: float, sr: int = SR) -> np.ndarray:
     return pcm.astype(np.float32)
 
 
-def _make_plans(self_pcm: np.ndarray, negative_pcm: np.ndarray) -> list[ScenarioPlan]:
-    return [
+def _make_plans(
+    self_pcm: np.ndarray,
+    negative_pcm: np.ndarray,
+    negative_pcm_2: np.ndarray | None = None,
+) -> list[ScenarioPlan]:
+    plans = [
         ScenarioPlan(
             name="self_only",
             agent_pcm=self_pcm,
@@ -130,6 +134,15 @@ def _make_plans(self_pcm: np.ndarray, negative_pcm: np.ndarray) -> list[Scenario
             description="Captured non-self voice in agent playback opportunity; WORLD during speech window.",
         ),
     ]
+    if negative_pcm_2 is not None:
+        plans.append(ScenarioPlan(
+            name="same_domain_negative_playback_window_2",
+            agent_pcm=self_pcm,
+            acoustic_pcm=negative_pcm_2,
+            speech_verdict="WORLD",
+            description="Captured second non-self voice in agent playback opportunity; WORLD during speech window.",
+        ))
+    return plans
 
 
 def _scenario_metadata(
@@ -162,14 +175,54 @@ def create_dry_run_artifact(
     output_dir: str | Path,
     sr: int = SR,
     duration_s: float = 1.2,
+    include_variations: bool = True,
 ) -> dict:
-    """Create a synthetic replay-compatible artifact without hardware."""
+    """Create a synthetic replay-compatible artifact without hardware.
+
+    When include_variations is True, adds room-colored and device-EQ'd
+    self/negative variants to exercise the same embedding-primary and
+    template-match paths that real captured audio exercises.
+    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     self_pcm = _tone(seed=42, duration_s=duration_s, sr=sr)
     negative_pcm = _tone(seed=99, duration_s=duration_s, sr=sr)
+    negative_pcm_2 = _tone(seed=77, duration_s=duration_s, sr=sr) if include_variations else None
+
+    all_plans = _make_plans(self_pcm, negative_pcm, negative_pcm_2)
+
+    if include_variations:
+        # Room-colored self: simple 1-tap "room" delay
+        room_self = np.concatenate([np.zeros(2, dtype=np.float32), self_pcm[:-2] * 0.9])
+        all_plans.append(ScenarioPlan(
+            name="self_room_colored",
+            agent_pcm=self_pcm,
+            acoustic_pcm=room_self.astype(np.float32),
+            speech_verdict="SELF",
+            description="Synthetic room-colored self voice; SELF during speech window.",
+        ))
+        # Device-EQ'd self: simple high-pass emphasis
+        eq_self = self_pcm.copy()
+        eq_self[1:] -= 0.3 * self_pcm[:-1]
+        all_plans.append(ScenarioPlan(
+            name="self_device_eq",
+            agent_pcm=self_pcm,
+            acoustic_pcm=eq_self.astype(np.float32),
+            speech_verdict="SELF",
+            description="Synthetic device-EQ'd self voice; SELF during speech window.",
+        ))
+        # Room-colored negative
+        room_neg = np.concatenate([np.zeros(2, dtype=np.float32), negative_pcm[:-2] * 0.9])
+        all_plans.append(ScenarioPlan(
+            name="same_domain_negative_playback_window_room",
+            agent_pcm=self_pcm,
+            acoustic_pcm=room_neg.astype(np.float32),
+            speech_verdict="WORLD",
+            description="Synthetic room-colored non-self voice; WORLD during speech window.",
+        ))
+
     scenarios = []
-    for plan in _make_plans(self_pcm, negative_pcm):
+    for plan in all_plans:
         captured = plan.acoustic_pcm.astype(np.float32)
         records = build_frame_records(
             total_samples=len(captured),
@@ -195,7 +248,13 @@ def create_dry_run_artifact(
             metadata=metadata,
         )
         scenarios.append(metadata)
-    summary = {"output_dir": str(output_path), "scenario_count": len(scenarios), "scenarios": scenarios, "dry_run": True}
+    summary = {
+        "output_dir": str(output_path),
+        "scenario_count": len(scenarios),
+        "scenarios": scenarios,
+        "dry_run": True,
+        "include_variations": include_variations,
+    }
     (output_path / "summary.json").write_text(json.dumps(summary, indent=2))
     return summary
 

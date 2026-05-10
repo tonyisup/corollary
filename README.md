@@ -295,7 +295,7 @@ See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
 - ~~10-seed repeatability run~~ — done; see `data/m4_hyperparameter_sweep_corrected/`
 - ~~Test policy fix impact~~ — done; SELF→gain=1.0 fix committed at `0f99698`
 - ~~Integrate M4 into real-time loop~~ — done; M4 is wired into the streaming runtime
-- **Current expanded gate:** `scripts/m4_f1_benchmark.py --real-ecapa` now defaults to `m4_min_buffer_ms=300`, passes synthetic aggregate F1=0.9512, eligible-frame F1=1.0, and keeps same-domain playback-window false positives at 0 after requiring strict template evidence on the dry/synthetic path. Captured replay acceptance is now first-class via `scripts/m4_capture_replay_acceptance.py`; with the fine-tuned scorer at threshold 0.70 it passes held-out speech-active aggregate F1=0.966, eligible F1=1.0, and same-domain negative false positives=0. Next: add more held-out captures and keep this acceptance script as the promotion gate.
+- **Current expanded gate:** `scripts/m4_f1_benchmark.py --real-ecapa` now defaults to `m4_min_buffer_ms=300`, passes synthetic aggregate F1=0.9512, eligible-frame F1=1.0, and keeps same-domain playback-window false positives at 0 after requiring strict template evidence on the dry/synthetic path. Captured replay acceptance is now first-class via `scripts/m4_capture_replay_acceptance.py` (single-artifact) and `scripts/m4_multi_artifact_acceptance.py` (multi-artifact); with the fine-tuned scorer at threshold 0.70 the held-out set passes speech-active aggregate F1=0.966, eligible F1=1.0, and same-domain negative false positives=0. Next: add more held-out captures across room/device conditions and keep the multi-artifact acceptance script as the promotion gate.
 
 ## Next: autoresearch loops
 

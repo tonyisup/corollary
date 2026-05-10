@@ -66,6 +66,7 @@ def test_dry_run_creates_two_minimal_scenarios(tmp_path):
         output_dir=tmp_path,
         sr=16000,
         duration_s=0.6,
+        include_variations=False,
     )
 
     assert summary["scenario_count"] == 2
@@ -75,3 +76,20 @@ def test_dry_run_creates_two_minimal_scenarios(tmp_path):
         (tmp_path / "same_domain_negative_playback_window" / "frame_records.json").read_text()
     )
     assert {r["verdict"] for r in negative_records} == {"WORLD"}
+
+
+def test_dry_run_with_variations_adds_room_and_device_scenarios(tmp_path):
+    summary = m4_capture_validation.create_dry_run_artifact(
+        output_dir=tmp_path,
+        sr=16000,
+        duration_s=0.6,
+        include_variations=True,
+    )
+
+    assert summary["scenario_count"] == 6
+    assert summary["include_variations"] is True
+    scenario_names = {s["scenario"] for s in summary["scenarios"]}
+    assert "self_room_colored" in scenario_names
+    assert "self_device_eq" in scenario_names
+    assert "same_domain_negative_playback_window_room" in scenario_names
+    assert "same_domain_negative_playback_window_2" in scenario_names
