@@ -335,6 +335,12 @@ def run_replay_case(case: ReplayCase, attributor, verbose=False) -> dict:
         )
         predicted_self = (result.verdict == SourceVerdict.SELF)
         gt = case.gt_verdicts[fi] if fi < len(case.gt_verdicts) else "SILENCE"
+        # Replay artifacts may label an entire scheduled speech window SELF/WORLD,
+        # including low-energy pauses and trailing room noise. Classifier F1 should
+        # score speaker identity only on speech-active frames, matching synthetic
+        # run_case() semantics and avoiding silent-window false positives/negatives.
+        if not is_speech:
+            continue
         actual_self = (gt == "SELF")
         if predicted_self and actual_self:
             tp += 1

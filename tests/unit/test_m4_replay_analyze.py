@@ -77,4 +77,32 @@ def test_summary_counts_match_frames(tmp_path):
     )
     summary = result["results"][0]["summary"]
     assert summary["total_frames"] == 20
-    assert summary["self_gt_frames"] + summary["neg_gt_frames"] <= summary["total_frames"]
+    assert summary["self_gt_frames"] + summary["neg_gt_frames"] <= summary["scored_frames"]
+
+
+def test_summary_scores_only_speech_active_frames():
+    frames = [
+        {
+            "gt_verdict": "SELF",
+            "final_verdict": "SELF",
+            "m4_outcome": "accepted",
+            "m4_attempted": True,
+            "m4_template_match_passed": True,
+            "energy_db": -25.0,
+        },
+        {
+            "gt_verdict": "SELF",
+            "final_verdict": "SILENCE",
+            "m4_outcome": "not_attempted",
+            "m4_attempted": False,
+            "m4_template_match_passed": False,
+            "energy_db": -60.0,
+        },
+    ]
+
+    summary = m4_replay_analyze._summarize_case("self_with_pause", frames)
+
+    assert summary["total_frames"] == 2
+    assert summary["scored_frames"] == 1
+    assert summary["tp"] == 1
+    assert summary["fn"] == 0

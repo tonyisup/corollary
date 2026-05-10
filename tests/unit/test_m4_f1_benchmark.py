@@ -407,6 +407,33 @@ class TestM4FrameLevelF1Benchmark:
         assert result["fn"] == 0
         assert result["tn"] > 0
 
+    def test_replay_case_masks_self_ground_truth_to_speech_frames(self):
+        """Replay artifacts can label the whole speech window SELF; silent frames should not count as FNs."""
+        class SpeechOnlyAttributor:
+            def attribute(self, **kwargs):
+                verdict = SourceVerdict.SELF if kwargs["is_speech"] else SourceVerdict.SILENCE
+                return type("Result", (), {
+                    "verdict": verdict,
+                    "metadata": {
+                        "m4_attempted": kwargs["is_speech"],
+                        "m4_outcome": "accepted" if kwargs["is_speech"] else "not_attempted",
+                    },
+                })()
+
+        speech = make_pcm(seed=42, duration_s=0.03)
+        silence = np.zeros_like(speech)
+        case = m4_f1_benchmark.ReplayCase(
+            name="replay_self_with_silent_labeled_frame",
+            audio=np.concatenate([speech, silence]),
+            agent_pcm=np.concatenate([speech, silence]),
+            gt_verdicts=["SELF", "SELF"],
+        )
+
+        result = m4_f1_benchmark.run_replay_case(case, SpeechOnlyAttributor())
+
+        assert result["tp"] == 1
+        assert result["fn"] == 0
+
     def test_run_case_reports_warmup_adjusted_eligible_metrics(self):
         """Benchmark should distinguish classifier F1 after M4 is eligible from buffer warmup FNs."""
         class NeverSelfDetector:

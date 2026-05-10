@@ -215,18 +215,23 @@ def _analyze_case(case: dict, attributor: ThalamicAttributor) -> list[dict]:
 
 
 def _summarize_case(name: str, frames: list[dict]) -> dict:
-    tp = sum(1 for f in frames if f["final_verdict"] == "SELF" and f["gt_verdict"] == "SELF")
-    fp = sum(1 for f in frames if f["final_verdict"] == "SELF" and f["gt_verdict"] != "SELF")
-    fn = sum(1 for f in frames if f["final_verdict"] != "SELF" and f["gt_verdict"] == "SELF")
-    tn = sum(1 for f in frames if f["final_verdict"] != "SELF" and f["gt_verdict"] != "SELF")
+    # Match m4_f1_benchmark replay semantics: score speaker identity only on
+    # speech-active frames. Captured artifacts may label a whole scheduled
+    # speech window SELF/WORLD, including pauses and trailing room noise.
+    scored_frames = [f for f in frames if f.get("energy_db", -120.0) > -40.0]
+    tp = sum(1 for f in scored_frames if f["final_verdict"] == "SELF" and f["gt_verdict"] == "SELF")
+    fp = sum(1 for f in scored_frames if f["final_verdict"] == "SELF" and f["gt_verdict"] != "SELF")
+    fn = sum(1 for f in scored_frames if f["final_verdict"] != "SELF" and f["gt_verdict"] == "SELF")
+    tn = sum(1 for f in scored_frames if f["final_verdict"] != "SELF" and f["gt_verdict"] != "SELF")
     m4_accepted = sum(1 for f in frames if f["m4_outcome"] == "accepted")
     m4_attempted = sum(1 for f in frames if f["m4_attempted"])
     template_passed = sum(1 for f in frames if f["m4_template_match_passed"])
-    self_frames = [f for f in frames if f["gt_verdict"] == "SELF"]
-    neg_frames = [f for f in frames if f["gt_verdict"] == "WORLD"]
+    self_frames = [f for f in scored_frames if f["gt_verdict"] == "SELF"]
+    neg_frames = [f for f in scored_frames if f["gt_verdict"] == "WORLD"]
     return {
         "name": name,
         "total_frames": len(frames),
+        "scored_frames": len(scored_frames),
         "tp": tp, "fp": fp, "fn": fn, "tn": tn,
         "precision": round(tp / max(tp + fp, 1), 4),
         "recall": round(tp / max(tp + fn, 1), 4),
