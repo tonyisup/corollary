@@ -127,9 +127,9 @@ Current Mac mini + Fifine observation:
 | M3 | Agentive listening and proto-turn-taking | ✅ Live hardware validated |
 | M4 | Self-voice detector / explicit attribution classifier | ✅ Expanded synthetic gate passes at 300ms buffer; real cross-room/device pending |
 | M5 | Multi-speaker world model + memory | ⏳ Planned |
-| M6 | Self-model and introspection | 🔄 In progress — SelfModel + SAG observer wired to offline streaming replay |
+| M6 | Self-model and introspection | 🔄 In progress — SelfModel + SAG observer wired to streaming runtime run, offline replay, and synthetic acceptance paths |
 
-Immediate next steps: productize the validated M3 streaming path, keep deterministic acceptance as the default regression gate, extend SelfModel observation beyond offline replay if live introspection is desired, and harden M4 against same-domain playback-window negatives before claiming production-grade self-voice generalization.
+Immediate next steps: productize the validated M3 streaming path, keep deterministic acceptance as the default regression gate, collect clean M4 self-captures for room-colored registration, and decide whether M5 Hippocampus should become the next implementation milestone or remain explicitly deferred.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 
@@ -174,7 +174,7 @@ See `scripts/calibrate_self_start.py` and `data/m2_calibration_test/` for detail
 M4 classification is only invoked when the accumulated self-audio buffer reaches `m4_min_buffer_ms`. The current expanded benchmark default is 300ms; 500ms remains useful as a conservative diagnostic because it cleanly separates eligible-frame classifier quality from warmup latency. In practice this means:
 
 - With short self-stimuli (<= 350 ms) and buffers >= 200 ms, M4 never triggers because the buffer never fills within the playback window.
-- With longer self-stimuli (>= 700 ms) and buffers <= 300-400 ms, M4 can fire and produce non-zero  counts.  A micro test (buffer = 10 ms) confirms the plumbing works and yields triggers.
+- With longer self-stimuli (>= 700 ms) and buffers <= 300-400 ms, M4 can fire and produce non-zero trigger counts.  A micro test (buffer = 10 ms) confirms the plumbing works and yields triggers.
 
 **Recommended safe envelope for sweeps**
 - `self_duration_ms` >= 700-1000
@@ -196,7 +196,7 @@ The 50-trial Bayesian optimization (Optuna TPE) is tagged `v2-optuna-tpe-50`.  A
 - **Motor-aware attribution exists as runnable code:** The `ThalamicAttributor` exposes the single-channel speech-aware attribution primitive, and M1c now adds `dual_input_fusion` for geometry-aware two-mic SELF/WORLD/BOTH evidence fusion.
 - **Speech-aware separation is in prototype stage:** VAD integration plus a preservation harness now exist, but the repo should treat M2 as an early hardware experiment until results are rerun and measured more rigorously.
 - **Social contingency has a first controller sketch:** The `AgentiveController` introduces deferred-output logic and timing hysteresis, but the implementation is still an early prototype rather than a fully validated turn-taking system.
-- **Self-voice detection is currently an interface stub:** The M4 path defines the embedding and registration interfaces, but does not yet ship a production-grade speaker model.
+- **Self-voice detection has moved beyond an interface stub:** M4 now wires ECAPA-backed self-voice detection into attribution and streaming metadata, and the expanded synthetic ECAPA gate passes. The remaining open problem is promotion on real room-colored captured audio, not basic wiring.
 
 ### Developmental framing
 
@@ -225,7 +225,7 @@ Private — personal research project
 
 M4 self-voice detection is now functional with policy integration complete.
 
-**Optimal Configuration (FP-Free Winner):**
+**Historical hardware sweep winner (pre-expanded gate):**
 - `--self-duration-ms 700` (350ms too short for M4 buffer)
 - `--causal-tolerance-ms 100` (default 25ms too low; typical onset error ~90ms)
 - `--m4-min-buffer-ms 60` (**winner**: best Self% performance)
@@ -233,7 +233,7 @@ M4 self-voice detection is now functional with policy integration complete.
 - `--m4-registration-threshold 0.05` (capped, real decision in ThalamicAttributor)
 - `--onset-latency-ms 60` (5-trial calibration: mean=60.29ms, std=30.83ms)
 
-**Performance (Buffer=60ms, Threshold=0.10, 10-seed repeatability run in progress):**
+**Historical performance (Buffer=60ms, Threshold=0.10):**
 - M4 triggered frames: ~21 per seed
 - Self% (accepted as SELF): **79.1%** (threshold=0.05, but 25% false positives)
 - FP-free rate: **0% false positives** at threshold=0.10+
@@ -280,7 +280,7 @@ See `data/m4_hyperparameter_sweep_corrected/README.md` for detailed results.
 | 90ms | 0.05 | 20.3 | 14.9 | 73.1% | -0.006 |
 | 200ms | 0.05 | 17.0 | 12.0 | 70.6% | 0.000 |
 
-**Key Finding:** Smaller buffer (60ms) outperforms larger buffers. Threshold 0.05 is optimal for true positives; 0.10+ eliminates false positives.
+**Historical key finding:** Smaller buffers improved this early hardware-calibrated sweep. The current expanded F1 benchmark uses a 300ms default because it better balances warmup latency with same-domain playback-window negative coverage.
 
 ### Hardware-Calibrated Note
 

@@ -1,7 +1,9 @@
 # M4 Integration — Implementation Notes & Findings
 
 > Date: 2026-05-01
-> Status: Partially complete — architecture wired, blocking issue identified
+> Status: Historical implementation note. M4 is now integrated into the streaming runtime and expanded synthetic ECAPA gate; current open issue is promotion on real room-colored captured audio.
+
+> Current pointer: see `docs/status_20260509.md`, `scripts/m4_f1_benchmark.py`, and `scripts/m4_clean_capture.py` for the active validation path. The dry-template room-coloring issue described below remains conceptually relevant, but the implementation has since gained replay mode, per-capture clean registration, and explicit evidence that the existing gated-playback artifact is unsuitable for M4 promotion.
 
 ## What Was Done
 

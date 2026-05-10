@@ -535,6 +535,7 @@ class BenchmarkResult:
     aggregate_eligible_f1: float = 0.0
     passed: bool = False
     eligible_passed: bool = False
+    mock_pipeline_passed: bool = False
     duration_s: float = 0.0
 
 
@@ -633,6 +634,25 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer
     )
     result.passed = result.aggregate_f1 >= 0.95
     result.eligible_passed = result.aggregate_eligible_f1 >= 0.95
+    if not real_ecapa and not replay_dir:
+        # Mock embeddings are deterministic plumbing probes, not a speaker
+        # discrimination model. Treat mock CLI success as "the benchmark battery
+        # exercised the expected M4 opportunities" rather than F1 >= 0.95.
+        non_playing_cases = {"world_only", "same_domain_negative"}
+        result.mock_pipeline_passed = (
+            bool(result.cases)
+            and all(c["total_frames"] > 0 for c in result.cases)
+            and all(
+                c["m4_attempted_frames"] == 0
+                for c in result.cases
+                if c["name"] in non_playing_cases
+            )
+            and all(
+                c["m4_attempted_frames"] > 0
+                for c in result.cases
+                if c["name"] not in non_playing_cases
+            )
+        )
     result.duration_s = round(time.time() - t0, 3)
     return result
 
@@ -696,6 +716,8 @@ def main():
             "total_warmup_fn": result.total_warmup_fn,
             "passed": result.passed,
             "eligible_passed": result.eligible_passed,
+            "mock_pipeline_passed": result.mock_pipeline_passed,
+            "acceptance_mode": "mock_pipeline" if not args.real_ecapa and not args.replay_dir else "f1",
             "acceptance_criterion": "F1 >= 0.95",
         }, f, indent=2)
 
@@ -710,17 +732,24 @@ def main():
     print(f"  Warmup false negatives: {result.total_warmup_fn}")
     mode_note = "pipeline verify (mock)" if not args.real_ecapa else "discrimination (real ECAPA)"
     print(f"\n  Mode: {mode_note}")
-    print(f"  Acceptance: F1 >= 0.95  |  {'PASS' if result.passed else 'FAIL'} "
-          f"(F1={result.aggregate_f1:.4f})")
-    print(f"  Eligible-frame acceptance: F1 >= 0.95  |  "
-          f"{'PASS' if result.eligible_passed else 'FAIL'} "
-          f"(eligible F1={result.aggregate_eligible_f1:.4f})")
-    if not args.real_ecapa:
+    if not args.real_ecapa and not args.replay_dir:
+        print(f"  Pipeline acceptance: expected M4 opportunities exercised  |  "
+              f"{'PASS' if result.mock_pipeline_passed else 'FAIL'}")
+        print(f"  F1 acceptance: not applicable in mock mode "
+              f"(observed F1={result.aggregate_f1:.4f})")
         print(f"  Note: mock mode tests pipeline correctness, not discrimination quality.")
         print(f"  Run with --real-ecapa for promotion-grade F1 measurement.")
+    else:
+        print(f"  Acceptance: F1 >= 0.95  |  {'PASS' if result.passed else 'FAIL'} "
+              f"(F1={result.aggregate_f1:.4f})")
+        print(f"  Eligible-frame acceptance: F1 >= 0.95  |  "
+              f"{'PASS' if result.eligible_passed else 'FAIL'} "
+              f"(eligible F1={result.aggregate_eligible_f1:.4f})")
     print(f"  Duration: {result.duration_s}s  |  Output: {args.output}")
     print()
 
+    if not args.real_ecapa and not args.replay_dir:
+        sys.exit(0 if result.mock_pipeline_passed else 1)
     sys.exit(0 if result.passed else 1)
 
 

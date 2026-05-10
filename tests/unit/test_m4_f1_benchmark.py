@@ -283,7 +283,7 @@ class TestM4FrameLevelF1Benchmark:
     """Tests for the M4 F1 benchmark script (pipeline verification)."""
 
     def test_benchmark_runs_without_error(self):
-        """Benchmark script should complete without crashing."""
+        """Mock benchmark script should pass its pipeline acceptance check."""
         import subprocess
         result = subprocess.run(
             [sys.executable, os.path.join(
@@ -291,8 +291,9 @@ class TestM4FrameLevelF1Benchmark:
             )],
             capture_output=True, text=True, timeout=30,
         )
-        # Mock mode will exit 1 (F1 < 0.95) but should not crash
-        assert result.returncode in (0, 1), f"Benchmark crashed: {result.stderr}"
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "Pipeline acceptance" in result.stdout
+        assert "F1 acceptance: not applicable in mock mode" in result.stdout
 
     def test_mock_benchmark_pipeline_correctness(self):
         """Mock benchmark should verify: no false positives on world audio."""
@@ -416,6 +417,13 @@ class TestM4FrameLevelF1Benchmark:
         result = m4_f1_benchmark.run_benchmark(threshold=0.10, real_ecapa=False)
 
         assert result.m4_min_buffer_ms == 300.0
+
+    def test_mock_benchmark_reports_pipeline_pass_separately_from_f1(self):
+        """Mock mode should not use discrimination F1 as its CLI success criterion."""
+        result = m4_f1_benchmark.run_benchmark(threshold=0.10, real_ecapa=False)
+
+        assert result.mock_pipeline_passed
+        assert result.aggregate_f1 < 0.95
 
 
 if __name__ == "__main__":
