@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+from hippocampus import Hippocampus
 from sag.graph import SemanticAbstractionGraph
 from sag.models import (
     ChangeKind,
@@ -109,10 +110,11 @@ class SelfModel:
     - Interaction history (interrupts, defers, resumes)
     """
 
-    def __init__(self) -> None:
+    def __init__(self, hippocampus: Hippocampus | None = None) -> None:
         self.sag: Optional[SemanticAbstractionGraph] = None
         self.patterns = SpeechPatternStats()
         self._initialized = False
+        self.hippocampus = hippocampus
 
     def initialize_sag(self, sag: SemanticAbstractionGraph) -> None:
         """Create the self-concept subtree in the SAG.
@@ -239,6 +241,31 @@ class SelfModel:
             energy_vals, session_frames,
         )
 
+        # Encode episodic trace to hippocampus
+        if self.hippocampus is not None:
+            m4_outcomes = {}
+            for frame in frames:
+                outcome = frame.get("m4_outcome", "not_attempted")
+                m4_outcomes[outcome] = m4_outcomes.get(outcome, 0) + 1
+
+            self.hippocampus.encode(
+                session_id=f"session_{self.patterns.session_count:04d}",
+                frame_log=frames,
+                m4_outcomes=m4_outcomes,
+                interaction_events={
+                    "interrupts": interrupt_count,
+                    "defers": defer_count,
+                    "resumes": resume_count,
+                    "collision_repairs": repair_count,
+                },
+                known_speakers=self._extract_known_speakers(frames),
+                metadata={
+                    "speak_frames": speak_frame_count,
+                    "energy_mean_db": float(np.mean(energy_vals)) if energy_vals else 0.0,
+                    "self_match_mean": float(np.mean(match_vals)) if match_vals else 0.0,
+                },
+            )
+
         return {
             "frames_processed": session_frames,
             "speak_frames": speak_frame_count,
@@ -277,6 +304,20 @@ class SelfModel:
             },
             grounding=["my voice", "self voice", "agent voice", "self-match"],
         ))
+
+    def _extract_known_speakers(self, frames: list[dict]) -> list[str]:
+        """Extract known speakers from frame log.
+
+        Returns a list of speaker identifiers based on attribution verdicts.
+        """
+        speakers = set()
+        for frame in frames:
+            verdict = frame.get("verdict", "SILENCE")
+            if verdict == "SELF":
+                speakers.add("self")
+            elif verdict in ("WORLD", "BOTH"):
+                speakers.add("world")
+        return sorted(speakers)
 
     def _update_speech_patterns_node(
         self,
