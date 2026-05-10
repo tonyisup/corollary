@@ -203,6 +203,43 @@ def build_replay_cases(replay_dir: str) -> list[ReplayCase]:
     return cases
 
 
+def register_from_clean_capture(capture_dir: str, identifier=None) -> tuple:
+    """Load a clean self-capture and compute room filter + self-embedding.
+
+    Scans capture_dir for the most recent clean capture (agent_pcm_*.npy + captured_*.npy).
+    Fits a room filter from the clean capture and computes a room-colored self-embedding.
+    Returns (room_filter, self_embedding) or (None, None) if no capture found.
+    """
+    from pathlib import Path
+    cap_path = Path(capture_dir)
+    agent_files = sorted(cap_path.glob("agent_pcm_*.npy"))
+    captured_files = sorted(cap_path.glob("captured_*.npy"))
+    if not agent_files or not captured_files:
+        return None, None
+    agent_pcm = np.load(agent_files[-1]).astype(np.float32)
+    captured = np.load(captured_files[-1]).astype(np.float32)
+    print(f"  Loaded clean capture: agent={len(agent_pcm)} samples, captured={len(captured)} samples")
+    lead_in = int(0.5 * SR)
+    end = min(lead_in + len(agent_pcm), len(captured))
+    captured_segment = captured[lead_in:end]
+    agent_segment = agent_pcm[:end - lead_in]
+    if len(captured_segment) < 1000 or len(agent_segment) < 1000:
+        return None, None
+    n_taps = 64
+    room_filter = _solve_causal_fir(agent_segment, captured_segment, n_taps)
+    if room_filter is not None:
+        room_filter = room_filter.astype(np.float32)
+        print(f"  Fitted room filter: {n_taps} taps, norm={float(np.linalg.norm(room_filter)):.4f}")
+    if identifier is None:
+        identifier = SpeakerIdentifier(use_real=True)
+        identifier._load_model()
+    rc_pcm = np.convolve(agent_pcm, room_filter, mode="same").astype(np.float32) if room_filter is not None else agent_pcm
+    seg = rc_pcm[:min(len(rc_pcm), SR)]
+    self_embedding = identifier.get_embedding(seg)
+    print(f"  Room-colored self-embedding: norm={float(np.linalg.norm(self_embedding)):.4f}")
+    return room_filter, self_embedding
+
+
 def _fit_replay_room_filter(case: ReplayCase, n_taps: int = 32, max_frames: int = 10) -> Optional[np.ndarray]:
     """Fit a simple room FIR filter from captured SELF frames.
 
@@ -502,7 +539,7 @@ class BenchmarkResult:
 
 
 def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer_ms=300.0,
-                 replay_dir=None):
+                 replay_dir=None, register_from_clean=None):
     from datetime import datetime
     t0 = time.time()
 
@@ -533,13 +570,27 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer
 
     if replay_dir:
         replay_cases = build_replay_cases(replay_dir)
+        clean_room_filter = None
+        clean_self_embedding = None
+        if replay_dir and register_from_clean:
+            _id = SpeakerIdentifier(use_real=True) if real_ecapa else SpeakerIdentifier(use_real=False)
+            _id._load_model()
+            clean_room_filter, clean_self_embedding = register_from_clean_capture(
+                register_from_clean, identifier=_id,
+            )
+            if clean_room_filter is not None:
+                attributor.room_filter = clean_room_filter
+                attributor.room_local_threshold = 0.04
         for case in replay_cases:
             if verbose:
                 print(f"\nReplay case: {case.name}")
-            m4_detector.register_self(case.agent_pcm)
+            if clean_self_embedding is not None:
+                m4_detector.register_self_embedding(clean_self_embedding)
+            else:
+                m4_detector.register_self(case.agent_pcm)
             if hasattr(attributor, "_m4_buffer"):
                 attributor._m4_buffer = None
-            cr = run_replay_case(case, attributor, verbose)
+            cr = run_replay_case(case, attributor, verbose=verbose)
             result.cases.append(cr)
             result.total_tp += cr["tp"]
             result.total_fp += cr["fp"]
@@ -593,6 +644,8 @@ def main():
                         help="Minimum rolling buffer before M4 classification")
     parser.add_argument("--replay-dir", type=str, default=None,
                         help="Replay captured gated playback data through M4 and score F1")
+    parser.add_argument("--register-from-clean", type=str, default=None,
+                        help="Directory with clean self-captures (from m4_clean_capture.py); fits room filter + self-embedding for replay")
     parser.add_argument("--real-ecapa", action="store_true",
                         help="Use real ECAPA-TDNN model (requires speechbrain)")
     parser.add_argument("--output", type=str, default=None)
@@ -607,6 +660,8 @@ def main():
     print(f"  M4 min buffer: {args.m4_min_buffer_ms} ms")
     if args.replay_dir:
         print(f"  Replay dir: {args.replay_dir}")
+    if args.register_from_clean:
+        print(f"  Clean capture dir: {args.register_from_clean}")
     print()
 
     result = run_benchmark(
@@ -615,6 +670,7 @@ def main():
         verbose=args.verbose,
         m4_min_buffer_ms=args.m4_min_buffer_ms,
         replay_dir=args.replay_dir,
+        register_from_clean=args.register_from_clean,
     )
 
     if args.output is None:
