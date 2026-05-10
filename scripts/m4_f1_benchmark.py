@@ -540,7 +540,8 @@ class BenchmarkResult:
 
 
 def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer_ms=300.0,
-                 replay_dir=None, register_from_clean=None, backend="ecapa"):
+                 replay_dir=None, register_from_clean=None, backend="ecapa",
+                 fine_tuned_scorer=None):
     from datetime import datetime
     t0 = time.time()
 
@@ -549,7 +550,14 @@ def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer
     identifier._load_model()
     model_type = backend if identifier._model != "mock" else "mock"
 
-    m4_detector = SelfVoiceDetector(identifier, threshold=threshold) if True else None
+    # Create detector — use FineTunedSelfVoiceDetector if scorer provided
+    if fine_tuned_scorer:
+        from stg.speaker import FineTunedSelfVoiceDetector
+        m4_detector = FineTunedSelfVoiceDetector(identifier, threshold=threshold)
+        m4_detector.load_scorer(fine_tuned_scorer)
+        model_type = f"{model_type}+finetuned"
+    else:
+        m4_detector = SelfVoiceDetector(identifier, threshold=threshold) if True else None
 
     attributor = ThalamicAttributor(
         similarity_threshold=0.04,
@@ -671,6 +679,8 @@ def main():
     parser.add_argument("--backend", type=str, default="ecapa",
                         choices=["ecapa", "wav2vec2", "hubert", "mock"],
                         help="Embedding backend to use (default: ecapa)")
+    parser.add_argument("--fine-tuned-scorer", type=str, default=None,
+                        help="Path to fine-tuned scorer checkpoint (uses FineTunedSelfVoiceDetector)")
     parser.add_argument("--output", type=str, default=None)
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args()
@@ -695,6 +705,7 @@ def main():
         replay_dir=args.replay_dir,
         register_from_clean=args.register_from_clean,
         backend=args.backend,
+        fine_tuned_scorer=args.fine_tuned_scorer,
     )
 
     if args.output is None:

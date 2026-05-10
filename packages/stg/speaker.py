@@ -154,3 +154,81 @@ class SelfVoiceDetector:
         """Check if the given audio is likely NOT Corollary's own voice."""
         is_self, sim = self.is_self(pcm)
         return (not is_self), (1.0 - sim)
+
+
+class FineTunedSelfVoiceDetector:
+    """Self-voice detector using a fine-tuned scorer on frozen ECAPA embeddings.
+
+    This wraps a frozen SpeakerIdentifier (ECAPA) with a trained projection head
+    that maps (self_emb, input_emb) pairs to a same/different speaker score.
+    The scorer is trained on room-colored captured audio to improve discrimination
+    in that domain.
+
+    Usage:
+        identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
+        detector = FineTunedSelfVoiceDetector(identifier)
+        detector.load_scorer("data/m4_finetuned_ecapa/fine_tuned/scorer.pt")
+        detector.register_self(clean_pcm)
+        is_self, conf = detector.is_self(test_pcm)
+    """
+
+    def __init__(self, identifier: SpeakerIdentifier, threshold: float = 0.5) -> None:
+        self.identifier = identifier
+        self.self_embedding: Optional[np.ndarray] = None
+        self.threshold = threshold
+        self.scorer: Optional[torch.nn.Module] = None
+        self._scorer_loaded = False
+
+    def load_scorer(self, scorer_path: str) -> None:
+        """Load a trained scorer from disk."""
+        import torch.nn as nn
+        emb_dim = 192  # ECAPA embedding dimension
+        self.scorer = nn.Sequential(
+            nn.Linear(emb_dim * 2, 128),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(128, 1),
+        )
+        self.scorer.load_state_dict(torch.load(scorer_path, map_location="cpu"))
+        self.scorer.eval()
+        self._scorer_loaded = True
+        print(f"Loaded fine-tuned scorer from {scorer_path}")
+
+    def register_self(self, pcm: np.ndarray) -> None:
+        """Register Corollary's own voice template."""
+        self.self_embedding = self.identifier.get_embedding(pcm)
+
+    def register_self_embedding(self, embedding: np.ndarray) -> None:
+        """Register Corollary's own voice from a pre-computed embedding."""
+        self.self_embedding = embedding.astype(np.float32)
+
+    def is_self(self, pcm: np.ndarray) -> tuple[bool, float]:
+        """Check if the given audio is likely Corollary's own voice.
+
+        Uses the fine-tuned scorer if available, otherwise falls back to
+        cosine similarity.
+        """
+        if self.self_embedding is None:
+            return False, 0.0
+
+        emb = self.identifier.get_embedding(pcm)
+
+        if self._scorer_loaded and self.scorer is not None:
+            import torch
+            with torch.no_grad():
+                x = torch.cat([
+                    torch.tensor(self.self_embedding, dtype=torch.float32),
+                    torch.tensor(emb, dtype=torch.float32),
+                ]).unsqueeze(0)
+                logit = self.scorer(x).squeeze().item()
+                prob = float(torch.sigmoid(torch.tensor(logit)))
+            return (prob >= self.threshold), prob
+
+        # Fallback to cosine similarity
+        sim = self.identifier.similarity(emb, self.self_embedding)
+        return (sim >= self.threshold), sim
+
+    def is_world(self, pcm: np.ndarray) -> tuple[bool, float]:
+        """Check if the given audio is likely NOT Corollary's own voice."""
+        is_self, conf = self.is_self(pcm)
+        return (not is_self), (1.0 - conf)

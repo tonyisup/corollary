@@ -12,6 +12,8 @@ data/m3_streaming_repair_live_*/
 
 # Ignore ad hoc M4 benchmark outputs and local clean-capture recordings;
 # promotion artifacts should be written to a named tracked path and force-added explicitly.
+data/m4_fine_tuned_*/
+data/m4_finetuned_*/
 data/m4_f1_benchmark_*.json
 data/m4_clean_captures*/
 data/m4_capture_validation_*/
