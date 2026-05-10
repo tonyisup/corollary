@@ -91,6 +91,9 @@ class StreamingConfig:
     # Self-model (M6)
     self_model: Optional[Any] = None  # SelfModel instance — observes frame logs after run
 
+    # Hippocampus (M5)
+    hippocampus: Optional[Any] = None  # Hippocampus instance — episodic memory encoding
+
 
 @dataclass
 class StreamingFrameLog:
