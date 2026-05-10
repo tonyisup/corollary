@@ -540,14 +540,14 @@ class BenchmarkResult:
 
 
 def run_benchmark(threshold=0.10, real_ecapa=False, verbose=False, m4_min_buffer_ms=300.0,
-                 replay_dir=None, register_from_clean=None):
+                 replay_dir=None, register_from_clean=None, backend="ecapa"):
     from datetime import datetime
     t0 = time.time()
 
-    use_real = real_ecapa
-    identifier = SpeakerIdentifier(use_real=use_real)
+    use_real = real_ecapa or backend in ("wav2vec2", "hubert")
+    identifier = SpeakerIdentifier(use_real=use_real, backend=backend)
     identifier._load_model()
-    model_type = "ecapa-tdnn" if identifier._model != "mock" else "mock"
+    model_type = backend if identifier._model != "mock" else "mock"
 
     m4_detector = SelfVoiceDetector(identifier, threshold=threshold) if True else None
 
@@ -668,6 +668,9 @@ def main():
                         help="Directory with clean self-captures (from m4_clean_capture.py); fits room filter + self-embedding for replay")
     parser.add_argument("--real-ecapa", action="store_true",
                         help="Use real ECAPA-TDNN model (requires speechbrain)")
+    parser.add_argument("--backend", type=str, default="ecapa",
+                        choices=["ecapa", "wav2vec2", "hubert", "mock"],
+                        help="Embedding backend to use (default: ecapa)")
     parser.add_argument("--output", type=str, default=None)
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args()
@@ -691,6 +694,7 @@ def main():
         m4_min_buffer_ms=args.m4_min_buffer_ms,
         replay_dir=args.replay_dir,
         register_from_clean=args.register_from_clean,
+        backend=args.backend,
     )
 
     if args.output is None:

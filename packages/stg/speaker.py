@@ -18,56 +18,93 @@ class SpeakerIdentifier:
     """Speaker Identification unit.
 
     Computes speaker embeddings and compares them to known templates.
-    Uses SpeechBrain ECAPA-TDNN (192-dim embeddings).
+    Supports multiple backends:
+      - "ecapa": SpeechBrain ECAPA-TDNN (192-dim, default)
+      - "wav2vec2": facebook/wav2vec2-base-960h (768-dim)
+      - "hubert": facebook/hubert-base-ls960 (768-dim)
+      - "mock": deterministic hash-based mock
     """
 
-    def __init__(self, use_real: bool = True) -> None:
+    def __init__(self, use_real: bool = True, backend: str = "ecapa") -> None:
         self._model = None
         self._use_real = use_real
+        self._backend = backend
+        self._torch_model = None
 
     def _load_model(self):
         if self._model is not None:
             return
-        if not self._use_real:
+        if not self._use_real or self._backend == "mock":
             self._model = "mock"
             return
-        try:
-            from speechbrain.inference.speaker import SpeakerRecognition
-            cache_dir = Path(os.path.expanduser(
-                '~/.cache/speechbrain/spkrec-ecapa-voxceleb'
-            ))
-            self._model = SpeakerRecognition.from_hparams(
-                source='speechbrain/spkrec-ecapa-voxceleb',
-                savedir=str(cache_dir),
-            )
-        except Exception as e:
-            print(f"WARNING: Could not load ECAPA model: {e}. Using mock embeddings.")
+
+        if self._backend == "ecapa":
+            try:
+                from speechbrain.inference.speaker import SpeakerRecognition
+                cache_dir = Path(os.path.expanduser(
+                    '~/.cache/speechbrain/spkrec-ecapa-voxceleb'
+                ))
+                self._model = SpeakerRecognition.from_hparams(
+                    source='speechbrain/spkrec-ecapa-voxceleb',
+                    savedir=str(cache_dir),
+                )
+            except Exception as e:
+                print(f"WARNING: Could not load ECAPA model: {e}. Using mock embeddings.")
+                self._model = "mock"
+
+        elif self._backend in ("wav2vec2", "hubert"):
+            try:
+                from transformers import Wav2Vec2Model, AutoModel
+                if self._backend == "wav2vec2":
+                    self._torch_model = Wav2Vec2Model.from_pretrained(
+                        "facebook/wav2vec2-base-960h"
+                    )
+                else:
+                    self._torch_model = AutoModel.from_pretrained(
+                        "facebook/hubert-base-ls960"
+                    )
+                self._torch_model.eval()
+                self._model = self._backend
+            except Exception as e:
+                print(f"WARNING: Could not load {self._backend}: {e}. Using mock.")
+                self._model = "mock"
+
+        else:
+            print(f"WARNING: Unknown backend '{self._backend}'. Using mock.")
             self._model = "mock"
 
     def get_embedding(self, pcm: np.ndarray, sr: int = 16000) -> np.ndarray:
         """Compute speaker embedding for a chunk of audio.
 
-        Returns: 192-dim embedding vector (ECAPA-TDNN).
+        Returns: embedding vector (192-dim for ECAPA, 768-dim for wav2vec2/hubert).
         """
         self._load_model()
 
         if self._model == "mock":
-            # Deterministic mock based on audio content
             content_hash = int(np.sum(np.abs(pcm)) * 1000) % 2**32
             np.random.seed(content_hash)
             return np.random.randn(192).astype(np.float32)
 
-        # Normalize
+        if self._backend in ("wav2vec2", "hubert") and self._torch_model is not None:
+            pcm = pcm.astype(np.float32)
+            peak = np.max(np.abs(pcm))
+            if peak > 0:
+                pcm = pcm / peak * 0.7
+            with torch.no_grad():
+                x = torch.tensor(pcm, dtype=torch.float32).unsqueeze(0)
+                output = self._torch_model(x)
+                emb = output.last_hidden_state.mean(dim=1).squeeze().numpy()
+            return emb.astype(np.float32)
+
+        # ECAPA path
         pcm = pcm.astype(np.float32)
         peak = np.max(np.abs(pcm))
         if peak > 0:
             pcm = pcm / peak * 0.7
-
         with torch.no_grad():
             emb = self._model.encode_batch(
                 torch.tensor(pcm, dtype=torch.float32).unsqueeze(0)
             ).squeeze().numpy()
-
         return emb.astype(np.float32)
 
     def similarity(self, emb1: np.ndarray, emb2: np.ndarray) -> float:
