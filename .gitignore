@@ -10,8 +10,10 @@ archive/
 # Promotion artifacts can still be force-added explicitly.
 data/m3_streaming_repair_live_*/
 
-# Ignore ad hoc M4 benchmark outputs; promotion artifacts should be written to a named tracked path.
+# Ignore ad hoc M4 benchmark outputs and local clean-capture recordings;
+# promotion artifacts should be written to a named tracked path and force-added explicitly.
 data/m4_f1_benchmark_*.json
+data/m4_clean_captures*/
 
 # Guard against libraries treating '~' as a literal relative cache path.
 ~/

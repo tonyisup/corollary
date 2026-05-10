@@ -37,7 +37,6 @@ async def capture_clean_self(
     input_device: int,
     output_device: int,
     sr: int = 16000,
-    tts_sr: int = 48000,
     output_dir: str | Path = DEFAULT_OUTPUT_DIR,
 ) -> dict:
     """Play TTS phrase and capture it cleanly through the mic loopback.
@@ -45,7 +44,6 @@ async def capture_clean_self(
     Returns dict with capture metadata.
     """
     import sounddevice as sd
-    from scipy.signal import resample as scipy_resample
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -66,13 +64,11 @@ async def capture_clean_self(
     capture_samples = int(capture_duration * sr)
     mic_capture = np.zeros(capture_samples, dtype=np.float32)
 
-    # Resample agent PCM to output sample rate
-    tts_output = scipy_resample(self_pcm, int(len(self_pcm) * tts_sr / sr)).astype(np.float32)
-    total_play_samples = int((duration_s + 1.0) * tts_sr)
-    play_buffer = np.zeros(total_play_samples, dtype=np.float32)
-    lead_in = int(0.3 * tts_sr)
-    end = min(lead_in + len(tts_output), total_play_samples)
-    play_buffer[lead_in:end] = tts_output[:end - lead_in]
+    # The duplex stream runs at `sr`, and Broca synthesize() returns PCM at the
+    # same rate. Do not resample the output buffer to a different nominal rate:
+    # feeding 48k PCM into a 16k stream plays it at 1/3 speed.
+    play_buffer, lead_in = _build_playback_buffer(self_pcm, sr=sr)
+    total_play_samples = len(play_buffer)
 
     play_pos = [0]
 
@@ -160,6 +156,27 @@ async def capture_clean_self(
     print("\nDone.")
 
     return meta
+
+
+def _build_playback_buffer(
+    self_pcm: np.ndarray,
+    *,
+    sr: int = 16000,
+    lead_in_s: float = 0.3,
+    tail_s: float = 1.0,
+) -> tuple[np.ndarray, int]:
+    """Build the exact-rate playback buffer for clean capture.
+
+    `self_pcm` is already at `sr` because `broca.tts.synthesize()` decodes to
+    16 kHz. The returned buffer is also at `sr`, with leading/trailing silence.
+    """
+    self_pcm = np.asarray(self_pcm, dtype=np.float32)
+    lead_in = int(lead_in_s * sr)
+    total_play_samples = lead_in + len(self_pcm) + int(tail_s * sr)
+    play_buffer = np.zeros(total_play_samples, dtype=np.float32)
+    end = lead_in + len(self_pcm)
+    play_buffer[lead_in:end] = self_pcm
+    return play_buffer, lead_in
 
 
 def main():
