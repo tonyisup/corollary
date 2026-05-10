@@ -251,12 +251,13 @@ class TestM4AttributorIntegration:
         assert meta["m4_outcome"] == "not_attempted"
 
     def test_m4_acceptance_requires_template_match_evidence(self):
-        """High M4 confidence alone should not override anti-correlated acoustic evidence."""
+        """Without room_filter, high M4 confidence alone should not override anti-correlated evidence."""
         attributor = ThalamicAttributor(
             sr=SR,
             m4_detector=AlwaysSelfDetector(),
             m4_self_threshold=0.1,
             m4_min_buffer_ms=30.0,
+            # No room_filter → strict gate applies
         )
         frame_samples = int(SR * 30 / 1000)
         frame = make_pcm(seed=123, duration_s=0.5)[:frame_samples]

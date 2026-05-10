@@ -346,7 +346,21 @@ class ThalamicAttributor:
         )
         m4_conf = m4_metadata.get("m4_confidence", 0.0) or 0.0
         m4_strict_gate = is_m4_template_match or is_room_local_match
-        m4_embedding_gate = m4_conf >= 0.15 and match_score >= -0.1
+        # For captured audio (room_filter present), use a combined score
+        # of ECAPA confidence and template correlation. ECAPA's confidence
+        # on room-colored captured audio is calibrated lower than on clean
+        # synthetic audio, and the template correlation is weak. A combined
+        # score is more robust than either signal alone.
+        # Combined = 0.8 * ecapa_conf + 0.2 * max(match_score, 0.0)
+        # This weights ECAPA's embedding-level discrimination more heavily
+        # than the per-frame template correlation.
+        if self.room_filter is not None:
+            _combined = 0.8 * m4_conf + 0.2 * max(match_score, 0.0)
+            m4_embedding_gate = _combined >= self.m4_self_threshold
+        else:
+            # Without room_filter (dry/synthetic audio), require positive
+            # template correlation.
+            m4_embedding_gate = m4_conf >= self.m4_self_threshold and match_score >= 0.0
         m4_evidence = m4_strict_gate or m4_embedding_gate
         m4_metadata['m4_template_match_passed'] = is_m4_template_match
         m4_metadata['room_local_passed'] = is_room_local_match

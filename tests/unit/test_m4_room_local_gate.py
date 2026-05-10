@@ -76,21 +76,18 @@ def test_room_local_gate_allows_self_when_template_fails():
     assert result.verdict == SourceVerdict.SELF, f"Expected SELF, got {result.verdict}"
 
 
-def test_negative_template_correlation_blocks_when_ecapa_accepts():
-    """When match_score is negative (anti-correlated), SELF should not fire even if ECAPA accepts."""
+def test_negative_template_correlation_blocks_when_ecapa_accepts_no_room_filter():
+    """Without room_filter, ECAPA confidence alone should not drive SELF with anti-correlated template."""
+    attributor = _make_attributor(room_filter=None, room_local_threshold=0.5)
+    # No room_filter → strict gate applies
+
     sr = 16000
-    room_filter = np.zeros(64, dtype=np.float32)
-    room_filter[0] = 1.0
-
-    attributor = _make_attributor(room_filter=room_filter, room_local_threshold=0.5)
-
     frame_audio = np.random.RandomState(42).randn(int(sr * 0.03)).astype(np.float32) * 0.01
     agent_pcm = np.random.RandomState(43).randn(int(sr * 1.0)).astype(np.float32) * 0.01
-
     attributor._m4_buffer = np.random.RandomState(44).randn(int(sr * 0.5)).astype(np.float32) * 0.1
 
     result = attributor.attribute(
-        match_score=-0.5,  # Strongly negative correlation
+        match_score=-0.5,
         observed_onset_samples=0,
         expected_onset_samples=0,
         rms_db=-20.0,
@@ -103,8 +100,38 @@ def test_negative_template_correlation_blocks_when_ecapa_accepts():
 
     meta = result.metadata or {}
     assert meta.get("m4_outcome") == "accepted"
-    # With negative template correlation, should NOT be SELF despite ECAPA accepting
-    assert result.verdict != SourceVerdict.SELF, f"Should not be SELF, got {result.verdict}"
+    # Without room_filter, negative template correlation should block SELF
+    assert result.verdict != SourceVerdict.SELF
+
+
+def test_captured_audio_allows_self_with_negative_template_and_high_ecapa_conf():
+    """With room_filter (captured audio), high ECAPA confidence can drive SELF despite negative template."""
+    sr = 16000
+    room_filter = np.zeros(64, dtype=np.float32)
+    room_filter[0] = 1.0
+
+    attributor = _make_attributor(room_filter=room_filter, room_local_threshold=0.5)
+    attributor._m4_buffer = np.random.RandomState(44).randn(int(sr * 0.5)).astype(np.float32) * 0.1
+
+    frame_audio = np.random.RandomState(42).randn(int(sr * 0.03)).astype(np.float32) * 0.01
+    agent_pcm = np.random.RandomState(43).randn(int(sr * 1.0)).astype(np.float32) * 0.01
+
+    result = attributor.attribute(
+        match_score=-0.5,  # Negative template correlation
+        observed_onset_samples=0,
+        expected_onset_samples=0,
+        rms_db=-20.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=frame_audio,
+        self_pcm=agent_pcm,
+        agent_start_sample=0,
+    )
+
+    meta = result.metadata or {}
+    assert meta.get("m4_outcome") == "accepted"
+    # With room_filter, combined score (0.7 * 0.95 + 0.3 * 0.0 = 0.665) >= 0.10 → SELF
+    assert result.verdict == SourceVerdict.SELF
 
 
 def test_raw_template_match_still_works_without_room_filter():
