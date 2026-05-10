@@ -38,6 +38,12 @@ class CapturePairDataset(Dataset):
 
     Positive pairs: captured self TTS (label=1)
     Negative pairs: captured other-speaker TTS (label=0)
+
+    Data augmentation is applied to increase effective dataset size:
+      - Gaussian noise (SNR 15-25 dB)
+      - Pitch shift (-2 to +2 semitones)
+      - Time stretch (0.85-1.15x)
+      - Random room impulse response convolution
     """
 
     def __init__(
@@ -46,9 +52,13 @@ class CapturePairDataset(Dataset):
         other_pcms: list[np.ndarray],
         segment_duration_s: float = 2.0,
         augment: bool = True,
+        aug_factor: int = 5,
+        seed: int = 42,
     ):
         self.segment_samples = int(SR * segment_duration_s)
         self.augment = augment
+        self.aug_factor = aug_factor
+        self.rng = np.random.RandomState(seed)
         self.samples: list[tuple[np.ndarray, int]] = []
 
         for pcm in self_pcms:
@@ -56,12 +66,89 @@ class CapturePairDataset(Dataset):
         for pcm in other_pcms:
             self._add_segments(pcm, label=0)
 
+        print(f"  Raw segments: {len(self.samples)}")
+        if self.augment:
+            self._apply_augmentation()
+            print(f"  After augmentation: {len(self.samples)}")
+
     def _add_segments(self, pcm: np.ndarray, label: int):
         """Extract overlapping segments from a long capture."""
         step = self.segment_samples // 2  # 50% overlap
         for start in range(0, len(pcm) - self.segment_samples, step):
             seg = pcm[start:start + self.segment_samples].copy()
             self.samples.append((seg, label))
+
+    def _apply_augmentation(self):
+        """Apply data augmentation to increase dataset size."""
+        augmented = []
+        for seg, label in self.samples:
+            for _ in range(self.aug_factor - 1):  # -1 because original is kept
+                aug_seg = self._augment_segment(seg)
+                augmented.append((aug_seg, label))
+        self.samples.extend(augmented)
+        # Shuffle
+        perm = self.rng.permutation(len(self.samples))
+        self.samples = [self.samples[i] for i in perm]
+
+    def _augment_segment(self, pcm: np.ndarray) -> np.ndarray:
+        """Apply a random augmentation to a segment."""
+        aug_type = self.rng.choice(['noise', 'pitch', 'stretch', 'reverb', 'combined'])
+
+        if aug_type == 'noise':
+            return self._add_noise(pcm)
+        elif aug_type == 'pitch':
+            return self._pitch_shift(pcm)
+        elif aug_type == 'stretch':
+            return self._time_stretch(pcm)
+        elif aug_type == 'reverb':
+            return self._add_reverb(pcm)
+        else:  # combined
+            pcm = self._add_noise(pcm)
+            if self.rng.random() > 0.5:
+                pcm = self._pitch_shift(pcm)
+            return pcm
+
+    def _add_noise(self, pcm: np.ndarray) -> np.ndarray:
+        """Add Gaussian noise at random SNR."""
+        snr_db = self.rng.uniform(15, 25)
+        signal_power = np.mean(pcm ** 2)
+        noise_power = signal_power / (10 ** (snr_db / 10))
+        noise = self.rng.randn(len(pcm)) * np.sqrt(noise_power)
+        return (pcm + noise).astype(np.float32)
+
+    def _pitch_shift(self, pcm: np.ndarray) -> np.ndarray:
+        """Pitch shift by a random amount."""
+        try:
+            import librosa
+            n_steps = self.rng.uniform(-2, 2)
+            shifted = librosa.effects.pitch_shift(pcm, sr=SR, n_steps=n_steps)
+            return shifted.astype(np.float32)
+        except Exception:
+            return pcm
+
+    def _time_stretch(self, pcm: np.ndarray) -> np.ndarray:
+        """Time stretch by a random factor."""
+        try:
+            import librosa
+            rate = self.rng.uniform(0.85, 1.15)
+            stretched = librosa.effects.time_stretch(pcm, rate=rate)
+            # Pad or trim to original length
+            if len(stretched) < len(pcm):
+                stretched = np.pad(stretched, (0, len(pcm) - len(stretched)))
+            else:
+                stretched = stretched[:len(pcm)]
+            return stretched.astype(np.float32)
+        except Exception:
+            return pcm
+
+    def _add_reverb(self, pcm: np.ndarray) -> np.ndarray:
+        """Apply a simple synthetic room impulse response."""
+        # Generate a simple exponential decay IR
+        ir_length = int(SR * self.rng.uniform(0.1, 0.5))
+        ir = np.exp(-np.linspace(0, 5, ir_length)) * self.rng.randn(ir_length)
+        ir = ir / (np.linalg.norm(ir) + 1e-9) * self.rng.uniform(0.1, 0.3)
+        reverbed = np.convolve(pcm, ir, mode='same')
+        return reverbed.astype(np.float32)
 
     def __len__(self) -> int:
         return len(self.samples)
