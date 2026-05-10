@@ -251,7 +251,7 @@ class TestM4AttributorIntegration:
         assert meta["m4_outcome"] == "not_attempted"
 
     def test_m4_acceptance_requires_template_match_evidence(self):
-        """High M4 confidence alone should not override weak acoustic self evidence."""
+        """High M4 confidence alone should not override anti-correlated acoustic evidence."""
         attributor = ThalamicAttributor(
             sr=SR,
             m4_detector=AlwaysSelfDetector(),
@@ -264,7 +264,7 @@ class TestM4AttributorIntegration:
         rms_db = 20 * np.log10(max(rms, 1e-9))
 
         result = attributor.attribute(
-            match_score=0.05,
+            match_score=-0.5,  # Anti-correlated: should block SELF despite ECAPA accepting
             observed_onset_samples=0,
             expected_onset_samples=0,
             rms_db=rms_db,

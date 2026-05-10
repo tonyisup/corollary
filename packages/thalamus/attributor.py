@@ -293,10 +293,8 @@ class ThalamicAttributor:
         
         # Candidate for SELF
         is_self_like = match_score >= self.similarity_threshold
-        is_m4_template_match = match_score >= self.m4_template_match_threshold
-        m4_metadata['m4_template_match_passed'] = is_m4_template_match
         is_timely = causal_score > 0.0
-        
+
         # M4 attempt
         if is_playing and is_speech and self.m4_detector is not None:
             if frame_audio is not None:
@@ -325,10 +323,36 @@ class ThalamicAttributor:
         verdict = SourceVerdict.WORLD
         confidence = 0.5
         
-        # M4-assisted SELF attribution
+        # M4-assisted SELF attribution.
+        # Two paths to SELF:
+        #   (a) Strict: ECAPA accepts AND template match >= threshold AND
+        #       ECAPA confidence >= self_threshold. This is the original path
+        #       for dry/synthetic audio where template correlation is reliable.
+        #   (b) Embedding-primary: ECAPA accepts AND ECAPA confidence >= 0.15.
+        #       For captured audio, per-frame template correlation is often weak
+        #       or negative because the room filter doesn't generalize across
+        #       different TTS utterances. ECAPA's embedding-level speaker
+        #       discrimination is more robust, so we lower the template
+        #       requirement and rely primarily on ECAPA confidence.
+        #       We require the match_score to be above a small negative floor
+        #       (>= -0.1) as a sanity check — strong anti-correlation should
+        #       still block SELF, but weak negative correlation is common with
+        #       captured audio due to phase/timing misalignment.
+        is_m4_template_match = match_score >= self.m4_template_match_threshold
+        is_room_local_match = (
+            room_local_score is not None
+            and self.room_local_threshold is not None
+            and room_local_score >= self.room_local_threshold
+        )
+        m4_conf = m4_metadata.get("m4_confidence", 0.0) or 0.0
+        m4_strict_gate = is_m4_template_match or is_room_local_match
+        m4_embedding_gate = m4_conf >= 0.15 and match_score >= -0.1
+        m4_evidence = m4_strict_gate or m4_embedding_gate
+        m4_metadata['m4_template_match_passed'] = is_m4_template_match
+        m4_metadata['room_local_passed'] = is_room_local_match
+
         if is_playing and is_speech and m4_metadata.get('m4_outcome') == 'accepted':
-            m4_conf = m4_metadata.get('m4_confidence', 0.0)
-            if is_m4_template_match and m4_conf >= self.m4_self_threshold:
+            if m4_evidence and m4_conf >= self.m4_self_threshold:
                 verdict = SourceVerdict.SELF
                 confidence = (match_score + causal_score + m4_conf) / 3.0
                 return AttributionResult(
