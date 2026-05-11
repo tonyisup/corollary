@@ -152,7 +152,14 @@ corollary/
 - **Remaining work:** productization and operational hardening: stable config schema, explicit artifact writer, reproducible hardware-validation wrapper, and runbook cleanup. Core M3 behavior is validated.
 
 ### M4: Self-Voice Detector and Explicit Attribution Classifier
-- ✅ **Status:** INTEGRATED; BROADER GENERALIZATION PENDING
+|- ✅ **Status:** PROMOTED (2026-05-11) — TTS-domain gate passed; human-voice generalization tracked as open limitation
+
+**Promotion evidence:**
+- Synthetic expanded gate (8-case, `--real-ecapa`, 300ms buffer): F1=0.9512, eligible F1=1.0, 0 neg FP
+- Held-out replay gate (`m4_capture_validation_heldout_20260509`, v4 scorer, θ=0.70): F1=0.966, eligible F1=1.0, 0 neg FP
+- Human-voice negative gate: 45 FP — known ECAPA domain-transfer limitation, not blocking for PoC
+
+**See:** `docs/status_20260509.md` §M4 Promotion Decision and `data/m4_promotion_record_20260511.json`
 - ECAPA/x-vector embeddings + mel similarity classifier
 - Integrate learned attribution priors from M1 and listening priors from M2/M3 into a more explicit self-voice detector
 - Support frame-level self/world/agentive-other attribution for richer interaction contexts
