@@ -6,6 +6,9 @@ __pycache__
 .DS_Store
 archive/
 .worktrees/
+
+scripts/scratch.py
+
 # Ignore ad hoc live streaming hardware captures by default.
 # Promotion artifacts can still be force-added explicitly.
 data/m3_streaming_repair_live_*/

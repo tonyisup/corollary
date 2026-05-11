@@ -1,0 +1,282 @@
+[
+  {
+    "frame_index": 0,
+    "timestamp_s": 0.0,
+    "start_sample": 0,
+    "end_sample": 480,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 1,
+    "timestamp_s": 0.03,
+    "start_sample": 480,
+    "end_sample": 960,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 2,
+    "timestamp_s": 0.06,
+    "start_sample": 960,
+    "end_sample": 1440,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 3,
+    "timestamp_s": 0.09,
+    "start_sample": 1440,
+    "end_sample": 1920,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 4,
+    "timestamp_s": 0.12,
+    "start_sample": 1920,
+    "end_sample": 2400,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 5,
+    "timestamp_s": 0.15,
+    "start_sample": 2400,
+    "end_sample": 2880,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 6,
+    "timestamp_s": 0.18,
+    "start_sample": 2880,
+    "end_sample": 3360,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 7,
+    "timestamp_s": 0.21,
+    "start_sample": 3360,
+    "end_sample": 3840,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 8,
+    "timestamp_s": 0.24,
+    "start_sample": 3840,
+    "end_sample": 4320,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 9,
+    "timestamp_s": 0.27,
+    "start_sample": 4320,
+    "end_sample": 4800,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 10,
+    "timestamp_s": 0.3,
+    "start_sample": 4800,
+    "end_sample": 5280,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 11,
+    "timestamp_s": 0.33,
+    "start_sample": 5280,
+    "end_sample": 5760,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 12,
+    "timestamp_s": 0.36,
+    "start_sample": 5760,
+    "end_sample": 6240,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 13,
+    "timestamp_s": 0.39,
+    "start_sample": 6240,
+    "end_sample": 6720,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 14,
+    "timestamp_s": 0.42,
+    "start_sample": 6720,
+    "end_sample": 7200,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 15,
+    "timestamp_s": 0.45,
+    "start_sample": 7200,
+    "end_sample": 7680,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 16,
+    "timestamp_s": 0.48,
+    "start_sample": 7680,
+    "end_sample": 8160,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 17,
+    "timestamp_s": 0.51,
+    "start_sample": 8160,
+    "end_sample": 8640,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 18,
+    "timestamp_s": 0.54,
+    "start_sample": 8640,
+    "end_sample": 9120,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 19,
+    "timestamp_s": 0.57,
+    "start_sample": 9120,
+    "end_sample": 9600,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 20,
+    "timestamp_s": 0.6,
+    "start_sample": 9600,
+    "end_sample": 10080,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 21,
+    "timestamp_s": 0.63,
+    "start_sample": 10080,
+    "end_sample": 10560,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 22,
+    "timestamp_s": 0.66,
+    "start_sample": 10560,
+    "end_sample": 11040,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 23,
+    "timestamp_s": 0.69,
+    "start_sample": 11040,
+    "end_sample": 11520,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 24,
+    "timestamp_s": 0.72,
+    "start_sample": 11520,
+    "end_sample": 12000,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 25,
+    "timestamp_s": 0.75,
+    "start_sample": 12000,
+    "end_sample": 12480,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 26,
+    "timestamp_s": 0.78,
+    "start_sample": 12480,
+    "end_sample": 12960,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 27,
+    "timestamp_s": 0.81,
+    "start_sample": 12960,
+    "end_sample": 13440,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 28,
+    "timestamp_s": 0.84,
+    "start_sample": 13440,
+    "end_sample": 13920,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 29,
+    "timestamp_s": 0.87,
+    "start_sample": 13920,
+    "end_sample": 14400,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 30,
+    "timestamp_s": 0.9,
+    "start_sample": 14400,
+    "end_sample": 14880,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 31,
+    "timestamp_s": 0.93,
+    "start_sample": 14880,
+    "end_sample": 15360,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 32,
+    "timestamp_s": 0.96,
+    "start_sample": 15360,
+    "end_sample": 15840,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 33,
+    "timestamp_s": 0.99,
+    "start_sample": 15840,
+    "end_sample": 16320,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 34,
+    "timestamp_s": 1.02,
+    "start_sample": 16320,
+    "end_sample": 16800,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 35,
+    "timestamp_s": 1.05,
+    "start_sample": 16800,
+    "end_sample": 17280,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 36,
+    "timestamp_s": 1.08,
+    "start_sample": 17280,
+    "end_sample": 17760,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 37,
+    "timestamp_s": 1.11,
+    "start_sample": 17760,
+    "end_sample": 18240,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 38,
+    "timestamp_s": 1.14,
+    "start_sample": 18240,
+    "end_sample": 18720,
+    "verdict": "WORLD"
+  },
+  {
+    "frame_index": 39,
+    "timestamp_s": 1.17,
+    "start_sample": 18720,
+    "end_sample": 19200,
+    "verdict": "WORLD"
+  }
+]

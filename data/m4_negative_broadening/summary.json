@@ -1,0 +1,86 @@
+{
+  "output_dir": "data/m4_negative_broadening",
+  "scenario_count": 6,
+  "scenarios": [
+    {
+      "scenario": "self_only",
+      "description": "Captured Corollary self voice; SELF during speech window.",
+      "sr": 16000,
+      "input_device": null,
+      "output_device": null,
+      "speech_start_sample": 0,
+      "speech_end_sample": 19200,
+      "speech_verdict": "SELF",
+      "dry_run": true,
+      "agent_samples": 19200,
+      "acoustic_samples": 19200
+    },
+    {
+      "scenario": "same_domain_negative_playback_window",
+      "description": "Captured non-self voice in agent playback opportunity; WORLD during speech window.",
+      "sr": 16000,
+      "input_device": null,
+      "output_device": null,
+      "speech_start_sample": 0,
+      "speech_end_sample": 19200,
+      "speech_verdict": "WORLD",
+      "dry_run": true,
+      "agent_samples": 19200,
+      "acoustic_samples": 19200
+    },
+    {
+      "scenario": "same_domain_negative_playback_window_2",
+      "description": "Captured second non-self voice in agent playback opportunity; WORLD during speech window.",
+      "sr": 16000,
+      "input_device": null,
+      "output_device": null,
+      "speech_start_sample": 0,
+      "speech_end_sample": 19200,
+      "speech_verdict": "WORLD",
+      "dry_run": true,
+      "agent_samples": 19200,
+      "acoustic_samples": 19200
+    },
+    {
+      "scenario": "self_room_colored",
+      "description": "Synthetic room-colored self voice; SELF during speech window.",
+      "sr": 16000,
+      "input_device": null,
+      "output_device": null,
+      "speech_start_sample": 0,
+      "speech_end_sample": 19200,
+      "speech_verdict": "SELF",
+      "dry_run": true,
+      "agent_samples": 19200,
+      "acoustic_samples": 19200
+    },
+    {
+      "scenario": "self_device_eq",
+      "description": "Synthetic device-EQ'd self voice; SELF during speech window.",
+      "sr": 16000,
+      "input_device": null,
+      "output_device": null,
+      "speech_start_sample": 0,
+      "speech_end_sample": 19200,
+      "speech_verdict": "SELF",
+      "dry_run": true,
+      "agent_samples": 19200,
+      "acoustic_samples": 19200
+    },
+    {
+      "scenario": "same_domain_negative_playback_window_room",
+      "description": "Synthetic room-colored non-self voice; WORLD during speech window.",
+      "sr": 16000,
+      "input_device": null,
+      "output_device": null,
+      "speech_start_sample": 0,
+      "speech_end_sample": 19200,
+      "speech_verdict": "WORLD",
+      "dry_run": true,
+      "agent_samples": 19200,
+      "acoustic_samples": 19200
+    }
+  ],
+  "dry_run": true,
+  "include_variations": true
+}

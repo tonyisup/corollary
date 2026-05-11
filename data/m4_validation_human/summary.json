@@ -1,0 +1,57 @@
+{
+  "output_dir": "data/m4_validation_human",
+  "scenario_count": 3,
+  "scenarios": [
+    {
+      "scenario": "self_only",
+      "description": "Captured Corollary self voice; SELF during speech window.",
+      "sr": 16000,
+      "input_device": 3,
+      "output_device": 5,
+      "speech_start_sample": 0,
+      "speech_end_sample": 95634,
+      "speech_verdict": "SELF",
+      "dry_run": false,
+      "agent_samples": 95634,
+      "acoustic_samples": 95634,
+      "negative_source": "human_recording",
+      "self_text": "Hello, I am Corollary. This is my self voice for captured validation.",
+      "negative_text": "Hello, I am a different speaker. This is a same-domain negative validation sample."
+    },
+    {
+      "scenario": "same_domain_negative_playback_window",
+      "description": "Captured non-self voice in agent playback opportunity; WORLD during speech window.",
+      "sr": 16000,
+      "input_device": 3,
+      "output_device": 5,
+      "speech_start_sample": 0,
+      "speech_end_sample": 192000,
+      "speech_verdict": "WORLD",
+      "dry_run": false,
+      "agent_samples": 95634,
+      "acoustic_samples": 192000,
+      "negative_source": "human_recording",
+      "self_text": "Hello, I am Corollary. This is my self voice for captured validation.",
+      "negative_text": "Hello, I am a different speaker. This is a same-domain negative validation sample."
+    },
+    {
+      "scenario": "same_domain_negative_playback_window",
+      "description": "Human voice in agent playback opportunity; WORLD during speech window.",
+      "sr": 16000,
+      "input_device": 3,
+      "output_device": 5,
+      "speech_start_sample": 0,
+      "speech_end_sample": 192000,
+      "speech_verdict": "WORLD",
+      "dry_run": false,
+      "agent_samples": 95634,
+      "acoustic_samples": 192000,
+      "negative_source": "human_recording",
+      "self_text": "Hello, I am Corollary. This is my self voice for captured validation.",
+      "negative_text": "Hello, I am a different speaker. This is a same-domain negative validation sample."
+    }
+  ],
+  "dry_run": false,
+  "negative_source": "human_recording",
+  "timestamp": "20260511_091906"
+}

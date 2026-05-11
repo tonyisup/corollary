@@ -1,0 +1,13 @@
+{
+  "scenario": "same_domain_negative_playback_window_room",
+  "description": "Synthetic room-colored non-self voice; WORLD during speech window.",
+  "sr": 16000,
+  "input_device": null,
+  "output_device": null,
+  "speech_start_sample": 0,
+  "speech_end_sample": 19200,
+  "speech_verdict": "WORLD",
+  "dry_run": true,
+  "agent_samples": 19200,
+  "acoustic_samples": 19200
+}

@@ -1,0 +1,16 @@
+{
+  "scenario": "self_only",
+  "description": "Captured Corollary self voice; SELF during speech window.",
+  "sr": 16000,
+  "input_device": 3,
+  "output_device": 5,
+  "speech_start_sample": 0,
+  "speech_end_sample": 95634,
+  "speech_verdict": "SELF",
+  "dry_run": false,
+  "agent_samples": 95634,
+  "acoustic_samples": 95634,
+  "negative_source": "human_recording",
+  "self_text": "Hello, I am Corollary. This is my self voice for captured validation.",
+  "negative_text": "Hello, I am a different speaker. This is a same-domain negative validation sample."
+}

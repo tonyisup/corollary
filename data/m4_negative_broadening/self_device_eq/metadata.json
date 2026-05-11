@@ -1,0 +1,13 @@
+{
+  "scenario": "self_device_eq",
+  "description": "Synthetic device-EQ'd self voice; SELF during speech window.",
+  "sr": 16000,
+  "input_device": null,
+  "output_device": null,
+  "speech_start_sample": 0,
+  "speech_end_sample": 19200,
+  "speech_verdict": "SELF",
+  "dry_run": true,
+  "agent_samples": 19200,
+  "acoustic_samples": 19200
+}
