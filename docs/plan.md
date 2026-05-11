@@ -60,35 +60,35 @@ corollary/
   docs/
     plan.md
     design_overview.md
-    eval_protocol.md
-    sag.md                   # Semantic Abstraction Graph design
+    sag.md                    # Semantic Abstraction Graph design
+    m3_status_20260508.md
+    m3_operational_runbook.md
+    m3_gated_playback_validation_20260508.md
+    m3_streaming_repair_hardware_validation_20260509.md
+    m3_collision_repair_20260508.md
+    status_20260509.md
+    data_dictionary.md
+    housekeeping.md
+    AUTOSEARCH.md
+    m7_adaptive_self_tracking.md
   packages/
-    cochlea/                 # audio I/O, AEC
-    cerebellum/              # forward model, efference copy
-    thalamus/                # gating/masking
-    stg/                     # ASR + diarization
-    broca/                   # TTS and motor plan
-    hippocampus/             # episodic memory
-    pfc/                     # working memory + controller
-    salience/                # surprise/salience estimation
-    sag/                     # Semantic Abstraction Graph (grounded knowledge representation)
-    reasoning/               # reasoning layer (abstract interface, provider-agnostic)
-    bus/                     # message bus and schemas
-  apps/
-    demo_cli/
-    demo_gui/
-  data/
-    samples/
-    eval_sets/
+    cochlea/                  # audio I/O, AEC
+    cerebellum/               # forward model, efference copy
+    thalamus/                 # gating/masking, source attribution
+    stg/                      # ASR + diarization, speaker identification
+    broca/                    # TTS and motor plan
+    hippocampus/              # episodic memory, consolidation
+    pfc/                      # working memory + controller + streaming runtime + world model
+    sag/                      # Semantic Abstraction Graph (grounded knowledge representation)
+    reasoning/                # reasoning layer (abstract interface, provider-agnostic)
+    bus/                      # message bus and schemas
+    m1c_calibration/          # dual-input calibration and baselines
+    data_ui/                  # data exploration UI
+  data/                       # benchmark artifacts, captures, fine-tuned models
+  scripts/                    # evaluation harnesses, capture scripts, demos, diagnostics
   tests/
     unit/
-    integration/
-  scripts/
-    run_eval.sh
-    gen_dataset.py
   .github/workflows/
-    ci.yml
-    eval.yml
 ```
 
 ## Global Conventions

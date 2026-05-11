@@ -460,6 +460,8 @@ def test_room_local_score_with_exported_filter() -> None:
     a room_local_score when given a matching self capture."""
     from pathlib import Path
 
+    np.random.seed(42)
+
     filter_path = "data/m3_broca_room_threshold_calibration_broca_controls_reexport.npy"
     h = np.load(filter_path)
 
