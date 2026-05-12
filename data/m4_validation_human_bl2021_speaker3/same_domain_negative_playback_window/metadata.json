@@ -1,0 +1,16 @@
+{
+  "scenario": "same_domain_negative_playback_window",
+  "description": "Human voice in agent playback opportunity; WORLD during speech window.",
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 5,
+  "speech_start_sample": 0,
+  "speech_end_sample": 160000,
+  "speech_verdict": "WORLD",
+  "dry_run": false,
+  "agent_samples": 95634,
+  "acoustic_samples": 160000,
+  "negative_source": "human_recording",
+  "self_text": "Hello, I am Corollary. This is my self voice for captured validation.",
+  "negative_text": "Hello, I am a different speaker. This is a same-domain negative validation sample."
+}
