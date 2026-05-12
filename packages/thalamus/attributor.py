@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
 
+from thalamus.speaker_threshold_adapter import SpeakerThresholdAdapter
+
 class SourceVerdict(Enum):
     SILENCE = 0
     SELF = 1
@@ -53,6 +55,7 @@ class ThalamicAttributor:
         room_filter: Optional[np.ndarray] = None,
         room_local_threshold: Optional[float] = None,
         room_local_search_ms: float = 250.0,
+        speaker_threshold_adapter: Optional[SpeakerThresholdAdapter] = None,
     ) -> None:
         self.similarity_threshold = similarity_threshold
         self.energy_threshold_db = energy_threshold_db
@@ -65,12 +68,11 @@ class ThalamicAttributor:
         self.m4_min_buffer_samples = int(m4_min_buffer_ms * sr / 1000.0)
         self.per_frame_self_min_rms_db = per_frame_self_min_rms_db
         self._m4_buffer: Optional[np.ndarray] = None
-        # Room-local scoring: pre-fitted FIR filter that maps dry self PCM to
-        # the expected room-colored version.  When provided, the attributor
-        # computes a room-local correlation score alongside the global xcorr.
         self.room_filter = room_filter
         self.room_local_threshold = room_local_threshold
         self.room_local_search_ms = room_local_search_ms
+        # Per-speaker adaptive threshold adapter
+        self.speaker_threshold_adapter = speaker_threshold_adapter
 
     def _compute_per_frame_self_match(
         self,
@@ -205,6 +207,7 @@ class ThalamicAttributor:
         frame_audio: Optional[np.ndarray] = None,
         self_pcm: Optional[np.ndarray] = None,
         agent_start_sample: Optional[int] = None,
+        speaker_id: Optional[str] = None,
     ) -> AttributionResult:
         """Assign source attribution to an acoustic event.
         
@@ -228,6 +231,10 @@ class ThalamicAttributor:
             Full agent PCM template for per-frame self-match scoring.
         agent_start_sample : int, optional
             Sample offset in self_pcm where agent playback begins.
+        speaker_id : str, optional
+            Identified speaker ID from the STG speaker identification module.
+            When provided and a SpeakerThresholdAdapter is configured, the
+            M4 self-voice threshold is adapted per-speaker.
         
         Returns
         -------
@@ -310,7 +317,18 @@ class ThalamicAttributor:
                     try:
                         is_self_voice, m4_confidence = self.m4_detector.is_self(self._m4_buffer)
                         m4_metadata['m4_confidence'] = m4_confidence
-                        if is_self_voice and m4_confidence > self.m4_self_threshold:
+                        # Update per-speaker adaptive threshold
+                        if self.speaker_threshold_adapter is not None:
+                            effective_speaker = speaker_id if speaker_id is not None else "unknown"
+                            self.speaker_threshold_adapter.update(effective_speaker, m4_confidence)
+                        # Determine outcome using per-speaker threshold if available
+                        if self.speaker_threshold_adapter is not None:
+                            threshold = self.speaker_threshold_adapter.get_threshold(
+                                effective_speaker
+                            )
+                        else:
+                            threshold = self.m4_self_threshold
+                        if is_self_voice and m4_confidence > threshold:
                             m4_metadata['m4_outcome'] = 'accepted'
                         else:
                             m4_metadata['m4_outcome'] = 'below_threshold'
@@ -356,7 +374,11 @@ class ThalamicAttributor:
         # than the per-frame template correlation.
         if self.room_filter is not None:
             _combined = 0.8 * m4_conf + 0.2 * max(match_score, 0.0)
-            m4_embedding_gate = _combined >= self.m4_self_threshold
+            _emb_threshold = self.m4_self_threshold
+            if self.speaker_threshold_adapter is not None:
+                effective_speaker = speaker_id if speaker_id is not None else "unknown"
+                _emb_threshold = self.speaker_threshold_adapter.get_threshold(effective_speaker)
+            m4_embedding_gate = _combined >= _emb_threshold
         else:
             # Dry/synthetic benchmark cases have reliable template alignment.
             # In that mode, weak positive correlation is not enough evidence for
@@ -368,8 +390,14 @@ class ThalamicAttributor:
         m4_metadata['m4_template_match_passed'] = is_m4_template_match
         m4_metadata['room_local_passed'] = is_room_local_match
 
+        # Use per-speaker threshold for the evidence gate too
+        _gate_threshold = self.m4_self_threshold
+        if self.speaker_threshold_adapter is not None:
+            effective_speaker = speaker_id if speaker_id is not None else "unknown"
+            _gate_threshold = self.speaker_threshold_adapter.get_threshold(effective_speaker)
+
         if is_playing and is_speech and m4_metadata.get('m4_outcome') == 'accepted':
-            if m4_evidence and m4_conf >= self.m4_self_threshold:
+            if m4_evidence and m4_conf >= _gate_threshold:
                 verdict = SourceVerdict.SELF
                 confidence = (match_score + causal_score + m4_conf) / 3.0
                 return AttributionResult(
