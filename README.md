@@ -127,7 +127,7 @@ Current Mac mini + Fifine observation:
 | M3 | Agentive listening and proto-turn-taking | ✅ Live hardware validated |
 | M4 | Self-voice detector / explicit attribution classifier | ✅ Per-speaker adaptive threshold — 0 FP on 6 human speakers, >90% self-recall, wired into streaming runtime |
 | M5 | Multi-speaker world model + memory | ✅ Acceptance passed — Hippocampus + consolidation + multi-speaker world model implemented |
-| M6 | Self-model and introspection | 🔄 In progress — SelfModel + SAG observer wired to streaming runtime run, offline replay, and synthetic acceptance paths |
+| M6 | Self-model and introspection | ✅ Wired + per-speaker IDs — SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects |
 
 Immediate next steps: wire STG speaker identification into the streaming runtime for live per-speaker adaptive threshold convergence, run live hardware validation with the BL-2021USB mic, and exercise M6 introspective queries end-to-end against live streaming + SAG diff.
 

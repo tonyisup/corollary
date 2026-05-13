@@ -66,7 +66,7 @@ class SpeakerThresholdAdapter:
     """Adapts the M4 self-voice threshold per speaker.
 
     The threshold for each speaker is set to:
-        threshold = min(base_threshold, speaker_max_confidence + margin)
+        threshold = max(base_threshold, min(speaker_max_confidence + margin, max_threshold))
 
     This means:
     - For speakers whose ECAPA confidence is well below the self threshold,
@@ -126,9 +126,9 @@ class SpeakerThresholdAdapter:
         """Get the adaptive threshold for a speaker.
 
         For unknown speakers, returns the base threshold.
-        For known speakers, returns the minimum of:
-          - base_threshold (the default global threshold)
-          - (max_observed_confidence + margin)
+        For known speakers, returns the maximum of:
+          - base_threshold (the default global threshold, never lowered)
+          - min(speaker_max_confidence + margin, max_threshold)
         This means the threshold is raised for speakers whose confidence
         overlaps with the self region, but never lowered below base.
 
