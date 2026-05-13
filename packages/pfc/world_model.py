@@ -126,6 +126,22 @@ class SpeakerRegistry:
             self._speakers[speaker_id] = profile
         return profile
 
+    def best_match(
+        self,
+        embedding: np.ndarray,
+    ) -> tuple[str | None, float]:
+        """Return the highest-similarity speaker regardless of threshold."""
+        best_id = None
+        best_sim = 0.0
+
+        for speaker_id, profile in self._speakers.items():
+            sim = profile.similarity_to(embedding)
+            if sim > best_sim:
+                best_sim = sim
+                best_id = speaker_id
+
+        return best_id, best_sim
+
     def identify_speaker(
         self,
         embedding: np.ndarray,
@@ -136,16 +152,10 @@ class SpeakerRegistry:
         Returns (speaker_id, similarity) or (None, 0.0) if no match.
         """
         threshold = min_similarity or self._threshold
-        best_id = None
-        best_sim = 0.0
-
-        for speaker_id, profile in self._speakers.items():
-            sim = profile.similarity_to(embedding)
-            if sim > best_sim and sim >= threshold:
-                best_sim = sim
-                best_id = speaker_id
-
-        return best_id, best_sim
+        best_id, best_sim = self.best_match(embedding)
+        if best_id is not None and best_sim >= threshold:
+            return best_id, best_sim
+        return None, 0.0
 
     def get_profile(self, speaker_id: str) -> SpeakerProfile | None:
         """Get a speaker profile by ID."""

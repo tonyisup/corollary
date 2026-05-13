@@ -127,6 +127,9 @@ class StreamingFrameLog:
     resumed: bool
     collision_repair_text: Optional[str] = None
     speaker_id: Optional[str] = None  # Identified speaker for this frame
+    speaker_best_match_id: Optional[str] = None
+    speaker_best_match_similarity: Optional[float] = None
+    speaker_match_passed: Optional[bool] = None
 
 
 @dataclass(frozen=True)
@@ -261,6 +264,9 @@ class StreamingRuntime:
         self._speaker_identifier = speaker_identifier
         self._speaker_world_model = speaker_world_model
         self._current_speaker_id: Optional[str] = None
+        self._last_speaker_best_match_id: Optional[str] = None
+        self._last_speaker_best_match_similarity: Optional[float] = None
+        self._last_speaker_match_passed: Optional[bool] = None
         # WORLD audio buffer: accumulates non-self speech for speaker identification
         self._speaker_id_buffer: Optional[np.ndarray] = None
         self._speaker_id_interval_frames = 20  # Run speaker ID every 20 VAD frames (~200ms)
@@ -297,12 +303,9 @@ class StreamingRuntime:
 
         self._speaker_id_frame_counter += 1
 
-        # Only run speaker identification periodically
-        if self._speaker_id_frame_counter < self._speaker_id_interval_frames:
-            return
-        self._speaker_id_frame_counter = 0
-
-        # Accumulate WORLD audio
+        # Accumulate WORLD/BOTH audio on every eligible frame so the buffer can
+        # actually reach the minimum duration needed for embeddings. Only the
+        # expensive embedding/matching step is rate-limited.
         verdict = attr_result.verdict
         if verdict in (SourceVerdict.WORLD, SourceVerdict.BOTH):
             if self._speaker_id_buffer is None:
@@ -316,15 +319,29 @@ class StreamingRuntime:
             if len(self._speaker_id_buffer) > max_buffer_samples:
                 self._speaker_id_buffer = self._speaker_id_buffer[-max_buffer_samples:]
 
+        # Only run speaker identification periodically
+        if self._speaker_id_frame_counter < self._speaker_id_interval_frames:
+            return
+        self._speaker_id_frame_counter = 0
+
         # Need enough audio for a reliable embedding (at least 0.5s)
         min_samples = int(0.5 * self.sr)
         if self._speaker_id_buffer is None or len(self._speaker_id_buffer) < min_samples:
             return
 
         try:
-            # Compute embedding and identify speaker
+            # Compute embedding and inspect registry match quality. We keep the
+            # best-match diagnostics even when similarity falls below threshold
+            # so live runs can distinguish "no resemblance" from
+            # "candidate exists but is too weak".
             embedding = self._speaker_identifier.get_embedding(self._speaker_id_buffer)
-            speaker_id, similarity = self._speaker_world_model.identify_speaker(embedding)
+            registry = self._speaker_world_model.registry
+            best_id, best_similarity = registry.best_match(embedding)
+            self._last_speaker_best_match_id = best_id
+            self._last_speaker_best_match_similarity = best_similarity
+
+            speaker_id, similarity = registry.identify_speaker(embedding)
+            self._last_speaker_match_passed = speaker_id is not None and speaker_id != "self"
             if speaker_id is not None and speaker_id != "self":
                 self._current_speaker_id = speaker_id
         except Exception:
@@ -505,6 +522,13 @@ class StreamingRuntime:
             resumed=resumed,
             collision_repair_text=collision_repair_text,
             speaker_id=self._current_speaker_id,
+            speaker_best_match_id=self._last_speaker_best_match_id,
+            speaker_best_match_similarity=(
+                round(self._last_speaker_best_match_similarity, 4)
+                if self._last_speaker_best_match_similarity is not None
+                else None
+            ),
+            speaker_match_passed=self._last_speaker_match_passed,
         )
         self._logs.append(log)
         self._frame_index += 1

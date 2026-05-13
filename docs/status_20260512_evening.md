@@ -93,8 +93,10 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 **Pre-registration result so far:**
 - Registry successfully populated with 6 BL-2021USB human-negative speakers
 - Concurrent playback of a matching registered clip works during the live run
-- Even with registry threshold lowered to `0.1`, live `speaker_id` still does not resolve
-- This suggests the next bottleneck is speaker-ID matching quality / live-world capture quality, not registry absence
+- Two speaker-ID bugs were fixed: (1) silent call to non-existent `MultiSpeakerWorldModel.identify_speaker()`, and (2) WORLD/BOTH buffer accumulation only happened on the periodic speaker-ID cadence, so embeddings often never ran
+- After those fixes, live `speaker_id` now resolves and best-match diagnostics are populated
+- In the mixed self+world run, IDs resolved mainly to `human_negative_speaker4` / `human_negative_speaker5` with best-match similarities up to `0.196`
+- This means the current bottleneck is no longer missing registry or silent speaker-ID failure; it is overlap-contaminated adaptation, where WORLD/BOTH buffers can drive non-self thresholds upward and suppress self acceptance
 
 **Threshold sweep result before the fix (θ = 0.00, 0.02, 0.05, 0.07, 0.10):**
 - All runs failed the live acceptance criteria
@@ -115,13 +117,13 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 
 ## Immediate Next Steps
 
-1. **Instrument speaker-ID similarity diagnostics** — Log best-match speaker + cosine similarity even when below threshold so the live path can distinguish “no candidate” from “candidate present but similarity too weak.”
+1. **Gate speaker-ID adaptation on cleaner world evidence** — Right now WORLD/BOTH buffers under heavy overlap can identify non-self speakers and raise their thresholds, but this mixed buffer also suppresses M4 self acceptance. Restrict adaptation to cleaner WORLD-only segments or higher-confidence world-only windows.
 
-2. **Collect a cleaner live world-speaker validation capture** — Run a world-only or more clearly separated external-speaker clip through the BL-2021USB path so speaker-ID matching can be evaluated without heavy self-playback overlap.
+2. **Collect a cleaner live world-speaker validation capture** — Run a world-only or more clearly separated external-speaker clip through the BL-2021USB path so speaker-ID matching can be evaluated without self-playback contamination.
 
 3. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer.
 
-4. **Improve live self/world evidence fusion** — With unknown-fallback poisoning removed, inspect why accepted M4 frames still mostly resolve to `BOTH` instead of `SELF` in the final verdict path.
+4. **Improve live self/world evidence fusion** — With unknown-fallback poisoning removed and speaker ID now active, inspect why accepted M4 frames collapse to zero once non-self profiles start adapting under overlap.
 
 5. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
 

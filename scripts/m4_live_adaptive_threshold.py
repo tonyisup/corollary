@@ -212,6 +212,18 @@ def main():
     m4_buffer_short = sum(1 for l in logs if l.m4_outcome == "buffer_too_short")
 
     speaker_ids = set(l.speaker_id for l in logs if l.speaker_id is not None)
+    best_match_ids = set(l.speaker_best_match_id for l in logs if l.speaker_best_match_id is not None)
+    best_match_sims = [
+        l.speaker_best_match_similarity
+        for l in logs
+        if l.speaker_best_match_similarity is not None
+    ]
+    best_match_avg = np.mean(best_match_sims) if best_match_sims else 0.0
+    best_match_max = np.max(best_match_sims) if best_match_sims else 0.0
+    best_match_counts = {}
+    for l in logs:
+        if l.speaker_best_match_id is not None:
+            best_match_counts[l.speaker_best_match_id] = best_match_counts.get(l.speaker_best_match_id, 0) + 1
     verdict_counts = {}
     for l in logs:
         verdict_counts[l.verdict] = verdict_counts.get(l.verdict, 0) + 1
@@ -229,6 +241,11 @@ def main():
     print(f"  Avg M4 confidence:  {avg_conf:.4f}")
     print(f"  Max M4 confidence:  {max_conf:.4f}")
     print(f"  Speaker IDs seen:   {speaker_ids if speaker_ids else '(none)'}")
+    print(f"  Best-match IDs:     {best_match_ids if best_match_ids else '(none)'}")
+    print(f"  Avg best-match sim: {best_match_avg:.4f}")
+    print(f"  Max best-match sim: {best_match_max:.4f}")
+    if best_match_counts:
+        print(f"  Best-match counts:  {best_match_counts}")
 
     # Adapter state
     adapter_summary = adapter.summary()
@@ -254,7 +271,10 @@ def main():
 
     # C3: Speaker ID is non-None in some frames
     c3 = len(speaker_ids) > 0
-    criteria.append(("Speaker identification active", c3, f"IDs: {speaker_ids}"))
+    c3_detail = f"IDs: {speaker_ids}" if c3 else (
+        f"best-match IDs: {best_match_ids if best_match_ids else set()}, max similarity: {best_match_max:.4f}"
+    )
+    criteria.append(("Speaker identification active", c3, c3_detail))
 
     # C4: Adapter behavior should match speaker-ID availability.
     # If live speaker IDs are present, we expect learned non-self profiles.
@@ -294,6 +314,10 @@ def main():
         "avg_m4_confidence": round(float(avg_conf), 4),
         "max_m4_confidence": round(float(max_conf), 4),
         "speaker_ids": list(speaker_ids),
+        "best_match_ids": list(best_match_ids),
+        "best_match_counts": best_match_counts,
+        "avg_best_match_similarity": round(float(best_match_avg), 4),
+        "max_best_match_similarity": round(float(best_match_max), 4),
         "verdict_counts": verdict_counts,
         "adapter_summary": adapter_summary,
         "criteria": {name: passed for name, passed, _ in criteria},
