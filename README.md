@@ -45,9 +45,9 @@ Current high-level state:
 
 - **M2:** operational speech-aware self/world separation harness with calibrated room-local scoring and benchmark artifacts; still research-grade rather than productized.
 - **M3:** artifact-backed and live-hardware-validated streaming turn-taking runtime. Deterministic acceptance passes synthetic defer/interrupt/repair behavior, repair-audio queue semantics, and saved-artifact replay smoke. Live repair-audio validation passed at `data/m3_streaming_repair_live_20260509_072237`.
-- **M4:** no longer only an interface stub. Self-voice detection is wired into the live harness/streaming path with frame-level metadata. The expanded synthetic ECAPA gate passes after restoring strict dry-template evidence for playback-window negatives; captured-audio replay with the fine-tuned scorer now also passes strict speech-active aggregate F1.
+- **M4:** artifact-backed on replay and held-out capture gates, but not yet live-ready on BL-2021USB room-colored audio. Self-voice detection is wired into the live harness/streaming path with frame-level metadata; synthetic and captured replay gates pass with the fine-tuned scorer, but fresh live hardware validation currently exposes a domain-transfer gap rather than promotion-grade live performance.
 
-The immediate focus is productization and operational hardening: stable runbooks, reproducible hardware validation wrappers, cleaner runtime interfaces, and broader M4 generalization checks.
+The immediate focus is productization and operational hardening: stable runbooks, reproducible hardware validation wrappers, cleaner runtime interfaces, live-domain M4 calibration/fine-tuning, and broader M4 generalization checks.
 
 ### Synthetic vs audible work
 
@@ -129,7 +129,7 @@ Current Mac mini + Fifine observation:
 | M5 | Multi-speaker world model + memory | ✅ Acceptance passed — Hippocampus + consolidation + multi-speaker world model implemented |
 | M6 | Self-model and introspection | ✅ Wired + per-speaker IDs — SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects |
 
-Immediate next steps: wire STG speaker identification into the streaming runtime for live per-speaker adaptive threshold convergence, run live hardware validation with the BL-2021USB mic, and exercise M6 introspective queries end-to-end against live streaming + SAG diff.
+Immediate next steps: fine-tune the M4 scorer on live BL-2021USB room-colored captures, pre-register speaker embeddings so live identification can return IDs, adjust the live adaptive-threshold logic so unknown/live self audio does not immediately self-poison into a raised threshold, and exercise M6 introspective queries end-to-end against live streaming + SAG diff.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 

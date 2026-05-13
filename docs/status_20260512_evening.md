@@ -68,7 +68,7 @@ Audio → VAD → Attribution (with speaker_id) → SpeakerThresholdAdapter
 
 Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Speakers (out=5).
 
-**Results:**
+**Initial validation result:**
 - Audio I/O working: 240 frames, TTS played and captured (mean energy -41.6 dB)
 - M4 attempted on 166/240 frames (not buffer-blocked)
 - M4 accepted: 0 frames at base threshold 0.10
@@ -77,20 +77,31 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - Speaker identification: no IDs returned (no pre-registered speakers in world model)
 - Adapter: correctly raised threshold to 0.267 for "unknown" speaker
 
-**Key finding — domain gap confirmed:** Live room-colored audio produces ECAPA confidences centered ~0.0 with long tail to 0.22, while the fine-tuned scorer was trained on clean captures. At θ=0.10, only 8.3% of live frames pass. This is the same domain gap seen in M4 fine-tuning results, now confirmed in the live streaming path.
+**Threshold sweep result (θ = 0.00, 0.02, 0.05, 0.07, 0.10):**
+- All runs failed the live acceptance criteria
+- `m4_accepted` remained 0 for every tested threshold
+- Live ECAPA max confidence stayed in the `0.16-0.22` range
+- The adaptive threshold for `unknown` still rose into the `0.21-0.27` range, which blocked acceptance even when the base threshold was lowered
+- One-off `SELF` verdicts appeared at `θ=0.05` and `θ=0.10`, but they did not correspond to sustained M4 acceptance
+
+**Key findings:**
+1. **Domain gap confirmed:** live room-colored audio produces ECAPA confidences centered near 0.0 with a weak positive tail, unlike the replay/capture domain where the fine-tuned scorer passes.
+2. **Threshold-only calibration is insufficient in the current live path:** lowering the base threshold does not recover usable live self-acceptance because the unknown-speaker adaptive threshold rises above the observed live confidence range.
+3. **Speaker identification remains inert without a populated registry:** no live IDs were returned in any run.
 
 **What needs to happen next:**
-- Lower base threshold for live path (θ≈0.00-0.05) OR fine-tune on live captures
-- Register speaker embeddings in world model for identification to work
+- Fine-tune on real BL-2021USB live room-colored captures
+- Pre-register speaker embeddings in the world model so `identify_speaker()` can return IDs during live runs
+- Adjust the live adaptive-threshold logic so unknown/live self audio does not immediately self-poison into a raised threshold
 - Wire room filter adaptation (M7 trust-gated NLMS) to improve self-match on live audio
 
 ## Immediate Next Steps
 
-1. **M4 live threshold calibration** — Run threshold sweep on live audio to find optimal θ for room-colored domain. Likely θ≈0.00-0.05.
+1. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer. Threshold sweep evidence now says this is higher priority than further base-threshold tweaking.
 
-2. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live audio, retrain feature-based scorer. This should shift ECAPA confidences upward for self.
+2. **Register speakers in world model** — Pre-register known speaker embeddings so `identify_speaker()` can return IDs during live runs.
 
-3. **Register speakers in world model** — Pre-register known speaker embeddings so `identify_speaker()` can return IDs during live runs.
+3. **Fix live adaptive-threshold poisoning on `unknown`** — Separate truly unknown/world evidence from room-colored self playback, or otherwise prevent the live self stream from immediately ratcheting the `unknown` threshold above the confidence range it needs to classify.
 
 4. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
 
