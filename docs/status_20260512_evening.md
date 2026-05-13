@@ -106,6 +106,33 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - The best mixed-condition operating point in the sweep remained `--world-gain 0.8`: live speaker ID activated reliably while preserving self acceptance (`m4_accepted: 16`). The world-only run shows the ceiling is substantially higher when overlap is removed.
 - This means the current bottleneck is no longer basic speaker-ID viability. The real gap is mixed-condition separation: preserving enough clean world evidence during simultaneous self playback to keep speaker ID/adaptation active without hurting self acceptance.
 
+## Noise-Path A/B Matrix — 2026-05-13
+
+A user-visible "static" in the human/world audio prompted a noise-path isolation experiment. Four silence-capture conditions were profiled on the BL-2021USB path:
+
+| Condition | RMS dB | Median dB | Flatness | Top peak Hz | Top peak dB |
+|-----------|--------|-----------|----------|-------------|-------------|
+| 1. BL-2021USB alone | -45.98 | -46.07 | 0.0788 | 1004.2 | 27.13 |
+| 2. Device 4 connected, idle | -45.75 | -45.78 | 0.0797 | 59.0 | 26.63 |
+| 3. Device 4 plugged in, powered on | -45.60 | -45.70 | 0.0724 | 59.0 | 30.91 |
+| 4. Device 4 silent stream open | -48.58 | -48.91 | 0.0484 | 59.0 | 29.33 |
+
+**Key finding:** The 59 Hz contamination is not present when the BL-2021USB runs alone (condition 1, dominant peak at 1004 Hz instead). It appears as soon as device 4 is connected (condition 2) and grows stronger when the external speaker is powered on (condition 3, 30.91 dB). The silent-stream condition (4) confirms the contamination persists even with zero playback signal.
+
+**Interpretation:** The low-frequency hum is entering through the device 4 / external-speaker path, not the BL-2021USB mic itself. Likely causes: ground loop via the line-out cable, power-supply noise from the external speaker, or shielding contamination on the output path that couples into the mic input.
+
+**Practical recommendations:**
+1. Try a different cable or grounding arrangement for device 4 before adding software denoising.
+2. If the hum persists, a narrow notch filter around 59 Hz may be more appropriate than broadband denoising.
+3. Keep the BL-2021USB path clean: avoid running its cable near the device 4 output cable.
+4. Use dynamic energy-threshold calibration (suggested threshold from these captures: approx -30 to -31 dB) for all live runs.
+
+**Artifacts:**
+- `/tmp/noise_matrix_baseline_alone.json`
+- `/tmp/noise_matrix_dev4_connected_idle.json`
+- `/tmp/noise_matrix_dev4_plugged_in.json`
+- `/tmp/noise_matrix_dev4_silent_stream.json`
+
 **Threshold sweep result before the fix (θ = 0.00, 0.02, 0.05, 0.07, 0.10):**
 - All runs failed the live acceptance criteria
 - `m4_accepted` remained 0 for every tested threshold
