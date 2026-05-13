@@ -214,3 +214,35 @@ Four silence-capture conditions were profiled on the BL-2021USB path:
 - Fine-tune on live BL-2021USB room-colored captures
 - Wire room filter adaptation (M7 trust-gated NLMS)
 
+## Deployment Model — Design Notes
+
+**Scope:** Proof of concept supports a single user in a fixed environment (same mic, same room, same hardware).
+
+**Registration phase (one-time setup):**
+- Play each reference clip through device 4, capture on device 1
+- Extract best 2s window embedding from each capture
+- Register in SpeakerRegistry before the conversation starts
+- Cost: ~10 seconds of speech per speaker, done once
+
+**Real-time phase (during conversation):**
+- Streaming runtime accumulates WORLD/BOTH audio in a buffer
+- Every ~20 VAD frames (~200ms), extracts one ECAPA embedding from the buffer
+- Compares against all registered reference embeddings via cosine similarity
+- Assigns speaker_id if best match exceeds threshold
+- Cost: one embedding extraction + N cosine comparisons per cycle (trivial for N≤20)
+
+**What is NOT needed in real time:**
+- Re-extracting reference embeddings
+- Re-registering known speakers
+- Playing reference clips
+
+**Re-registration triggers (future work):**
+- Mic position change
+- Room acoustics change (furniture, open/closed windows)
+- New user added to known set
+- Day-to-day embedding drift (empirically untested — worth validating)
+
+**Multi-user extension (future work):**
+- Online registration: accumulate 2-5s of clean WORLD audio from an unknown voice, extract embedding, register as new speaker
+- Already supported by `SpeakerRegistry.update_from_frame_log()`
+- Per-speaker, not per-conversation — once registered, recognized across sessions
