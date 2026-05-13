@@ -46,6 +46,42 @@ def main():
     parser.add_argument("--m4-threshold", type=float, default=0.10, help="Base M4 self-voice threshold")
     parser.add_argument("--m4-buffer-ms", type=float, default=300.0, help="M4 min buffer ms")
     parser.add_argument("--output", type=str, default="/tmp/m4_live_adaptive.json", help="Output JSON path")
+    parser.add_argument(
+        "--register-speaker",
+        action="append",
+        default=[],
+        help="Pre-register a speaker as speaker_id=path/to/audio.npy (repeatable)",
+    )
+    parser.add_argument(
+        "--register-speaker-dir",
+        type=str,
+        default=None,
+        help="Directory of .npy speaker reference clips to pre-register by stem",
+    )
+    parser.add_argument(
+        "--play-world-audio",
+        type=str,
+        default=None,
+        help="Optional .npy clip to play during the run as external/world speech",
+    )
+    parser.add_argument(
+        "--world-delay-s",
+        type=float,
+        default=1.0,
+        help="Delay before starting optional world-audio playback",
+    )
+    parser.add_argument(
+        "--world-gain",
+        type=float,
+        default=0.8,
+        help="Gain multiplier for optional world-audio playback",
+    )
+    parser.add_argument(
+        "--speaker-registry-threshold",
+        type=float,
+        default=None,
+        help="Override SpeakerRegistry cosine-similarity threshold for live ID",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -88,9 +124,67 @@ def main():
 
     runtime = StreamingRuntime(config)
 
+    # Optional speaker pre-registration for the live speaker-ID path.
+    # This seeds the world-model registry with known embeddings so live WORLD/BOTH
+    # audio can resolve to stable speaker IDs instead of always returning None.
+    preregistered = []
+    if runtime._speaker_world_model is not None and runtime._speaker_identifier is not None:
+        registry = runtime._speaker_world_model.registry
+        if args.speaker_registry_threshold is not None:
+            registry._threshold = float(args.speaker_registry_threshold)
+
+        def _register_from_path(speaker_id: str, path_str: str) -> None:
+            path = Path(path_str)
+            audio = np.load(path).astype(np.float32)
+            emb = runtime._speaker_identifier.get_embedding(audio)
+            registry.register_speaker(speaker_id, speaker_id, embedding=emb)
+            preregistered.append({"speaker_id": speaker_id, "path": str(path)})
+
+        for item in args.register_speaker:
+            if "=" not in item:
+                raise SystemExit(
+                    f"--register-speaker must be speaker_id=path.npy, got: {item}"
+                )
+            speaker_id, path_str = item.split("=", 1)
+            _register_from_path(speaker_id.strip(), path_str.strip())
+
+        if args.register_speaker_dir:
+            reg_dir = Path(args.register_speaker_dir)
+            for path in sorted(reg_dir.glob("*.npy")):
+                speaker_id = path.stem
+                _register_from_path(speaker_id, str(path))
+
+        if preregistered:
+            print("\nPre-registered speakers:")
+            for item in preregistered:
+                print(f"  {item['speaker_id']}: {item['path']}")
+            print(f"  Registry threshold: {registry._threshold}")
+            print(f"  Known speakers: {registry.known_speakers}")
+
     print(f"\nStarting live streaming ({args.duration}s)...")
     print("  Speak now if you want to test human-voice rejection.")
     print()
+
+    world_thread = None
+    world_playback_error = None
+    if args.play_world_audio:
+        def _play_world_audio() -> None:
+            nonlocal world_playback_error
+            try:
+                import sounddevice as sd
+                audio = np.load(args.play_world_audio).astype(np.float32)
+                if np.max(np.abs(audio)) > 0:
+                    audio = audio / np.max(np.abs(audio)) * float(args.world_gain)
+                time.sleep(args.world_delay_s)
+                print(f"  Starting world-audio playback: {args.play_world_audio}")
+                sd.play(audio, samplerate=16000, device=args.output_device, blocking=True)
+                print("  World-audio playback completed")
+            except Exception as e:
+                world_playback_error = str(e)
+
+        import threading
+        world_thread = threading.Thread(target=_play_world_audio, daemon=True)
+        world_thread.start()
 
     try:
         logs = runtime.run(duration_s=args.duration)
@@ -99,6 +193,12 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
+    # Wait briefly for optional concurrent world playback to finish.
+    if world_thread is not None:
+        world_thread.join(timeout=2.0)
+        if world_playback_error:
+            print(f"  WARNING: world-audio playback failed: {world_playback_error}")
 
     # Analyze results
     print(f"\n{'=' * 60}")

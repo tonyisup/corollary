@@ -85,6 +85,17 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - speaker identification still returns no IDs because the world-model registry is empty
 - the live harness now correctly treats “no unknown-profile ratcheting” as pass behavior when no speaker IDs are present
 
+**Speaker pre-registration workflow added:**
+- `scripts/m4_live_adaptive_threshold.py` now supports `--register-speaker`, `--register-speaker-dir`, `--play-world-audio`, and `--speaker-registry-threshold`
+- BL-2021USB human-negative clips can now be embedded and loaded into the live `SpeakerRegistry` before the run
+- Concurrent world-audio playback can inject a known negative clip during the live run to test speaker identification end-to-end
+
+**Pre-registration result so far:**
+- Registry successfully populated with 6 BL-2021USB human-negative speakers
+- Concurrent playback of a matching registered clip works during the live run
+- Even with registry threshold lowered to `0.1`, live `speaker_id` still does not resolve
+- This suggests the next bottleneck is speaker-ID matching quality / live-world capture quality, not registry absence
+
 **Threshold sweep result before the fix (θ = 0.00, 0.02, 0.05, 0.07, 0.10):**
 - All runs failed the live acceptance criteria
 - `m4_accepted` remained 0 for every tested threshold
@@ -104,14 +115,16 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 
 ## Immediate Next Steps
 
-1. **Register speakers in world model** — Pre-register known speaker embeddings so `identify_speaker()` can return IDs during live runs. This is now the clearest missing live-path dependency.
+1. **Instrument speaker-ID similarity diagnostics** — Log best-match speaker + cosine similarity even when below threshold so the live path can distinguish “no candidate” from “candidate present but similarity too weak.”
 
-2. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer.
+2. **Collect a cleaner live world-speaker validation capture** — Run a world-only or more clearly separated external-speaker clip through the BL-2021USB path so speaker-ID matching can be evaluated without heavy self-playback overlap.
 
-3. **Improve live self/world evidence fusion** — With unknown-fallback poisoning removed, inspect why accepted M4 frames still mostly resolve to `BOTH` instead of `SELF` in the final verdict path.
+3. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer.
 
-4. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
+4. **Improve live self/world evidence fusion** — With unknown-fallback poisoning removed, inspect why accepted M4 frames still mostly resolve to `BOTH` instead of `SELF` in the final verdict path.
 
-5. **M7 Phase 2: SelfModel drift alarm** — Detect room changes via self-match score drops. Trigger faster adaptation.
+5. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
 
-6. **M6 introspective queries** — Exercise SAG diff against live streaming. Requires hardware.
+6. **M7 Phase 2: SelfModel drift alarm** — Detect room changes via self-match score drops. Trigger faster adaptation.
+
+7. **M6 introspective queries** — Exercise SAG diff against live streaming. Requires hardware.
