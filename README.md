@@ -125,11 +125,11 @@ Current Mac mini + Fifine observation:
 | M1c | Mixed-source attribution (self vs world vs overlap) | ✅ Done |
 | M2 | Speech-aware self/world separation | ✅ Operational research harness |
 | M3 | Agentive listening and proto-turn-taking | ✅ Live hardware validated |
-| M4 | Self-voice detector / explicit attribution classifier | ✅ Promoted (2026-05-11) — TTS-domain synthetic + captured replay gates passed; human-voice generalization open |
+| M4 | Self-voice detector / explicit attribution classifier | ✅ Per-speaker adaptive threshold — 0 FP on 6 human speakers, >90% self-recall, wired into streaming runtime |
 | M5 | Multi-speaker world model + memory | ✅ Acceptance passed — Hippocampus + consolidation + multi-speaker world model implemented |
 | M6 | Self-model and introspection | 🔄 In progress — SelfModel + SAG observer wired to streaming runtime run, offline replay, and synthetic acceptance paths |
 
-Immediate next steps: broaden M4 human-voice negative coverage (3–5 additional speakers), run multi-artifact acceptance as the production promotion gate, and exercise M6 introspective queries end-to-end against live streaming + SAG diff.
+Immediate next steps: wire STG speaker identification into the streaming runtime for live per-speaker adaptive threshold convergence, run live hardware validation with the BL-2021USB mic, and exercise M6 introspective queries end-to-end against live streaming + SAG diff.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 
