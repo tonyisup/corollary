@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-12 (evening)
 > **Branch:** main (synced with origin/main)
-> **Tests:** 378 passed, 1 skipped
+> **Tests:** 379 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -62,7 +62,7 @@ Audio → VAD → Attribution (with speaker_id) → SpeakerThresholdAdapter
 | M3 acceptance | 30 | Streaming runtime behavior |
 | M4 acceptance | 15 | Adaptive threshold on replay data |
 | M5 acceptance | 1 | Multi-speaker world model |
-| **Total** | **378** | **All passing** |
+| **Total** | **379** | **All passing** |
 
 ## Live Hardware Validation — 2026-05-13
 
@@ -75,33 +75,40 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - ECAPA confidence on live audio: mean -0.004, max 0.217 (all BOTH verdict)
 - Self-match scores: mean 0.002, max 0.200 — room filter not matching well
 - Speaker identification: no IDs returned (no pre-registered speakers in world model)
-- Adapter: correctly raised threshold to 0.267 for "unknown" speaker
+- Adapter: incorrectly ratcheted a synthetic `unknown` profile upward, self-poisoning the live fallback path
 
-**Threshold sweep result (θ = 0.00, 0.02, 0.05, 0.07, 0.10):**
+**Root-cause fix landed:** `ThalamicAttributor.attribute()` now only engages per-speaker adaptive thresholds for real identified speakers. When `speaker_id` is absent, the live path stays on the base threshold instead of collapsing room-colored self playback into an adaptive `unknown` profile.
+
+**Post-fix live reruns at θ=0.10:**
+- `m4_accepted` improved from `0` to `12-18` frames across reruns
+- final verdicts still remain mostly `BOTH`, with only `1` final `SELF` verdict observed
+- speaker identification still returns no IDs because the world-model registry is empty
+- the live harness now correctly treats “no unknown-profile ratcheting” as pass behavior when no speaker IDs are present
+
+**Threshold sweep result before the fix (θ = 0.00, 0.02, 0.05, 0.07, 0.10):**
 - All runs failed the live acceptance criteria
 - `m4_accepted` remained 0 for every tested threshold
 - Live ECAPA max confidence stayed in the `0.16-0.22` range
-- The adaptive threshold for `unknown` still rose into the `0.21-0.27` range, which blocked acceptance even when the base threshold was lowered
-- One-off `SELF` verdicts appeared at `θ=0.05` and `θ=0.10`, but they did not correspond to sustained M4 acceptance
+- The adaptive threshold for `unknown` rose into the `0.21-0.27` range, blocking acceptance even when the base threshold was lowered
 
 **Key findings:**
-1. **Domain gap confirmed:** live room-colored audio produces ECAPA confidences centered near 0.0 with a weak positive tail, unlike the replay/capture domain where the fine-tuned scorer passes.
-2. **Threshold-only calibration is insufficient in the current live path:** lowering the base threshold does not recover usable live self-acceptance because the unknown-speaker adaptive threshold rises above the observed live confidence range.
-3. **Speaker identification remains inert without a populated registry:** no live IDs were returned in any run.
+1. **Unknown-fallback poisoning was real and is now fixed.** The previous live failure was partly a logic bug, not only a representation problem.
+2. **A live domain gap still remains after the fix.** Acceptance improved, but the final live verdict stream is still overwhelmingly `BOTH`, so scorer calibration / live fine-tuning is still needed.
+3. **Speaker identification remains inert without a populated registry.** No live IDs were returned in any run.
 
 **What needs to happen next:**
 - Fine-tune on real BL-2021USB live room-colored captures
 - Pre-register speaker embeddings in the world model so `identify_speaker()` can return IDs during live runs
-- Adjust the live adaptive-threshold logic so unknown/live self audio does not immediately self-poison into a raised threshold
+- Improve live self/world evidence fusion now that the unknown-fallback bug is removed
 - Wire room filter adaptation (M7 trust-gated NLMS) to improve self-match on live audio
 
 ## Immediate Next Steps
 
-1. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer. Threshold sweep evidence now says this is higher priority than further base-threshold tweaking.
+1. **Register speakers in world model** — Pre-register known speaker embeddings so `identify_speaker()` can return IDs during live runs. This is now the clearest missing live-path dependency.
 
-2. **Register speakers in world model** — Pre-register known speaker embeddings so `identify_speaker()` can return IDs during live runs.
+2. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer.
 
-3. **Fix live adaptive-threshold poisoning on `unknown`** — Separate truly unknown/world evidence from room-colored self playback, or otherwise prevent the live self stream from immediately ratcheting the `unknown` threshold above the confidence range it needs to classify.
+3. **Improve live self/world evidence fusion** — With unknown-fallback poisoning removed, inspect why accepted M4 frames still mostly resolve to `BOTH` instead of `SELF` in the final verdict path.
 
 4. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
 

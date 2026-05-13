@@ -302,6 +302,16 @@ class ThalamicAttributor:
         is_self_like = match_score >= self.similarity_threshold
         is_timely = causal_score > 0.0
 
+        # Only engage per-speaker adaptation when we have a real identified
+        # speaker from upstream STG. The live fallback `speaker_id=None` would
+        # otherwise collapse all room-colored playback into a single "unknown"
+        # profile and ratchet its threshold upward, self-poisoning the live path.
+        adaptive_speaker_id = (
+            speaker_id
+            if speaker_id not in (None, "", "unknown")
+            else None
+        )
+
         # M4 attempt
         if is_playing and is_speech and self.m4_detector is not None:
             if frame_audio is not None:
@@ -317,14 +327,16 @@ class ThalamicAttributor:
                     try:
                         is_self_voice, m4_confidence = self.m4_detector.is_self(self._m4_buffer)
                         m4_metadata['m4_confidence'] = m4_confidence
-                        # Update per-speaker adaptive threshold
-                        if self.speaker_threshold_adapter is not None:
-                            effective_speaker = speaker_id if speaker_id is not None else "unknown"
-                            self.speaker_threshold_adapter.update(effective_speaker, m4_confidence)
-                        # Determine outcome using per-speaker threshold if available
-                        if self.speaker_threshold_adapter is not None:
+                        # Update and apply per-speaker adaptive threshold only
+                        # for real identified speakers. Unknown/live fallback uses
+                        # the base threshold to avoid self-poisoning.
+                        if (
+                            self.speaker_threshold_adapter is not None
+                            and adaptive_speaker_id is not None
+                        ):
+                            self.speaker_threshold_adapter.update(adaptive_speaker_id, m4_confidence)
                             threshold = self.speaker_threshold_adapter.get_threshold(
-                                effective_speaker
+                                adaptive_speaker_id
                             )
                         else:
                             threshold = self.m4_self_threshold
@@ -375,9 +387,11 @@ class ThalamicAttributor:
         if self.room_filter is not None:
             _combined = 0.8 * m4_conf + 0.2 * max(match_score, 0.0)
             _emb_threshold = self.m4_self_threshold
-            if self.speaker_threshold_adapter is not None:
-                effective_speaker = speaker_id if speaker_id is not None else "unknown"
-                _emb_threshold = self.speaker_threshold_adapter.get_threshold(effective_speaker)
+            if (
+                self.speaker_threshold_adapter is not None
+                and adaptive_speaker_id is not None
+            ):
+                _emb_threshold = self.speaker_threshold_adapter.get_threshold(adaptive_speaker_id)
             m4_embedding_gate = _combined >= _emb_threshold
         else:
             # Dry/synthetic benchmark cases have reliable template alignment.
@@ -390,11 +404,14 @@ class ThalamicAttributor:
         m4_metadata['m4_template_match_passed'] = is_m4_template_match
         m4_metadata['room_local_passed'] = is_room_local_match
 
-        # Use per-speaker threshold for the evidence gate too
+        # Use per-speaker threshold for the evidence gate too, but only for
+        # real identified speakers. Unknown/live fallback stays on base.
         _gate_threshold = self.m4_self_threshold
-        if self.speaker_threshold_adapter is not None:
-            effective_speaker = speaker_id if speaker_id is not None else "unknown"
-            _gate_threshold = self.speaker_threshold_adapter.get_threshold(effective_speaker)
+        if (
+            self.speaker_threshold_adapter is not None
+            and adaptive_speaker_id is not None
+        ):
+            _gate_threshold = self.speaker_threshold_adapter.get_threshold(adaptive_speaker_id)
 
         if is_playing and is_speech and m4_metadata.get('m4_outcome') == 'accepted':
             if m4_evidence and m4_conf >= _gate_threshold:

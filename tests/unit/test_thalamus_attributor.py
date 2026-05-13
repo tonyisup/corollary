@@ -496,3 +496,41 @@ def test_room_local_score_with_exported_filter() -> None:
     # Room-local score should be computed and positive for room-colored self
     assert res.room_local_score is not None
     assert res.room_local_score > 0.0, f"self capture room_local_score={res.room_local_score}"
+
+
+def test_attributor_m4_unknown_fallback_does_not_poison_adaptive_threshold() -> None:
+    """Unknown/live fallback should use base threshold and not ratchet adapter.
+
+    Regression for the live BL-2021USB path: when speaker_id is None, room-colored
+    self playback was being funneled into a single "unknown" profile. The adapter
+    then raised that profile's threshold above the current frame confidence,
+    making M4 acceptance impossible in live runs.
+    """
+    from thalamus.speaker_threshold_adapter import SpeakerThresholdAdapter
+
+    adapter = SpeakerThresholdAdapter(base_threshold=0.10, margin=0.05)
+    attributor = ThalamicAttributor(
+        m4_detector=DummyDetector(True, 0.18),
+        m4_self_threshold=0.10,
+        speaker_threshold_adapter=adapter,
+        sr=16000,
+    )
+    frame = np.ones(16000 // 30, dtype=np.float32)
+
+    res = attributor.attribute(
+        match_score=0.30,
+        observed_onset_samples=800,
+        expected_onset_samples=800,
+        rms_db=-30.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=np.tile(frame, 20),
+        speaker_id=None,
+    )
+
+    assert res.metadata is not None
+    assert res.metadata["m4_attempted"] is True
+    assert res.metadata["m4_confidence"] == 0.18
+    assert res.metadata["m4_outcome"] == "accepted"
+    assert res.verdict == SourceVerdict.SELF
+    assert adapter.get_profile("unknown") is None

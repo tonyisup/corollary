@@ -156,9 +156,18 @@ def main():
     c3 = len(speaker_ids) > 0
     criteria.append(("Speaker identification active", c3, f"IDs: {speaker_ids}"))
 
-    # C4: Adapter has data
-    c4 = any(info['count'] > 0 for info in adapter_summary.values())
-    criteria.append(("Adapter received updates", c4, f"profiles: {list(adapter_summary.keys())}"))
+    # C4: Adapter behavior should match speaker-ID availability.
+    # If live speaker IDs are present, we expect learned non-self profiles.
+    # If not, the correct post-2026-05-13 behavior is to avoid poisoning a
+    # synthetic "unknown" profile and stay on the base threshold.
+    non_self_profiles = [sid for sid in adapter_summary.keys() if sid != "self"]
+    if len(speaker_ids) > 0:
+        c4 = any(info['count'] > 0 for sid, info in adapter_summary.items() if sid != "self")
+        detail = f"profiles: {non_self_profiles}"
+    else:
+        c4 = len(non_self_profiles) == 0
+        detail = "no speaker IDs seen; unknown fallback correctly avoided"
+    criteria.append(("Adaptive-threshold profile behavior", c4, detail))
 
     all_pass = True
     for name, passed, detail in criteria:
