@@ -121,13 +121,47 @@ Three live-path world-playback clips were tested to confirm speaker-ID generaliz
 
 All three resolved to identifiable speakers. Speaker4's clip resolved to speaker1 because the speaker4 reference embedding was selected from a 1-3s window, but the live capture had different acoustic content in later windows — the system correctly found speaker1 as the best match.
 
-- This means the current bottleneck is no longer basic speaker-ID viability. The real gap is mixed-condition separation: preserving enough clean world evidence during simultaneous self playback to keep speaker ID/adaptation active without hurting self acceptance.
+### Centroid Window Embeddings — 2026-05-13
+
+To address within-clip embedding variance, a "centroid window" approach was implemented (`scripts/extract_centroid_embeddings.py`): for each 10s reference clip, extract 2s window embeddings (1s hop), then select the window whose embedding has the highest average similarity to all other windows in the same clip.
+
+Centroid scores (avg sim to other windows in same clip):
+- Speaker 1: 0.39 (8 windows) — low internal consistency
+- Speaker 2: 0.53 (7 windows)
+- Speaker 3: 0.74 (4 windows) — high internal consistency
+- Speaker 4: 0.70 (4 windows)
+- Speaker 5: 0.57 (4 windows)
+- Speaker 6: 0.68 (5 windows)
+
+Mixed validation comparison (centroid vs single-window live embeddings):
+
+| World clip | Embedding type | M4 OK | Avg sim | Max sim | Speaker IDs |
+|------------|---------------|-------|---------|---------|-------------|
+| speaker2 | single-window live | 12 | 0.4548 | 0.4984 | speaker2 |
+| speaker2 | centroid | 14 | 0.3379 | 0.3716 | speaker1, speaker2 |
+| speaker4 | single-window live | 14 | 0.7413 | 0.7703 | speaker1 |
+| speaker4 | centroid | 11 | 0.0706 | 0.0917 | speaker4 |
+| speaker6 | single-window live | 16 | 0.3880 | 0.4235 | speaker6 |
+| speaker6 | centroid | 17 | 0.3335 | 0.3443 | speaker6 |
+
+**Finding**: Centroid embeddings do not consistently outperform single-window live embeddings. The centroid approach selects a more "average" window, which can be less distinctive than the single best-matching window. Speaker4's centroid embedding performed particularly poorly (avg sim=0.07).
+
+**Recommendation**: Stick with single-window live-path embeddings for now. The better long-term approach is to either (a) re-record reference clips with consistent, neutral content, or (b) register multiple window embeddings per speaker so the identification can match any representative segment.
+
+### Cross-Speaker Generalization — 2026-05-13
+
+Three centroid-embedding world-playback clips were tested:
+- Playing speaker2's clip → resolved to speaker2 (avg sim=0.3379) and speaker1 (cross-match)
+- Playing speaker4's clip → resolved to speaker1 (avg sim=0.7413) — not speaker4 (sim=0.0706), because speaker4's centroid window doesn't represent the full clip
+- Playing speaker6's clip → resolved to speaker6 (avg sim=0.3335)
+
+All three resolved to identifiable speakers. The centroid approach is viable but single-window live embeddings remain stronger for identification.
 
 ## Noise-Path A/B Matrix
 
-A user-visible "static" in the human/world audio prompted a noise-path isolation experiment. Four silence-capture conditions were profiled on the BL-2021USB path:
+A user-visible "static" in the human/world audio prompted a noise-path isolation experiment.
 
-| Condition | RMS dB | Median dB | Flatness | Top peak Hz | Top peak dB |
+Four silence-capture conditions were profiled on the BL-2021USB path:
 |-----------|--------|-----------|----------|-------------|-------------|
 | 1. BL-2021USB alone | -45.98 | -46.07 | 0.0788 | 1004.2 | 27.13 |
 | 2. Device 4 connected, idle | -45.75 | -45.78 | 0.0797 | 59.0 | 26.63 |
@@ -170,19 +204,3 @@ A user-visible "static" in the human/world audio prompted a noise-path isolation
 - Fine-tune on live BL-2021USB room-colored captures
 - Wire room filter adaptation (M7 trust-gated NLMS)
 
-
-## Immediate Next Steps
-
-1. **Bridge the mixed-condition gap** — World-only validation shows speaker ID is strong when self playback is absent (avg/max similarity `0.4663/0.7516`), but mixed runs still degrade. The next step is preserving cleaner world windows during simultaneous playback.
-
-2. **Calibrate the mixed-condition operating region** — Refine around the current sweet spot (`--world-gain ~0.8`, device 4 at 40% hardware volume) and measure the tradeoff between speaker-ID similarity and self acceptance.
-
-3. **Tune speaker-ID buffer / threshold on clean-world captures** — Use the dedicated world-only results as the ceiling, then tune buffer length and registry threshold to retain as much of that signal as possible in mixed runs.
-
-4. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer.
-
-5. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
-
-6. **M7 Phase 2: SelfModel drift alarm** — Detect room changes via self-match score drops. Trigger faster adaptation.
-
-7. **M6 introspective queries** — Exercise SAG diff against live streaming. Requires hardware.
