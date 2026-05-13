@@ -102,8 +102,9 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - In the mixed live run, this keeps self acceptance alive (`m4_accepted: 19`) but drops clean-world best-match similarity to `0.0438`, below the `0.1` registry threshold, so no speaker IDs are accepted
 - A split-output experiment then separated playback paths: Corollary TTS on Mac mini Speakers (device 5) and external human/world playback on the line-out speaker path (device 4).
 - A subsequent world-gain sweep on device 4 showed that playback strength is a major lever for live speaker ID even with the hardware output left at 40% volume. At `--world-gain 0.6/0.8/1.0`, the runtime successfully resolved `human_negative_speaker1` with avg/max similarities of `0.3163/0.3638`, `0.3533/0.5486`, and `0.3560/0.3799` respectively.
-- The best operating point in this sweep was `--world-gain 0.8`: live speaker ID activated reliably while preserving self acceptance (`m4_accepted: 16`). Gain `1.0` kept speaker ID active but reduced self acceptance (`m4_accepted: 10`), suggesting distortion or stronger overlap side-effects.
-- This means the current bottleneck is no longer simply missing registry or overlap poisoning; live speaker identification is now viable when the world signal is strong enough, and the next task is calibrating the clean-world operating region that preserves both speaker ID and self acceptance.
+- A dedicated world-only validation (no simultaneous self playback, world clip only on device 4) pushed speaker-ID quality much higher: `speaker_id=human_negative_speaker1`, avg similarity `0.4663`, max similarity `0.7516`, with 266/300 frames classified as `WORLD`.
+- The best mixed-condition operating point in the sweep remained `--world-gain 0.8`: live speaker ID activated reliably while preserving self acceptance (`m4_accepted: 16`). The world-only run shows the ceiling is substantially higher when overlap is removed.
+- This means the current bottleneck is no longer basic speaker-ID viability. The real gap is mixed-condition separation: preserving enough clean world evidence during simultaneous self playback to keep speaker ID/adaptation active without hurting self acceptance.
 
 **Threshold sweep result before the fix (θ = 0.00, 0.02, 0.05, 0.07, 0.10):**
 - All runs failed the live acceptance criteria
@@ -124,11 +125,11 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 
 ## Immediate Next Steps
 
-1. **Calibrate the clean-world operating region** — Split-output + world-gain sweep shows live speaker ID is viable when the world signal is strong enough. Refine around the current sweet spot (`--world-gain ~0.8`, device 4 at 40% hardware volume) and measure the tradeoff between speaker-ID similarity and self acceptance.
+1. **Bridge the mixed-condition gap** — World-only validation shows speaker ID is strong when self playback is absent (avg/max similarity `0.4663/0.7516`), but mixed runs still degrade. The next step is preserving cleaner world windows during simultaneous playback.
 
-2. **Run a dedicated world-only validation** — Remove simultaneous self playback to characterize the speaker-ID ceiling without overlap, then use that as the clean-world target for mixed runs.
+2. **Calibrate the mixed-condition operating region** — Refine around the current sweet spot (`--world-gain ~0.8`, device 4 at 40% hardware volume) and measure the tradeoff between speaker-ID similarity and self acceptance.
 
-3. **Tune speaker-ID buffer / threshold on clean-world captures** — With live IDs now activating at stronger world playback, calibrate buffer length and registry threshold using these cleaner embeddings.
+3. **Tune speaker-ID buffer / threshold on clean-world captures** — Use the dedicated world-only results as the ceiling, then tune buffer length and registry threshold to retain as much of that signal as possible in mixed runs.
 
 4. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer.
 
