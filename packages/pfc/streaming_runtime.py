@@ -126,6 +126,7 @@ class StreamingFrameLog:
     deferred: bool
     resumed: bool
     collision_repair_text: Optional[str] = None
+    speaker_id: Optional[str] = None  # Identified speaker for this frame
 
 
 @dataclass(frozen=True)
@@ -467,6 +468,7 @@ class StreamingRuntime:
         resumed: bool,
         self_match_score: float,
         collision_repair_text: Optional[str] = None,
+        speaker_id: Optional[str] = None,
     ) -> StreamingFrameLog:
         m4_metadata = attr_result.metadata or {}
         log = StreamingFrameLog(
@@ -499,6 +501,7 @@ class StreamingRuntime:
             deferred=deferred,
             resumed=resumed,
             collision_repair_text=collision_repair_text,
+            speaker_id=self._current_speaker_id,
         )
         self._logs.append(log)
         self._frame_index += 1
@@ -532,6 +535,7 @@ class StreamingRuntime:
             resumed=request_resumed or resume_resumed,
             self_match_score=self_match_score,
             collision_repair_text=decision.collision_repair_text,
+            speaker_id=self._current_speaker_id,
         )
         log.should_interrupt = decision.should_interrupt
         log.can_speak = decision.can_speak

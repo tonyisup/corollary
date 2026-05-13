@@ -308,15 +308,23 @@ class SelfModel:
     def _extract_known_speakers(self, frames: list[dict]) -> list[str]:
         """Extract known speakers from frame log.
 
-        Returns a list of speaker identifiers based on attribution verdicts.
+        Returns a list of speaker identifiers. Uses per-speaker IDs from
+        the speaker_id field when available, otherwise falls back to
+        generic categories based on attribution verdicts.
         """
         speakers = set()
         for frame in frames:
-            verdict = frame.get("verdict", "SILENCE")
-            if verdict == "SELF":
-                speakers.add("self")
-            elif verdict in ("WORLD", "BOTH"):
-                speakers.add("world")
+            # Prefer per-speaker ID from speaker identification
+            sid = frame.get("speaker_id")
+            if sid is not None:
+                speakers.add(sid)
+            else:
+                # Fallback to generic categories
+                verdict = frame.get("verdict", "SILENCE")
+                if verdict == "SELF":
+                    speakers.add("self")
+                elif verdict in ("WORLD", "BOTH"):
+                    speakers.add("world")
         return sorted(speakers)
 
     def _update_speech_patterns_node(
