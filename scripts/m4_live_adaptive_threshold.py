@@ -40,7 +40,13 @@ from broca.tts import synthesize
 def main():
     parser = argparse.ArgumentParser(description="M4 live adaptive threshold validation")
     parser.add_argument("--input-device", type=int, default=1, help="Mic input device index")
-    parser.add_argument("--output-device", type=int, default=5, help="Speaker output device index")
+    parser.add_argument("--output-device", type=int, default=5, help="TTS/self speaker output device index")
+    parser.add_argument(
+        "--world-output-device",
+        type=int,
+        default=None,
+        help="Optional separate output device index for world/human playback (defaults to --output-device)",
+    )
     parser.add_argument("--duration", type=float, default=8.0, help="Capture duration in seconds")
     parser.add_argument("--text", type=str, default="Hello, I am Corollary. This is a live self-voice detection test.")
     parser.add_argument("--m4-threshold", type=float, default=0.10, help="Base M4 self-voice threshold")
@@ -83,13 +89,16 @@ def main():
         help="Override SpeakerRegistry cosine-similarity threshold for live ID",
     )
     args = parser.parse_args()
+    if args.world_output_device is None:
+        args.world_output_device = args.output_device
 
     print("=" * 60)
     print("M4 Live Adaptive Threshold Validation")
     print("=" * 60)
-    print(f"  Input device:  {args.input_device} (BL-2021USB)")
-    print(f"  Output device: {args.output_device} (Mac mini Speakers)")
-    print(f"  Duration:      {args.duration}s")
+    print(f"  Input device:   {args.input_device} (BL-2021USB)")
+    print(f"  TTS output:     {args.output_device} (Mac mini Speakers)")
+    print(f"  World output:   {args.world_output_device}")
+    print(f"  Duration:       {args.duration}s")
     print(f"  M4 threshold:  {args.m4_threshold}")
     print(f"  M4 buffer:     {args.m4_buffer_ms}ms")
 
@@ -176,8 +185,11 @@ def main():
                 if np.max(np.abs(audio)) > 0:
                     audio = audio / np.max(np.abs(audio)) * float(args.world_gain)
                 time.sleep(args.world_delay_s)
-                print(f"  Starting world-audio playback: {args.play_world_audio}")
-                sd.play(audio, samplerate=16000, device=args.output_device, blocking=True)
+                print(
+                    f"  Starting world-audio playback on device {args.world_output_device}: "
+                    f"{args.play_world_audio}"
+                )
+                sd.play(audio, samplerate=16000, device=args.world_output_device, blocking=True)
                 print("  World-audio playback completed")
             except Exception as e:
                 world_playback_error = str(e)
