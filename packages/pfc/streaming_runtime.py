@@ -612,9 +612,10 @@ class StreamingRuntime:
         timestamp = time.time() - self._start_time
 
         # Current speaker ID for per-speaker adaptive threshold.
-        # In live mode this would come from the STG speaker identification module.
-        # For now, None means "unknown" — the adapter falls back to base threshold.
-        current_speaker_id: Optional[str] = None
+        # _update_speaker_id() maintains self._current_speaker_id based on
+        # accumulated WORLD audio. Use it here so the adaptive threshold
+        # from previous frames applies to the current frame.
+        current_speaker_id: Optional[str] = self._current_speaker_id
 
         # Split mic_frame into VAD-sized sub-frames
         num_vad_frames = max(1, len(mic_frame) // VAD_FRAME_SAMPLES)
