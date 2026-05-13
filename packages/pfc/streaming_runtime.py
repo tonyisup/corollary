@@ -94,6 +94,9 @@ class StreamingConfig:
     # Hippocampus (M5)
     hippocampus: Optional[Any] = None  # Hippocampus instance — episodic memory encoding
 
+    # Per-speaker adaptive threshold (M4+)
+    speaker_threshold_adapter: Optional[Any] = None  # SpeakerThresholdAdapter instance
+
 
 @dataclass
 class StreamingFrameLog:
@@ -146,6 +149,7 @@ class SyntheticAttributionFrame:
     confidence: float = 0.9
     m4_outcome: str = "not_attempted"
     m4_confidence: Optional[float] = None
+    speaker_id: Optional[str] = None  # Per-speaker adaptive threshold ID
 
 
 class StreamingRuntime:
@@ -222,7 +226,11 @@ class StreamingRuntime:
             m4_min_buffer_ms=config.m4_min_buffer_ms,
             room_filter=room_filter,
             room_local_threshold=room_local_threshold,
+            speaker_threshold_adapter=config.speaker_threshold_adapter,
         )
+
+        # Per-spepeaker adaptive threshold adapter (also stored for post-run inspection)
+        self._speaker_threshold_adapter = config.speaker_threshold_adapter
 
         # Logging
         self._logs: list[StreamingFrameLog] = []
@@ -503,6 +511,11 @@ class StreamingRuntime:
         """
         timestamp = time.time() - self._start_time
 
+        # Current speaker ID for per-speaker adaptive threshold.
+        # In live mode this would come from the STG speaker identification module.
+        # For now, None means "unknown" — the adapter falls back to base threshold.
+        current_speaker_id: Optional[str] = None
+
         # Split mic_frame into VAD-sized sub-frames
         num_vad_frames = max(1, len(mic_frame) // VAD_FRAME_SAMPLES)
         output = np.zeros_like(mic_frame)
@@ -559,6 +572,7 @@ class StreamingRuntime:
                 frame_audio=vad_frame,
                 self_pcm=self._tts_pcm,
                 agent_start_sample=agent_start_sample,
+                speaker_id=current_speaker_id,
             )
 
             # 6. Controller + real-time TTS gate
