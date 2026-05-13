@@ -21,7 +21,9 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
+_repo_root = str(Path(__file__).resolve().parent.parent)
+sys.path.insert(0, _repo_root)
+sys.path.insert(0, os.path.join(_repo_root, "packages"))
 
 try:
     import sounddevice as sd
