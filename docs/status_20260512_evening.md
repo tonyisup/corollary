@@ -105,6 +105,8 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - A dedicated world-only validation (no simultaneous self playback, world clip only on device 4) pushed speaker-ID quality much higher: `speaker_id=human_negative_speaker1`, avg similarity `0.4663`, max similarity `0.7516`, with 266/300 frames classified as `WORLD`.
 - A fan-off world-only rerun (same setup, PC fan turned off) confirmed the improvement is real but modest: avg similarity `0.484` (+0.0177), max similarity `0.7568` (+0.0052), same 266 WORLD frames. The fan was a measurable contaminant but not the dominant source of speaker-ID ceiling in world-only conditions.
 - The best mixed-condition operating point in the sweep remained `--world-gain 0.8`: live speaker ID activated reliably while preserving self acceptance (`m4_accepted: 16`). The world-only run shows the ceiling is substantially higher when overlap is removed.
+- This suggests the embedding-domain mismatch between reference clips and live captures is a larger factor than the fan noise itself.
+
 - This means the current bottleneck is no longer basic speaker-ID viability. The real gap is mixed-condition separation: preserving enough clean world evidence during simultaneous self playback to keep speaker ID/adaptation active without hurting self acceptance.
 
 ## Noise-Path A/B Matrix — 2026-05-13
