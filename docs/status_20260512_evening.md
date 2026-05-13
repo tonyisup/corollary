@@ -107,6 +107,11 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - The best mixed-condition operating point in the sweep remained `--world-gain 0.8`: live speaker ID activated reliably while preserving self acceptance (`m4_accepted: 16`). The world-only run shows the ceiling is substantially higher when overlap is removed.
 - This suggests the embedding-domain mismatch between reference clips and live captures is a larger factor than the fan noise itself.
 
+- A systematic embedding-domain analysis was then conducted. Within-clip analysis showed that 10-second reference clips have huge internal embedding variance (some windows sim=0.85 to the full clip, others sim=0.01), meaning single full-clip embeddings are not robust reference points.
+- A file-vs-live comparison was performed: playing each of the 6 reference clips through device 4 and capturing on device 1, then comparing reference embeddings against live-capture embeddings. Three speakers matched well (sim 0.77-0.80), three failed (sim -0.01 to 0.07).
+- Live-path embeddings were refreshed by extracting 2s window embeddings from the BL-2021USB capture of each reference clip played through device 4. A mixed split-output validation using these live-path embeddings (instead of file-based embeddings) was then run.
+- **Result with live-path embeddings: `speaker_id=human_negative_speaker2` resolved reliably, avg best-match sim=0.4548, max=0.4984.** This is a material improvement over file-based embeddings in mixed conditions (avg 0.055, max 0.074) and comparable to the best fan-on gain=0.8 run (avg 0.353, max 0.549), without needing elevated world playback volume.
+
 - This means the current bottleneck is no longer basic speaker-ID viability. The real gap is mixed-condition separation: preserving enough clean world evidence during simultaneous self playback to keep speaker ID/adaptation active without hurting self acceptance.
 
 ## Noise-Path A/B Matrix — 2026-05-13
