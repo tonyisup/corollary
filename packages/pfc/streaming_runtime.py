@@ -205,16 +205,37 @@ class StreamingRuntime:
 
         # M4 detector
         m4_detector = None
+        m4_identifier = None
         if config.m4_enable:
             try:
                 from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
-                identifier = SpeakerIdentifier(use_real=False)
-                m4_detector = SelfVoiceDetector(identifier, threshold=config.m4_self_threshold)
+                m4_identifier = SpeakerIdentifier(use_real=False)
+                m4_detector = SelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
                 if self._tts_pcm is not None:
                     m4_detector.register_self(self._tts_pcm)
             except Exception as e:
                 print(f"  WARNING: M4 detector failed to initialize: {e}")
                 m4_detector = None
+                m4_identifier = None
+
+        # Speaker identification for per-speaker adaptive threshold
+        speaker_identifier = None
+        speaker_world_model = None
+        if config.speaker_threshold_adapter is not None:
+            try:
+                from stg.speaker import SpeakerIdentifier
+                from pfc.world_model import MultiSpeakerWorldModel
+                speaker_identifier = SpeakerIdentifier(use_real=True)
+                speaker_world_model = MultiSpeakerWorldModel(
+                    identifier=speaker_identifier,
+                    self_speaker_id="self",
+                )
+                if self._tts_pcm is not None:
+                    speaker_world_model.register_speaker("self", self._tts_pcm)
+            except Exception as e:
+                print(f"  WARNING: Speaker identification failed to initialize: {e}")
+                speaker_identifier = None
+                speaker_world_model = None
 
         self._attributor = ThalamicAttributor(
             energy_threshold_db=config.energy_threshold_db,
@@ -229,8 +250,17 @@ class StreamingRuntime:
             speaker_threshold_adapter=config.speaker_threshold_adapter,
         )
 
-        # Per-spepeaker adaptive threshold adapter (also stored for post-run inspection)
+        # Per-speaker adaptive threshold adapter (also stored for post-run inspection)
         self._speaker_threshold_adapter = config.speaker_threshold_adapter
+
+        # Speaker identification state for per-speaker adaptive threshold
+        self._speaker_identifier = speaker_identifier
+        self._speaker_world_model = speaker_world_model
+        self._current_speaker_id: Optional[str] = None
+        # WORLD audio buffer: accumulates non-self speech for speaker identification
+        self._speaker_id_buffer: Optional[np.ndarray] = None
+        self._speaker_id_interval_frames = 20  # Run speaker ID every 20 VAD frames (~200ms)
+        self._speaker_id_frame_counter = 0
 
         # Logging
         self._logs: list[StreamingFrameLog] = []
@@ -241,6 +271,61 @@ class StreamingRuntime:
         self._output_requested = False
         self._was_deferred = False
         self._was_resumed = False
+
+    def _update_speaker_id(
+        self,
+        vad_frame: np.ndarray,
+        attr_result,
+    ) -> None:
+        """Run speaker identification on WORLD audio for per-speaker adaptive threshold.
+
+        Accumulates audio frames classified as WORLD/BOTH and periodically
+        runs the speaker identification pipeline to determine the current
+        speaker. The result is stored in `_current_speaker_id` and passed
+        to the attributor on subsequent frames.
+
+        This is intentionally lightweight — it only runs every
+        `_speaker_id_interval_frames` VAD frames to avoid overwhelming
+        the ECAPA encoder in the audio callback path.
+        """
+        if self._speaker_world_model is None or self._speaker_identifier is None:
+            return
+
+        self._speaker_id_frame_counter += 1
+
+        # Only run speaker identification periodically
+        if self._speaker_id_frame_counter < self._speaker_id_interval_frames:
+            return
+        self._speaker_id_frame_counter = 0
+
+        # Accumulate WORLD audio
+        verdict = attr_result.verdict
+        if verdict in (SourceVerdict.WORLD, SourceVerdict.BOTH):
+            if self._speaker_id_buffer is None:
+                self._speaker_id_buffer = vad_frame.copy()
+            else:
+                self._speaker_id_buffer = np.concatenate(
+                    [self._speaker_id_buffer, vad_frame]
+                )
+            # Keep buffer from growing unbounded (max ~2s of audio)
+            max_buffer_samples = int(2.0 * self.sr)
+            if len(self._speaker_id_buffer) > max_buffer_samples:
+                self._speaker_id_buffer = self._speaker_id_buffer[-max_buffer_samples:]
+
+        # Need enough audio for a reliable embedding (at least 0.5s)
+        min_samples = int(0.5 * self.sr)
+        if self._speaker_id_buffer is None or len(self._speaker_id_buffer) < min_samples:
+            return
+
+        try:
+            # Compute embedding and identify speaker
+            embedding = self._speaker_identifier.get_embedding(self._speaker_id_buffer)
+            speaker_id, similarity = self._speaker_world_model.identify_speaker(embedding)
+            if speaker_id is not None and speaker_id != "self":
+                self._current_speaker_id = speaker_id
+        except Exception:
+            # Speaker identification is best-effort; don't crash the audio callback
+            pass
 
     def _get_tts_chunk(self) -> np.ndarray:
         """Return the next TTS chunk to emit, or zeros if done/gated."""
@@ -574,6 +659,9 @@ class StreamingRuntime:
                 agent_start_sample=agent_start_sample,
                 speaker_id=current_speaker_id,
             )
+
+            # 5b. Speaker identification for per-speaker adaptive threshold
+            self._update_speaker_id(vad_frame, attr_result)
 
             # 6. Controller + real-time TTS gate
             sub_timestamp = timestamp + (vad_i * VAD_FRAME_SAMPLES / self.sr)
