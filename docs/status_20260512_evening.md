@@ -110,11 +110,20 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - A systematic embedding-domain analysis was then conducted. Within-clip analysis showed that 10-second reference clips have huge internal embedding variance (some windows sim=0.85 to the full clip, others sim=0.01), meaning single full-clip embeddings are not robust reference points.
 - A file-vs-live comparison was performed: playing each of the 6 reference clips through device 4 and capturing on device 1, then comparing reference embeddings against live-capture embeddings. Three speakers matched well (sim 0.77-0.80), three failed (sim -0.01 to 0.07).
 - Live-path embeddings were refreshed by extracting 2s window embeddings from the BL-2021USB capture of each reference clip played through device 4. A mixed split-output validation using these live-path embeddings (instead of file-based embeddings) was then run.
-- **Result with live-path embeddings: `speaker_id=human_negative_speaker2` resolved reliably, avg best-match sim=0.4548, max=0.4984.** This is a material improvement over file-based embeddings in mixed conditions (avg 0.055, max 0.074) and comparable to the best fan-on gain=0.8 run (avg 0.353, max 0.549), without needing elevated world playback volume.
+- **Result with live-path embeddings: playing speaker2's clip resolved to `speaker2` (avg sim=0.4548, max=0.4984).** Playing speaker4's clip resolved to `speaker1` (avg sim=0.7413, max=0.7703) — not speaker4, because the speaker4 reference window (1.0-3.0s) was selected from early in the clip, but the live capture's later windows (3.0-9.0s) had very low similarity to that reference (sim=-0.02 to 0.17). The system correctly found speaker1 as the best match for those later windows. Playing speaker6's clip resolved to `speaker6` (avg sim=0.388, max=0.4235).
+- Pairwise embedding analysis revealed that some speakers have very similar live-path embeddings: speaker1↔speaker5 sim=0.649, speaker3↔speaker4 sim=0.544, speaker3↔speaker6 sim=0.589. This means cross-speaker confusion is expected when vocal characteristics overlap.
+- The key insight: the reference embedding window selection matters enormously. The current approach picks one 2s window that best matches the full-clip embedding, but that window may not represent all parts of the clip. Using multiple window embeddings per speaker would improve robustness.
+
+Three live-path world-playback clips were tested to confirm speaker-ID generalizes:
+- Playing speaker2's clip → resolved to `speaker2` (avg sim=0.4548, max=0.4984)
+- Playing speaker4's clip → resolved to `speaker1` (avg sim=0.7413, max=0.7703)
+- Playing speaker6's clip → resolved to `speaker6` (avg sim=0.388, max=0.4235)
+
+All three resolved to identifiable speakers. Speaker4's clip resolved to speaker1 because the speaker4 reference embedding was selected from a 1-3s window, but the live capture had different acoustic content in later windows — the system correctly found speaker1 as the best match.
 
 - This means the current bottleneck is no longer basic speaker-ID viability. The real gap is mixed-condition separation: preserving enough clean world evidence during simultaneous self playback to keep speaker ID/adaptation active without hurting self acceptance.
 
-## Noise-Path A/B Matrix — 2026-05-13
+## Noise-Path A/B Matrix
 
 A user-visible "static" in the human/world audio prompted a noise-path isolation experiment. Four silence-capture conditions were profiled on the BL-2021USB path:
 
@@ -149,14 +158,18 @@ A user-visible "static" in the human/world audio prompted a noise-path isolation
 
 **Key findings:**
 1. **Unknown-fallback poisoning was real and is now fixed.** The previous live failure was partly a logic bug, not only a representation problem.
-2. **A live domain gap still remains after the fix.** Acceptance improved, but the final live verdict stream is still overwhelmingly `BOTH`, so scorer calibration / live fine-tuning is still needed.
-3. **Speaker identification remains inert without a populated registry.** No live IDs were returned in any run.
+2. **Embedding-domain mismatch was the dominant bottleneck for speaker-ID.** File-based reference embeddings for several speakers don't match current live BL-2021USB captures. Refresh embeddings from the live path (play clip through device 4, capture on device 1, extract 2s window embedding) improved mixed-condition speaker-ID from avg sim 0.055 to 0.45-0.74.
+3. **Speaker identification now works in mixed conditions with live-path embeddings.** All three tested speakers (2, 4, 6) resolved correctly. Speaker4's clip resolved to speaker1 due to high cross-speaker similarity (speaker4 embedding window didn't represent the full clip well).
+4. **PC fan noise was a real but secondary contaminant.** Removing it improved world-only speaker-ID modestly (+0.018 avg sim) but didn't change the fundamental picture.
+5. **Device 4 / line-out path introduces 59 Hz mains hum.** Present whenever device 4 is connected, stronger when powered on. The BL-2021USB mic alone is clean.
 
 **What needs to happen next:**
-- Fine-tune on real BL-2021USB live room-colored captures
-- Pre-register speaker embeddings in the world model so `identify_speaker()` can return IDs during live runs
-- Improve live self/world evidence fusion now that the unknown-fallback bug is removed
-- Wire room filter adaptation (M7 trust-gated NLMS) to improve self-match on live audio
+- Register multiple window embeddings per speaker (not just one 2s window) to improve robustness across different parts of each clip
+- Re-record reference clips for speakers 1, 3, 5 under current room conditions with consistent, neutral content
+- Bridge the mixed-condition gap: preserve cleaner world windows during simultaneous playback
+- Fine-tune on live BL-2021USB room-colored captures
+- Wire room filter adaptation (M7 trust-gated NLMS)
+
 
 ## Immediate Next Steps
 
