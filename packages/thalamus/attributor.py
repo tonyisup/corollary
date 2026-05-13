@@ -327,14 +327,15 @@ class ThalamicAttributor:
                     try:
                         is_self_voice, m4_confidence = self.m4_detector.is_self(self._m4_buffer)
                         m4_metadata['m4_confidence'] = m4_confidence
-                        # Update and apply per-speaker adaptive threshold only
-                        # for real identified speakers. Unknown/live fallback uses
-                        # the base threshold to avoid self-poisoning.
+                        # Apply per-speaker adaptive threshold only for real
+                        # identified speakers. Non-self profile learning happens
+                        # in the runtime from cleaner WORLD-only evidence after
+                        # verdict resolution; do not learn here from overlap-prone
+                        # attribution frames.
                         if (
                             self.speaker_threshold_adapter is not None
                             and adaptive_speaker_id is not None
                         ):
-                            self.speaker_threshold_adapter.update(adaptive_speaker_id, m4_confidence)
                             threshold = self.speaker_threshold_adapter.get_threshold(
                                 adaptive_speaker_id
                             )

@@ -352,6 +352,28 @@ class StreamingRuntime:
             # Speaker identification is best-effort; don't crash the audio callback
             pass
 
+    def _update_adapter_from_clean_world_evidence(
+        self,
+        attr_result: AttributionResult,
+        speaker_id: Optional[str],
+    ) -> None:
+        """Update non-self adaptive-threshold profiles from clean WORLD evidence.
+
+        This is deliberately separated from the attributor's M4 frame path.
+        Non-self profile learning should only happen after verdict resolution on
+        frames that the system already considers clean WORLD, avoiding overlap-
+        contaminated BOTH frames from ratcheting non-self thresholds upward.
+        """
+        if self._speaker_threshold_adapter is None or speaker_id in (None, "", "self"):
+            return
+        if attr_result.verdict != SourceVerdict.WORLD:
+            return
+        m4_metadata = attr_result.metadata or {}
+        m4_conf = m4_metadata.get("m4_confidence")
+        if m4_conf is None:
+            return
+        self._speaker_threshold_adapter.update(speaker_id, float(m4_conf))
+
     def _get_tts_chunk(self) -> np.ndarray:
         """Return the next TTS chunk to emit, or zeros if done/gated."""
         if self._tts_pcm is None or self._tts_position >= self._tts_total_samples:
@@ -603,12 +625,22 @@ class StreamingRuntime:
                 self_match_score_per_frame=frame.self_match_score_per_frame,
             )
 
-            # Update speaker threshold adapter (simulating _process_frame path)
+            # Update speaker threshold adapter for synthetic/replay validation.
+            # Synthetic frames already carry clean verdict + speaker labels, so
+            # preserving explicit WORLD/self learning here keeps offline tests
+            # representative even though the live path now learns non-self
+            # profiles only from post-verdict WORLD evidence.
             if self._speaker_threshold_adapter is not None:
                 m4_conf = frame.m4_confidence if frame.m4_confidence is not None else 0.0
                 sid = frame.speaker_id if frame.speaker_id is not None else "unknown"
-                self._speaker_threshold_adapter.update(sid, m4_conf)
-                self._current_speaker_id = sid if sid != "self" else None
+                if sid == "self":
+                    self._speaker_threshold_adapter.update("self", m4_conf)
+                    self._current_speaker_id = None
+                elif frame.verdict == SourceVerdict.WORLD:
+                    self._speaker_threshold_adapter.update(sid, m4_conf)
+                    self._current_speaker_id = sid
+                else:
+                    self._current_speaker_id = sid if sid != "self" else None
 
             self._apply_controller_and_gate(
                 attr,
@@ -706,6 +738,13 @@ class StreamingRuntime:
 
             # 5b. Speaker identification for per-speaker adaptive threshold
             self._update_speaker_id(vad_frame, attr_result)
+
+            # 5c. Update non-self adaptive-threshold profiles only from clean
+            # WORLD evidence, after verdict resolution and speaker ID update.
+            self._update_adapter_from_clean_world_evidence(
+                attr_result,
+                self._current_speaker_id,
+            )
 
             # 6. Controller + real-time TTS gate
             sub_timestamp = timestamp + (vad_i * VAD_FRAME_SAMPLES / self.sr)
