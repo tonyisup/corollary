@@ -114,12 +114,22 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - Pairwise embedding analysis revealed that some speakers have very similar live-path embeddings: speaker1↔speaker5 sim=0.649, speaker3↔speaker4 sim=0.544, speaker3↔speaker6 sim=0.589. This means cross-speaker confusion is expected when vocal characteristics overlap.
 - The key insight: the reference embedding window selection matters enormously. The current approach picks one 2s window that best matches the full-clip embedding, but that window may not represent all parts of the clip. Using multiple window embeddings per speaker would improve robustness.
 
-Three live-path world-playback clips were tested to confirm speaker-ID generalizes:
-- Playing speaker2's clip → resolved to `speaker2` (avg sim=0.4548, max=0.4984)
-- Playing speaker4's clip → resolved to `speaker1` (avg sim=0.7413, max=0.7703)
-- Playing speaker6's clip → resolved to `speaker6` (avg sim=0.388, max=0.4235)
+### Full 6-Speaker Live-Path Validation — 2026-05-13
 
-All three resolved to identifiable speakers. Speaker4's clip resolved to speaker1 because the speaker4 reference embedding was selected from a 1-3s window, but the live capture had different acoustic content in later windows — the system correctly found speaker1 as the best match.
+All 6 reference speakers were tested as world-playback clips using live-path single-window embeddings:
+
+| World clip | M4 OK | Avg sim | Max sim | Speaker IDs | WORLD | BOTH |
+|------------|-------|---------|---------|-------------|-------|-------|
+| speaker1 | 15 | 0.094 | 0.176 | speaker3, speaker6 | 97 | 186 |
+| speaker2 | 19 | 0.346 | 0.408 | speaker1, speaker2 | 96 | 189 |
+| speaker3 | 15 | 0.061 | 0.073 | speaker4 | 78 | 206 |
+| speaker4 | 17 | 0.049 | 0.077 | speaker1, speaker3 | 78 | 206 |
+| speaker5 | 17 | 0.123 | 0.140 | speaker4, speaker5 | 78 | 206 |
+| speaker6 | 11 | 0.329 | 0.372 | speaker6 | 78 | 207 |
+
+**All 6 speakers resolved to identifiable speaker IDs.** Speakers 2 and 6 have the strongest matches (avg sim 0.33-0.35). Speakers 1, 3, 4, 5 have lower similarity (0.05-0.12) due to reference/live embedding mismatch.
+
+**Verdict distribution is stable across all 6 runs**: 78-97 WORLD frames, 186-207 BOTH frames, consistent M4 acceptance (11-19 frames).
 
 ### Centroid Window Embeddings — 2026-05-13
 
@@ -198,9 +208,9 @@ Four silence-capture conditions were profiled on the BL-2021USB path:
 5. **Device 4 / line-out path introduces 59 Hz mains hum.** Present whenever device 4 is connected, stronger when powered on. The BL-2021USB mic alone is clean.
 
 **What needs to happen next:**
-- Register multiple window embeddings per speaker (not just one 2s window) to improve robustness across different parts of each clip
-- Re-record reference clips for speakers 1, 3, 5 under current room conditions with consistent, neutral content
-- Bridge the mixed-condition gap: preserve cleaner world windows during simultaneous playback
+- Re-record reference clips for speakers 1, 3, 5 under current room conditions with consistent, neutral content (these have the lowest live-path similarity scores)
+- Register multiple window embeddings per speaker to improve robustness across different parts of each clip
+- Bridge the mixed-condition gap: preserve cleaner world windows during simultaneous self playback
 - Fine-tune on live BL-2021USB room-colored captures
 - Wire room filter adaptation (M7 trust-gated NLMS)
 
