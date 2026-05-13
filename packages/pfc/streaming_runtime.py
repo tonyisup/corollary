@@ -225,14 +225,17 @@ class StreamingRuntime:
         if config.speaker_threshold_adapter is not None:
             try:
                 from stg.speaker import SpeakerIdentifier
-                from pfc.world_model import MultiSpeakerWorldModel
+                from pfc.world_model import SpeakerRegistry, MultiSpeakerWorldModel
                 speaker_identifier = SpeakerIdentifier(use_real=True)
-                speaker_world_model = MultiSpeakerWorldModel(
+                registry = SpeakerRegistry(
                     identifier=speaker_identifier,
                     self_speaker_id="self",
                 )
+                speaker_world_model = MultiSpeakerWorldModel(registry=registry)
                 if self._tts_pcm is not None:
-                    speaker_world_model.register_speaker("self", self._tts_pcm)
+                    speaker_world_model.registry.register_speaker(
+                        "self", "self", embedding=None,
+                    )
             except Exception as e:
                 print(f"  WARNING: Speaker identification failed to initialize: {e}")
                 speaker_identifier = None
@@ -571,6 +574,14 @@ class StreamingRuntime:
                 },
                 self_match_score_per_frame=frame.self_match_score_per_frame,
             )
+
+            # Update speaker threshold adapter (simulating _process_frame path)
+            if self._speaker_threshold_adapter is not None:
+                m4_conf = frame.m4_confidence if frame.m4_confidence is not None else 0.0
+                sid = frame.speaker_id if frame.speaker_id is not None else "unknown"
+                self._speaker_threshold_adapter.update(sid, m4_conf)
+                self._current_speaker_id = sid if sid != "self" else None
+
             self._apply_controller_and_gate(
                 attr,
                 timestamp_s=frame.time_s,
@@ -846,6 +857,7 @@ class StreamingRuntime:
             "deferred": log.deferred,
             "resumed": log.resumed,
             "collision_repair_text": log.collision_repair_text,
+            "speaker_id": log.speaker_id,
         }
 
     def _save_logs(self, path: Path) -> None:
