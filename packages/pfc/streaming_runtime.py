@@ -287,12 +287,16 @@ class StreamingRuntime:
         vad_frame: np.ndarray,
         attr_result,
     ) -> None:
-        """Run speaker identification on WORLD audio for per-speaker adaptive threshold.
+        """Run speaker identification on clean WORLD audio for per-speaker adaptive threshold.
 
-        Accumulates audio frames classified as WORLD/BOTH and periodically
+        Accumulates audio frames classified as WORLD (not BOTH) and periodically
         runs the speaker identification pipeline to determine the current
         speaker. The result is stored in `_current_speaker_id` and passed
         to the attributor on subsequent frames.
+
+        WORLD-only accumulation is intentional: BOTH frames are overlap-contaminated
+        mixtures of self + other speech, and using them for speaker-ID adaptation
+        can raise non-self thresholds in ways that suppress self acceptance.
 
         This is intentionally lightweight — it only runs every
         `_speaker_id_interval_frames` VAD frames to avoid overwhelming
@@ -303,11 +307,11 @@ class StreamingRuntime:
 
         self._speaker_id_frame_counter += 1
 
-        # Accumulate WORLD/BOTH audio on every eligible frame so the buffer can
+        # Accumulate clean WORLD audio on every eligible frame so the buffer can
         # actually reach the minimum duration needed for embeddings. Only the
         # expensive embedding/matching step is rate-limited.
         verdict = attr_result.verdict
-        if verdict in (SourceVerdict.WORLD, SourceVerdict.BOTH):
+        if verdict == SourceVerdict.WORLD:
             if self._speaker_id_buffer is None:
                 self._speaker_id_buffer = vad_frame.copy()
             else:

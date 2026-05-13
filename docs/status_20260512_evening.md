@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-12 (evening)
 > **Branch:** main (synced with origin/main)
-> **Tests:** 379 passed, 1 skipped
+> **Tests:** 380 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -62,7 +62,7 @@ Audio → VAD → Attribution (with speaker_id) → SpeakerThresholdAdapter
 | M3 acceptance | 30 | Streaming runtime behavior |
 | M4 acceptance | 15 | Adaptive threshold on replay data |
 | M5 acceptance | 1 | Multi-speaker world model |
-| **Total** | **379** | **All passing** |
+| **Total** | **380** | **All passing** |
 
 ## Live Hardware Validation — 2026-05-13
 
@@ -96,7 +96,9 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 - Two speaker-ID bugs were fixed: (1) silent call to non-existent `MultiSpeakerWorldModel.identify_speaker()`, and (2) WORLD/BOTH buffer accumulation only happened on the periodic speaker-ID cadence, so embeddings often never ran
 - After those fixes, live `speaker_id` now resolves and best-match diagnostics are populated
 - In the mixed self+world run, IDs resolved mainly to `human_negative_speaker4` / `human_negative_speaker5` with best-match similarities up to `0.196`
-- This means the current bottleneck is no longer missing registry or silent speaker-ID failure; it is overlap-contaminated adaptation, where WORLD/BOTH buffers can drive non-self thresholds upward and suppress self acceptance
+- WORLD-only gating was then added for speaker-ID accumulation so overlap-contaminated BOTH frames no longer drive non-self adaptation
+- With WORLD-only gating, live speaker ID remains active (`human_negative_speaker4`) and self acceptance recovers (`m4_accepted: 21`) instead of collapsing to 0
+- This means the current bottleneck is no longer missing registry or silent speaker-ID failure; it is how to reintroduce useful per-speaker adaptation from clean world evidence without re-poisoning self acceptance under overlap
 
 **Threshold sweep result before the fix (θ = 0.00, 0.02, 0.05, 0.07, 0.10):**
 - All runs failed the live acceptance criteria
@@ -117,13 +119,13 @@ Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Spea
 
 ## Immediate Next Steps
 
-1. **Gate speaker-ID adaptation on cleaner world evidence** — Right now WORLD/BOTH buffers under heavy overlap can identify non-self speakers and raise their thresholds, but this mixed buffer also suppresses M4 self acceptance. Restrict adaptation to cleaner WORLD-only segments or higher-confidence world-only windows.
+1. **Reintroduce adaptation from clean world evidence** — WORLD-only speaker ID now preserves self acceptance, but the adapter no longer learns non-self profiles in the mixed run. The next step is to update per-speaker thresholds only from cleaner world-labeled evidence rather than from overlap-contaminated frames.
 
-2. **Collect a cleaner live world-speaker validation capture** — Run a world-only or more clearly separated external-speaker clip through the BL-2021USB path so speaker-ID matching can be evaluated without self-playback contamination.
+2. **Collect a cleaner live world-speaker validation capture** — Run a world-only or more clearly separated external-speaker clip through the BL-2021USB path so speaker-ID matching and world-only profile updates can be evaluated without self-playback contamination.
 
 3. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live room-colored audio, retrain the feature-based scorer.
 
-4. **Improve live self/world evidence fusion** — With unknown-fallback poisoning removed and speaker ID now active, inspect why accepted M4 frames collapse to zero once non-self profiles start adapting under overlap.
+4. **Improve live self/world evidence fusion** — With unknown-fallback poisoning removed and WORLD-only speaker ID active, inspect how to preserve self acceptance while still learning stable non-self profiles.
 
 5. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
 

@@ -7,6 +7,7 @@ end-to-end without requiring real audio or ECAPA models.
 
 import sys
 import os
+from types import SimpleNamespace
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
@@ -122,3 +123,48 @@ class TestStreamingSpeakerAdaptiveIntegration:
         assert "world_speaker" in summary
         assert summary["self"]["mean_conf"] > summary["world_speaker"]["mean_conf"]
         assert summary["world_speaker"]["registered"] is True
+
+    def test_update_speaker_id_accumulates_world_only_not_both(self):
+        """Speaker-ID buffer should grow only from clean WORLD frames, not BOTH."""
+        adapter = SpeakerThresholdAdapter(base_threshold=0.10, margin=0.05)
+        tts_pcm = np.zeros(16000, dtype=np.float32)
+        config = StreamingConfig(
+            tts_pcm=tts_pcm,
+            m4_enable=False,
+            speaker_threshold_adapter=adapter,
+        )
+        runtime = StreamingRuntime(config)
+        runtime._speaker_id_interval_frames = 1
+
+        class FakeIdentifier:
+            def get_embedding(self, pcm):
+                return np.array([1.0, 0.0], dtype=np.float32)
+
+        class FakeRegistry:
+            def best_match(self, embedding):
+                return ("speaker_clean_world", 0.8)
+            def identify_speaker(self, embedding):
+                return ("speaker_clean_world", 0.8)
+
+        runtime._speaker_identifier = FakeIdentifier()
+        runtime._speaker_world_model = SimpleNamespace(registry=FakeRegistry())
+
+        big_frame = np.ones(int(0.5 * runtime.sr), dtype=np.float32)
+
+        runtime._update_speaker_id(
+            big_frame,
+            SimpleNamespace(verdict=SourceVerdict.BOTH),
+        )
+        assert runtime._speaker_id_buffer is None
+        assert runtime._current_speaker_id is None
+        assert runtime._last_speaker_best_match_id is None
+
+        runtime._update_speaker_id(
+            big_frame,
+            SimpleNamespace(verdict=SourceVerdict.WORLD),
+        )
+        assert runtime._speaker_id_buffer is not None
+        assert len(runtime._speaker_id_buffer) >= int(0.5 * runtime.sr)
+        assert runtime._current_speaker_id == "speaker_clean_world"
+        assert runtime._last_speaker_best_match_id == "speaker_clean_world"
+        assert runtime._last_speaker_match_passed is True
