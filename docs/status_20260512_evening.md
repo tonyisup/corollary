@@ -64,12 +64,36 @@ Audio → VAD → Attribution (with speaker_id) → SpeakerThresholdAdapter
 | M5 acceptance | 1 | Multi-speaker world model |
 | **Total** | **378** | **All passing** |
 
+## Live Hardware Validation — 2026-05-13
+
+Ran `scripts/m4_live_adaptive_threshold.py` on BL-2021USB (in=1) + Mac mini Speakers (out=5).
+
+**Results:**
+- Audio I/O working: 240 frames, TTS played and captured (mean energy -41.6 dB)
+- M4 attempted on 166/240 frames (not buffer-blocked)
+- M4 accepted: 0 frames at base threshold 0.10
+- ECAPA confidence on live audio: mean -0.004, max 0.217 (all BOTH verdict)
+- Self-match scores: mean 0.002, max 0.200 — room filter not matching well
+- Speaker identification: no IDs returned (no pre-registered speakers in world model)
+- Adapter: correctly raised threshold to 0.267 for "unknown" speaker
+
+**Key finding — domain gap confirmed:** Live room-colored audio produces ECAPA confidences centered ~0.0 with long tail to 0.22, while the fine-tuned scorer was trained on clean captures. At θ=0.10, only 8.3% of live frames pass. This is the same domain gap seen in M4 fine-tuning results, now confirmed in the live streaming path.
+
+**What needs to happen next:**
+- Lower base threshold for live path (θ≈0.00-0.05) OR fine-tune on live captures
+- Register speaker embeddings in world model for identification to work
+- Wire room filter adaptation (M7 trust-gated NLMS) to improve self-match on live audio
+
 ## Immediate Next Steps
 
-1. **Live hardware validation** — Run streaming runtime on BL-2021USB mic with adaptive threshold. Validate real-time speaker identification convergence.
+1. **M4 live threshold calibration** — Run threshold sweep on live audio to find optimal θ for room-colored domain. Likely θ≈0.00-0.05.
 
-2. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
+2. **Fine-tune on live captures** — Record self-TTS through BL-2021USB, build training pairs from live audio, retrain feature-based scorer. This should shift ECAPA confidences upward for self.
 
-3. **M7 Phase 2: SelfModel drift alarm** — Detect room changes via self-match score drops. Trigger faster adaptation.
+3. **Register speakers in world model** — Pre-register known speaker embeddings so `identify_speaker()` can return IDs during live runs.
 
-4. **M6 introspective queries** — Exercise SAG diff against live streaming. Requires hardware.
+4. **M7 Phase 1: Trust-gated NLMS** — Only adapt room filter on confident SELF frames. Prevents filter poisoning from other speakers. Requires wiring cerebellum into streaming runtime.
+
+5. **M7 Phase 2: SelfModel drift alarm** — Detect room changes via self-match score drops. Trigger faster adaptation.
+
+6. **M6 introspective queries** — Exercise SAG diff against live streaming. Requires hardware.
