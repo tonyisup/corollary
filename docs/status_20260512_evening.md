@@ -233,6 +233,27 @@ Four silence-capture conditions were profiled on the BL-2021USB path:
 
 **This is the current research priority.**
 
+### Conversational Registration — Implementation Complete
+
+The conversational registration is now integrated into the streaming runtime:
+
+**How it works:**
+1. Set `enable_conversational_registration=True` in `StreamingConfig`
+2. During the streaming loop, WORLD audio is accumulated in `_speaker_id_buffer`
+3. Every 20 VAD frames, the system extracts an embedding and checks for matches
+4. If no existing speaker matches and >=0.3s of WORLD speech is accumulated, auto-registers as new speaker
+5. Registration happens once per conversation (`_registration_complete` flag)
+6. The `speaker_registered` field on `StreamingFrameLog` records when registration occurred
+
+**Test results (3 turns, ~6s each):**
+- Turn 1: 14 WORLD frames -> registered on frame 179 (end of turn)
+- Turn 2: 46 WORLD frames -> 21 matched (speaker identified)
+- Turn 3: 50 WORLD frames -> 41 matched (consistent identification)
+
+**Files modified:**
+- `packages/pfc/streaming_runtime.py` -- Added config fields, registration state, and auto-registration logic
+- `tests/integration/test_conversational_registration.py` -- 6 tests
+
 ### Remaining technical work
 - Re-record reference clips for speakers 1, 3, 5 under current room conditions with consistent, neutral content (these have the lowest live-path similarity scores)
 - Register multiple window embeddings per speaker to improve robustness across different parts of each clip
