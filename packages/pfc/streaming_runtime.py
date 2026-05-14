@@ -299,12 +299,14 @@ class StreamingRuntime:
         vad_frame: np.ndarray,
         attr_result,
     ) -> Optional[str]:
-        """Run speaker identification on clean WORLD audio for per-speaker adaptive threshold.
+        """Run speaker identification for per-speaker adaptive threshold.
 
-        Accumulates audio frames classified as WORLD (not BOTH) and periodically
-        runs the speaker identification pipeline to determine the current
-        speaker. The result is stored in `_current_speaker_id` and passed
-        to the attributor on subsequent frames.
+        Accumulates audio frames for speaker embeddings and periodically runs
+        the speaker identification pipeline to determine the current speaker.
+        Cold-start conversational registration uses clean WORLD frames only;
+        after a non-self speaker is known, BOTH frames are also eligible so
+        speaker ID can persist through overlap. The result is stored in
+        `_current_speaker_id` and passed to the attributor on subsequent frames.
 
         When conversational registration is enabled and no human speaker is
         yet registered, auto-registers a new speaker from accumulated WORLD
@@ -318,11 +320,18 @@ class StreamingRuntime:
 
         self._speaker_id_frame_counter += 1
 
-        # Accumulate clean WORLD audio on every eligible frame so the buffer can
-        # actually reach the minimum duration needed for embeddings. Only the
-        # expensive embedding/matching step is rate-limited.
+        # Accumulate speaker-ID audio on every eligible frame so the buffer can
+        # actually reach the minimum duration needed for embeddings. Cold-start
+        # conversational registration must stay WORLD-only to avoid registering
+        # a self+human overlap mixture. Once a non-self speaker is known, BOTH
+        # frames are useful for ongoing identification during overlap.
         verdict = attr_result.verdict
-        if verdict == SourceVerdict.WORLD:
+        registry = self._speaker_world_model.registry
+        known_non_self = any(s != "self" for s in registry.known_speakers)
+        eligible_for_speaker_id = verdict == SourceVerdict.WORLD or (
+            verdict == SourceVerdict.BOTH and known_non_self
+        )
+        if eligible_for_speaker_id:
             if self._speaker_id_buffer is None:
                 self._speaker_id_buffer = vad_frame.copy()
             else:

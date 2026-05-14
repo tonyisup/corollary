@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-12 (evening)
 > **Branch:** main (synced with origin/main)
-|> **Tests:** 387 passed, 1 skipped
+> **Tests:** 388 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -254,8 +254,21 @@ The conversational registration is now integrated into the streaming runtime:
 - `packages/pfc/streaming_runtime.py` -- Added config fields, registration state, and auto-registration logic
 - `tests/integration/test_conversational_registration.py` -- 6 tests
 
+### Mixed-Condition Gap — Partial Bridge
+
+The key reframing: `BOTH` is often the correct attribution verdict during true self+human overlap. The PoC does not need to force those frames into SELF or WORLD; it needs speaker-ID continuity while overlap is happening.
+
+Runtime change:
+- Cold-start conversational registration still accumulates clean `WORLD` frames only, avoiding registration from a self+human mixture.
+- Once any non-self speaker is registered/pre-registered, `BOTH` frames become eligible for speaker-ID buffering.
+- Adaptive-threshold profile learning remains WORLD-only, so overlap-contaminated `BOTH` frames do not ratchet non-self thresholds upward.
+
+Evidence:
+- Added regression coverage for both sides of the rule: BOTH ignored before registration; BOTH accumulated after a human speaker is known.
+- Full suite: 388 passed, 1 skipped.
+
 ### Remaining technical work
-- Bridge the mixed-condition gap: preserve cleaner world windows during simultaneous self playback
+- Validate the BOTH-enabled speaker-ID buffer in a live conversational overlap run
 - Fine-tune on live BL-2021USB room-colored captures
 - Wire room filter adaptation (M7 trust-gated NLMS)
 
