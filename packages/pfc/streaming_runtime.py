@@ -30,7 +30,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -72,6 +72,13 @@ class StreamingConfig:
     # Room filter
     room_filter_path: Optional[str] = None
     room_local_threshold: Optional[float] = None
+
+    # M7 trust-gated room filter adaptation. Disabled by default; when enabled,
+    # room_adapter should expose update_trust_gated(...) and get_learned_ir().
+    enable_room_filter_adaptation: bool = False
+    room_adapter: Optional[Any] = None
+    room_adapt_confidence_threshold: float = 0.80
+    room_adapt_match_threshold: float = 0.20
 
     # Controller params
     listen_threshold_ms: float = 100.0
@@ -135,6 +142,10 @@ class StreamingFrameLog:
     speaker_best_match_similarity: Optional[float] = None
     speaker_match_passed: Optional[bool] = None
     speaker_registered: Optional[str] = None  # Set to speaker_id when a new speaker is auto-registered
+    room_adapted: Optional[bool] = None  # M7: whether this frame updated the room filter
+    room_adaptation_reason: Optional[str] = None
+    room_adaptation_error: Optional[float] = None
+    room_adaptation_updates: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -262,6 +273,13 @@ class StreamingRuntime:
             speaker_threshold_adapter=config.speaker_threshold_adapter,
         )
 
+        # M7 trust-gated room filter adaptation
+        self._room_adapter = config.room_adapter
+        self._enable_room_filter_adaptation = config.enable_room_filter_adaptation
+        self._room_adapt_confidence_threshold = config.room_adapt_confidence_threshold
+        self._room_adapt_match_threshold = config.room_adapt_match_threshold
+        self._last_room_adaptation_result: Optional[dict] = None
+
         # Per-speaker adaptive threshold adapter (also stored for post-run inspection)
         self._speaker_threshold_adapter = config.speaker_threshold_adapter
 
@@ -293,6 +311,61 @@ class StreamingRuntime:
         self._output_requested = False
         self._was_deferred = False
         self._was_resumed = False
+
+    def _update_room_filter_adaptation(
+        self,
+        *,
+        known_pcm: np.ndarray,
+        captured_pcm: np.ndarray,
+        attr_result: AttributionResult,
+        self_match_score: float,
+    ) -> Optional[dict]:
+        """M7 phase 1: trust-gated room filter adaptation.
+
+        The room adapter may update only when explicitly enabled and when the
+        attribution evidence says this frame is trusted SELF. The adapter owns
+        the detailed gate; the runtime provides the current attribution verdict,
+        M4 confidence, and room-local/self-match score. On successful updates,
+        the learned IR is published back into the attributor for subsequent
+        room-local scoring.
+        """
+        if not self._enable_room_filter_adaptation or self._room_adapter is None:
+            return None
+
+        if known_pcm.size == 0 or float(np.sqrt(np.mean(known_pcm ** 2))) < 1e-8:
+            result = {
+                "adapted": False,
+                "reason": "no_efference",
+                "error": None,
+                "updates": getattr(self._room_adapter, "total_updates", None),
+            }
+            self._last_room_adaptation_result = result
+            return result
+
+        metadata = attr_result.metadata or {}
+        match_score = attr_result.room_local_score
+        if match_score is None:
+            match_score = attr_result.self_match_score_per_frame
+        if match_score is None:
+            match_score = self_match_score
+
+        result = self._room_adapter.update_trust_gated(
+            known_pcm.astype(np.float32),
+            captured_pcm.astype(np.float32),
+            verdict=attr_result.verdict.name,
+            m4_confidence=metadata.get("m4_confidence"),
+            self_match_score=match_score,
+            adapt_confidence_threshold=self._room_adapt_confidence_threshold,
+            adapt_match_threshold=self._room_adapt_match_threshold,
+        )
+        self._last_room_adaptation_result = result
+
+        if result.get("adapted") and hasattr(self._room_adapter, "get_learned_ir"):
+            self._attributor.room_filter = self._room_adapter.get_learned_ir()
+            if self._attributor.room_local_threshold is None:
+                self._attributor.room_local_threshold = 0.04
+
+        return result
 
     def _update_speaker_id(
         self,
@@ -564,6 +637,7 @@ class StreamingRuntime:
         speaker_id: Optional[str] = None,
     ) -> StreamingFrameLog:
         m4_metadata = attr_result.metadata or {}
+        room_adaptation = self._last_room_adaptation_result or {}
         log = StreamingFrameLog(
             frame_index=self._frame_index,
             timestamp_s=round(timestamp_s, 6),
@@ -602,6 +676,14 @@ class StreamingRuntime:
                 else None
             ),
             speaker_match_passed=self._last_speaker_match_passed,
+            room_adapted=room_adaptation.get("adapted"),
+            room_adaptation_reason=room_adaptation.get("reason"),
+            room_adaptation_error=(
+                round(float(room_adaptation["error"]), 6)
+                if room_adaptation.get("error") is not None
+                else None
+            ),
+            room_adaptation_updates=room_adaptation.get("updates"),
         )
         self._logs.append(log)
         self._frame_index += 1
@@ -802,6 +884,22 @@ class StreamingRuntime:
                 self_match_score=self_match_score,
             )
 
+            # 6b. M7 trust-gated room filter adaptation. Use the actual output
+            # chunk emitted for this frame as the efference copy; if output is
+            # gated/silent, the adapter holds with no_efference.
+            room_adaptation = self._update_room_filter_adaptation(
+                known_pcm=tts_chunk,
+                captured_pcm=vad_frame,
+                attr_result=attr_result,
+                self_match_score=self_match_score,
+            )
+            if room_adaptation is not None:
+                last_log.room_adapted = room_adaptation.get("adapted")
+                last_log.room_adaptation_reason = room_adaptation.get("reason")
+                err = room_adaptation.get("error")
+                last_log.room_adaptation_error = round(float(err), 6) if err is not None else None
+                last_log.room_adaptation_updates = room_adaptation.get("updates")
+
             # Record conversational registration event on the frame log
             if registered_id is not None:
                 last_log.speaker_registered = registered_id
@@ -981,6 +1079,10 @@ class StreamingRuntime:
             "speaker_best_match_similarity": log.speaker_best_match_similarity,
             "speaker_match_passed": log.speaker_match_passed,
             "speaker_registered": log.speaker_registered,
+            "room_adapted": log.room_adapted,
+            "room_adaptation_reason": log.room_adaptation_reason,
+            "room_adaptation_error": log.room_adaptation_error,
+            "room_adaptation_updates": log.room_adaptation_updates,
         }
 
     def _save_logs(self, path: Path) -> None:

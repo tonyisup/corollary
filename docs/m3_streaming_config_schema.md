@@ -48,6 +48,10 @@
 |-------|------|---------|-------------|
 | `room_filter_path` | `Optional[str]` | `None` | Path to pre-fitted room filter `.npy` (64-tap FIR). If set, enables room-local scoring in the attributor. |
 | `room_local_threshold` | `Optional[float]` | `None` | Threshold for room-local self-match override. If `None` and `room_filter_path` is set, defaults to `0.04`. Production auto-calibrated value: `0.052`. |
+| `enable_room_filter_adaptation` | `bool` | `False` | M7 phase-1 trust-gated NLMS. When enabled, runtime calls `room_adapter.update_trust_gated(...)` using emitted TTS as efference copy and mic audio as capture. |
+| `room_adapter` | `Optional[Any]` | `None` | Adapter object, normally `BabblingCerebellum`, exposing `update_trust_gated(...)` and `get_learned_ir()`. Disabled unless `enable_room_filter_adaptation=True`. |
+| `room_adapt_confidence_threshold` | `float` | `0.80` | Minimum M4 confidence for room-filter adaptation. SELF verdict alone is insufficient. |
+| `room_adapt_match_threshold` | `float` | `0.20` | Minimum room-local/self-match score for room-filter adaptation. BOTH/WORLD/SILENCE always hold. |
 
 ### Controller params
 

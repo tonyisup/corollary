@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-12 (evening)
 > **Branch:** main (synced with origin/main)
-> **Tests:** 389 passed, 1 skipped
+> **Tests:** 399 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -17,7 +17,7 @@
 | M4: Self-voice detector | ✅ Per-speaker adaptive threshold | 0 FP on 6 human speakers, >90% self-recall, wired into streaming runtime + synthetic tests |
 | M5: Multi-speaker world model + memory | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model implemented |
 | M6: Self-model and introspection | ✅ Wired + per-speaker IDs | SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects |
-| M7: Adaptive self-tracking | 📋 Proposal | Trust-gated NLMS, multi-hypothesis IR bank, visual priors |
+| M7: Adaptive self-tracking | ✅ Phase 1 wired | Trust-gated NLMS adapts only on confident SELF; BOTH/WORLD hold; streaming runtime config + frame logs |
 
 ## M4 Per-Speaker Adaptive Threshold — Complete
 
@@ -290,8 +290,22 @@ Experiment B (`data/m4_finetuned_ecapa_bl2021_live_balanced_v1`): same negatives
 
 Conclusion: feature-based live-negative tuning helps but does not close the fixed-threshold gap. The acceptance path remains per-speaker/conversational registration + adaptive thresholds, not a single global scorer. More fixed-threshold fine-tuning needs a deliberately balanced live dataset with multiple self utterances and held-out sessions; otherwise it overfits.
 
+### M7 Trust-Gated Room Adaptation — Phase 1 Wired
+
+Implemented the first M7 phase as a thin attribution gate around existing `BabblingCerebellum.update()`:
+- `BabblingCerebellum.update_trust_gated(...)` adapts NLMS only when `verdict == SELF`, `m4_confidence >= threshold`, and room-local/self-match score passes threshold.
+- `StreamingConfig` now exposes disabled-by-default room adaptation fields: `enable_room_filter_adaptation`, `room_adapter`, `room_adapt_confidence_threshold`, `room_adapt_match_threshold`.
+- `StreamingRuntime` uses the actual emitted TTS chunk as efference copy and the current mic frame as captured audio. If output is gated/silent, it records `no_efference` and holds.
+- On successful adaptation, the runtime publishes the learned IR back to `ThalamicAttributor.room_filter` for subsequent room-local scoring.
+- Frame logs now include `room_adapted`, `room_adaptation_reason`, `room_adaptation_error`, and `room_adaptation_updates`.
+
+Safety invariant: BOTH/WORLD/SILENCE never update the room filter, even with high M4 confidence. This prevents overlap or other-speaker speech from poisoning the self room model.
+
+Tests: 10 new M7 tests across cerebellum unit coverage and streaming integration. Full suite: 399 passed, 1 skipped.
+
 ### Remaining technical work
-- Wire room filter adaptation (M7 trust-gated NLMS)
+- Validate M7 phase 1 on live room-drift replay/hardware scenario
+- M7 phase 2: SelfModel drift alarm to temporarily raise adaptation rate or trigger rebabble
 - Optional: collect a balanced live scorer dataset only if a fixed global scorer is still desired
 
 **Note:** Re-recording reference clips and multi-window embeddings are no longer needed. The conversational registration approach makes pre-recorded reference clips redundant — the system registers speakers on-the-fly during conversation.

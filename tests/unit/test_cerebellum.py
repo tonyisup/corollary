@@ -120,6 +120,92 @@ class TestBabblingCerebellumUpdate:
         np.testing.assert_array_equal(cerebellum.room_ir, initial_ir)
 
 
+class TestBabblingCerebellumTrustGatedUpdate:
+    def test_trust_gated_update_adapts_on_confident_self(self, known_signal, short_room_ir):
+        """M7 phase 1: confident SELF frames are allowed to update NLMS."""
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        initial_updates = cerebellum.total_updates
+        initial_ir = cerebellum.room_ir.copy()
+
+        result = cerebellum.update_trust_gated(
+            known_signal,
+            captured,
+            verdict="SELF",
+            m4_confidence=0.92,
+            self_match_score=0.4,
+            adapt_confidence_threshold=0.8,
+            adapt_match_threshold=0.2,
+        )
+
+        assert result["adapted"] is True
+        assert result["reason"] == "trusted_self"
+        assert cerebellum.total_updates == initial_updates + 1
+        assert not np.allclose(cerebellum.room_ir, initial_ir)
+        assert result["error"] is not None
+
+    @pytest.mark.parametrize("verdict", ["WORLD", "BOTH", "SILENCE"])
+    def test_trust_gated_update_holds_on_non_self_verdicts(self, known_signal, short_room_ir, verdict):
+        """Never adapt the room filter on WORLD/BOTH/SILENCE frames."""
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        initial_updates = cerebellum.total_updates
+        initial_ir = cerebellum.room_ir.copy()
+
+        result = cerebellum.update_trust_gated(
+            known_signal,
+            captured,
+            verdict=verdict,
+            m4_confidence=0.99,
+            self_match_score=0.99,
+        )
+
+        assert result["adapted"] is False
+        assert result["reason"] == "verdict_not_self"
+        assert cerebellum.total_updates == initial_updates
+        np.testing.assert_array_equal(cerebellum.room_ir, initial_ir)
+
+    def test_trust_gated_update_holds_on_low_m4_confidence(self, known_signal, short_room_ir):
+        """SELF verdict alone is insufficient; M4 confidence must pass the gate."""
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        initial_ir = cerebellum.room_ir.copy()
+
+        result = cerebellum.update_trust_gated(
+            known_signal,
+            captured,
+            verdict="SELF",
+            m4_confidence=0.2,
+            self_match_score=0.9,
+            adapt_confidence_threshold=0.8,
+        )
+
+        assert result["adapted"] is False
+        assert result["reason"] == "m4_confidence_below_threshold"
+        assert cerebellum.total_updates == 0
+        np.testing.assert_array_equal(cerebellum.room_ir, initial_ir)
+
+    def test_trust_gated_update_holds_on_low_self_match(self, known_signal, short_room_ir):
+        """M4 confidence and room-local self-match jointly gate adaptation."""
+        captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        initial_ir = cerebellum.room_ir.copy()
+
+        result = cerebellum.update_trust_gated(
+            known_signal,
+            captured,
+            verdict="SELF",
+            m4_confidence=0.95,
+            self_match_score=0.05,
+            adapt_match_threshold=0.2,
+        )
+
+        assert result["adapted"] is False
+        assert result["reason"] == "self_match_below_threshold"
+        assert cerebellum.total_updates == 0
+        np.testing.assert_array_equal(cerebellum.room_ir, initial_ir)
+
+
 class TestBabblingCerebellumPredict:
     def test_predict_mel_shape(self, known_signal, short_room_ir):
         captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)

@@ -75,7 +75,7 @@ On a phone, the device's own transfer function changes with orientation (speaker
 
 | Phase | What | Success Criteria |
 |-------|------|-----------------|
-| 1 | Trust-gated NLMS (adapt on SELF only, hold on BOTH/WORLD) | Filter does not degrade when other speakers present |
+| 1 | Trust-gated NLMS (adapt on SELF only, hold on BOTH/WORLD) | ✅ Wired: `BabblingCerebellum.update_trust_gated()` + streaming runtime config/logs; needs live drift validation |
 | 2 | SelfModel drift alarm (spike adaptation rate when match degrades) | System recovers within N frames after room change |
 | 3 | Multi-hypothesis IR bank (3–5 models, switch on match) | Faster recovery than single-filter re-adaptation |
 | 4 | Mobile device-profile layer | Stable self-attribution across phone orientations |

@@ -223,6 +223,62 @@ class BabblingCerebellum:
 
         return self.prediction_errors[-1]
 
+    def update_trust_gated(
+        self,
+        known_pcm: np.ndarray,
+        captured_pcm: np.ndarray,
+        *,
+        verdict: str,
+        m4_confidence: Optional[float] = None,
+        self_match_score: Optional[float] = None,
+        adapt_confidence_threshold: float = 0.80,
+        adapt_match_threshold: float = 0.20,
+    ) -> dict:
+        """Conditionally update NLMS from externally trusted attribution.
+
+        M7 phase 1 adds the missing *when to adapt* gate on top of the
+        existing NLMS implementation. The room model may learn only from
+        frames that the thalamus classified as SELF and that also pass M4
+        confidence plus room-local self-match thresholds. WORLD/BOTH/SILENCE
+        frames hold the filter steady to avoid learning another speaker or
+        overlap contamination.
+
+        This method is intentionally a thin wrapper around :meth:`update` so
+        existing babbling calibration behavior remains unchanged.
+        """
+        normalized_verdict = str(verdict).upper()
+        if normalized_verdict != "SELF":
+            return {
+                "adapted": False,
+                "reason": "verdict_not_self",
+                "error": None,
+                "updates": self.total_updates,
+            }
+
+        if m4_confidence is None or m4_confidence < adapt_confidence_threshold:
+            return {
+                "adapted": False,
+                "reason": "m4_confidence_below_threshold",
+                "error": None,
+                "updates": self.total_updates,
+            }
+
+        if self_match_score is None or self_match_score < adapt_match_threshold:
+            return {
+                "adapted": False,
+                "reason": "self_match_below_threshold",
+                "error": None,
+                "updates": self.total_updates,
+            }
+
+        error = self.update(known_pcm, captured_pcm)
+        return {
+            "adapted": True,
+            "reason": "trusted_self",
+            "error": error,
+            "updates": self.total_updates,
+        }
+
     def predict_mel(self, efference_pcm: np.ndarray) -> np.ndarray:
         """Predict what the cochlea will hear given an efference copy.
 
