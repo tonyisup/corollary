@@ -208,13 +208,59 @@ Four silence-capture conditions were profiled on the BL-2021USB path:
 5. **Device 4 / line-out path introduces 59 Hz mains hum.** Present whenever device 4 is connected, stronger when powered on. The BL-2021USB mic alone is clean.
 
 **What needs to happen next:**
+
+### Research Pivot: Conversational Registration — 2026-05-13
+
+**Insight:** Instead of a separate training/registration phase, the registration can happen organically through the first few turns of conversation — the "small talk" when strangers meet.
+
+**Concept:**
+1. Corollary opens with canned elicitation questions: "How are you?", "What's your name?", "Tell me about your day"
+2. These are known TTS utterances (self-attributed), so the system knows it's Corollary speaking
+3. Human responses accumulate as WORLD/BOTH audio
+4. Once enough clean human speech is collected (~2-5 seconds), extract an embedding and register as a new speaker
+5. The conversation continues with the human now identified — per-speaker adaptive thresholding, SAG updates, etc. all work naturally
+
+**Advantages:**
+- No separate "training mode" — registration is part of the conversation flow
+- Mirrors how humans learn who they're talking to in the first few seconds
+- More natural UX: the system "gets to know" the user through interaction
+
+**Technical requirements:**
+1. Detection of "registration mode" — first few turns, no human speakers yet registered
+2. Accumulation of enough clean WORLD audio before extracting embedding (VAD + WORLD/BOTH classification handles this)
+3. Canned openers designed to elicit natural human speech (questions better than statements)
+4. After registration, ongoing speaker identification works as before
+
+**This is the current research priority.**
+
+### Remaining technical work
 - Re-record reference clips for speakers 1, 3, 5 under current room conditions with consistent, neutral content (these have the lowest live-path similarity scores)
 - Register multiple window embeddings per speaker to improve robustness across different parts of each clip
 - Bridge the mixed-condition gap: preserve cleaner world windows during simultaneous self playback
 - Fine-tune on live BL-2021USB room-colored captures
 - Wire room filter adaptation (M7 trust-gated NLMS)
 
-## Deployment Model — Design Notes
+## Conversational Registration — 2026-05-13
+
+**v1 prototype** (`scripts/conversational_registration.py`):
+- Sequential play/capture: play opener TTS → capture response → extract embedding → register
+- Successfully registered speaker on turn 1 with a single opener: "Hello! I'm Corollary. What's your name?"
+- Consistent identification across 3 turns (sim=1.00, 0.95, 0.89)
+- Limitation: uses separate play/capture, not the streaming runtime
+
+**v2 streaming-runtime version** (`scripts/conversational_registration_v2.py`):
+- Uses the actual streaming runtime for each turn (TTS through device 5, mic on device 1)
+- Found that speaker-matched frames = 0 because the registry starts empty — no pre-registered human speakers to match against
+- This confirms the two-phase approach: first extract + register, then identify
+
+**Key insight:** The conversational registration requires an initial "cold start" where the system must extract and register the speaker's embedding from the first few seconds of human speech. After that, ongoing identification works using the pre-registered embedding.
+
+**Recommended approach for PoC:**
+1. System plays 2-3 elicitation openers ("How are you?", "What's your name?", etc.)
+2. After each opener, extract embedding from accumulated WORLD/BOTH audio
+3. Once embedding quality is sufficient (enough speech, consistent matches), register the speaker
+4. Subsequent turns use the registered embedding for ongoing identification
+5. The registration happens naturally as part of the conversation's opening
 
 **Scope:** Proof of concept supports a single user in a fixed environment (same mic, same room, same hardware).
 

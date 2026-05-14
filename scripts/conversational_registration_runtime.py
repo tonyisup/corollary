@@ -125,6 +125,7 @@ def main() -> None:
     registration_turn = 0
     all_logs: list[StreamingFrameLog] = []
     turn_logs: list[StreamingFrameLog] = []
+    last_registry = registry  # Track the last runtime's registry
 
     for i, opener_text in enumerate(openers):
         print(f"\n--- Turn {i + 1}/{len(openers)} ---")
@@ -145,11 +146,15 @@ def main() -> None:
             m4_self_threshold=0.10,
             m4_min_buffer_ms=300.0,
             speaker_threshold_adapter=adapter,
-            speaker_identifier=identifier,
-            speaker_world_model=world_model,
         )
 
         runtime = StreamingRuntime(config)
+
+        # The runtime creates its own SpeakerRegistry when speaker_threshold_adapter is set.
+        # Access it to register speakers and perform identification.
+        rt_registry = runtime._speaker_world_model.registry
+        rt_identifier = runtime._speaker_identifier
+        last_registry = rt_registry
 
         # Run the streaming loop for this turn
         print(f"  Running streaming loop ({args.opener_duration}s)...")
@@ -170,7 +175,7 @@ def main() -> None:
         # Try registration from all accumulated logs
         if not registered:
             registered_now, speaker_id, sim = try_register_speaker(
-                all_logs, registry, identifier, args.speaker_name
+                all_logs, rt_registry, rt_identifier, args.speaker_name
             )
             if registered_now:
                 registered = True
@@ -188,7 +193,7 @@ def main() -> None:
                 if len(combined) >= int(1.0 * SR):
                     try:
                         emb = identifier.get_embedding(combined)
-                        best_id, best_sim = registry.identify_speaker(emb)
+                        best_id, best_sim = rt_registry.identify_speaker(emb)
                         if best_id:
                             print(f"  Identification: {best_id} (sim={best_sim:.4f})")
                         else:
@@ -205,7 +210,10 @@ def main() -> None:
         print(f"  Turn registered:  {registration_turn}")
         print(f"  Speaker:          human_{args.speaker_name.lower().replace(' ', '_')}")
     print(f"  Total frames:     {len(all_logs)}")
-    print(f"  Known speakers:   {registry.known_speakers}")
+    # Use the last runtime's registry for the summary
+    summary_registry = last_registry
+
+    print(f"  Known speakers:   {summary_registry.known_speakers}")
 
     # Final verdict distribution on all logs
     all_verdicts = {}
@@ -220,7 +228,7 @@ def main() -> None:
         "speaker_id": f"human_{args.speaker_name.lower().replace(' ', '_')}" if registered else None,
         "total_turns": len(openers),
         "total_frames": len(all_logs),
-        "known_speakers": registry.known_speakers,
+        "known_speakers": summary_registry.known_speakers,
         "verdict_distribution": all_verdicts,
     }
     Path(args.output).write_text(json.dumps(results, indent=2))
