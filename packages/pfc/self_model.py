@@ -266,6 +266,16 @@ class SelfModel:
                 },
             )
 
+        # Auto-add known subjects from frame logs
+        known = self._extract_known_speakers(frames)
+        for speaker_id in known:
+            if speaker_id not in ("self", "world"):
+                self.add_known_subject(
+                    subject_id=speaker_id,
+                    label=speaker_id,
+                    context={"source": "frame_log"},
+                )
+
         return {
             "frames_processed": session_frames,
             "speak_frames": speak_frame_count,
