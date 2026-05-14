@@ -27,3 +27,5 @@ data/m4_capture_validation_*/
 data/m4_simulated_captures/
 data/m4_sim_test/
 data/m5_live_capture_*/
+
+data/m4_balanced_dataset*
