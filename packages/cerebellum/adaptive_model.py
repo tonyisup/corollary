@@ -29,7 +29,7 @@ import numpy as np
 from scipy.signal import fftconvolve
 from cochlea.capture import pcm_to_mels, SR
 from cerebellum.trust_model import TrustTracker, TrustState, DEFAULT_IR_DIR
-from typing import List, Tuple, Optional
+from typing import Any, List, Tuple, Optional
 import json
 import os
 import time
@@ -78,6 +78,13 @@ class BabblingCerebellum:
         # Trust model — tracks confidence in the learned IR
         self.trust = TrustTracker()
         self._ir_save_path: Optional[str] = None
+
+        # M7 phase 2: drift alarm for adaptive learning-rate control
+        self._drift_alarm: Optional[Any] = None
+
+    def set_drift_alarm(self, alarm: Any) -> None:
+        """Attach a ``DriftAlarm`` to modulate learning rate on room drift."""
+        self._drift_alarm = alarm
 
     def save_model(self, path: Optional[str] = None, metadata: Optional[dict] = None) -> str:
         """Persist the learned IR and trust state to disk.
@@ -222,6 +229,10 @@ class BabblingCerebellum:
         else:
             # In between: partial confirmation
             self.trust.confirm(error_db)
+
+        # M7 phase 2: feed error to drift alarm
+        if self._drift_alarm is not None:
+            self._drift_alarm.record_error(error_db)
 
         return self.prediction_errors[-1]
 
@@ -476,6 +487,8 @@ class BabblingCerebellum:
         """
         N = self.ir_length
         mu = self.nlms_mu
+        if self._drift_alarm is not None:
+            mu *= self._drift_alarm.adaptation_rate_multiplier
         eps = self.nlms_epsilon
 
         # Align lengths
