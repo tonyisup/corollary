@@ -31,7 +31,7 @@
 ## Remaining Work
 
 1. Live M7 drift validation on hardware (replay passed for phases 1-4)
-2. Optional: balanced live scorer dataset only if a fixed global scorer is still desired
+2. Optional: balanced live scorer dataset (documented — global fixed-threshold scorer cannot close the domain gap; per-speaker adaptive threshold remains the viable path)
 
 ## Archive
 
@@ -44,4 +44,8 @@ Detailed findings for completed milestones have been moved to `docs/archive/`:
 - `docs/archive/m4_mixed_condition_bridge.md` — BOTH-frame speaker-ID continuity
 - `docs/archive/m4_finetuning_probe.md` — Live-negative fine-tuning experiments
 - `docs/archive/m7_phase1.md` — M7 trust-gated room adaptation phase 1
+- `docs/archive/m7_phase2_drift_alarm.md` — M7 phase 2 drift alarm
+- `docs/archive/m7_phase3_ir_bank.md` — M7 phase 3 multi-hypothesis IR bank
+- `docs/archive/m7_phase4_device_profile.md` — M7 phase 4 device-profile layer
+- `docs/archive/m4_balanced_scorer_results.md` — Balanced scorer dataset experiments and findings
 - `docs/archive/noise_path_ab_matrix.md` — Noise-path A/B matrix and recommendations
