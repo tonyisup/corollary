@@ -77,7 +77,7 @@ On a phone, the device's own transfer function changes with orientation (speaker
 |-------|------|-----------------|
 | 1 | Trust-gated NLMS (adapt on SELF only, hold on BOTH/WORLD) | ✅ Replay-validated: `scripts/m7_trust_gated_replay.py` shows 46.8% room-B error reduction; WORLD/BOTH produce 0 updates; live drift validation remains next |
 | 2 | SelfModel drift alarm (spike adaptation rate when match degrades) | ✅ Implemented: `DriftAlarm` modulates NLMS learning rate; sustained drift triggers rebabble |
-| 3 | Multi-hypothesis IR bank (3–5 models, switch on match) | Faster recovery than single-filter re-adaptation |
+| 3 | Multi-hypothesis IR bank (3–5 models, switch on match) | ✅ Implemented: `IRBank` manages multiple hypotheses; best one is used for prediction |
 | 4 | Mobile device-profile layer | Stable self-attribution across phone orientations |
 
 ---

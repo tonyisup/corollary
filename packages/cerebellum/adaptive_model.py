@@ -82,9 +82,30 @@ class BabblingCerebellum:
         # M7 phase 2: drift alarm for adaptive learning-rate control
         self._drift_alarm: Optional[Any] = None
 
+        # M7 phase 3: multi-hypothesis IR bank
+        self._ir_bank: Optional[Any] = None
+
     def set_drift_alarm(self, alarm: Any) -> None:
         """Attach a ``DriftAlarm`` to modulate learning rate on room drift."""
         self._drift_alarm = alarm
+
+    def set_ir_bank(self, bank: Any) -> None:
+        """Attach an ``IRBank`` for multi-hypothesis room modeling."""
+        self._ir_bank = bank
+
+    @property
+    def _active_ir(self) -> np.ndarray:
+        """Return the best IR — from bank if attached, else the single IR."""
+        if self._ir_bank is not None:
+            return self._ir_bank.best_hypothesis.ir
+        return self.room_ir
+
+    def predict_pcm(self, efference_pcm: np.ndarray) -> np.ndarray:
+        """Predict the raw PCM the cochlea will receive."""
+        roomed = fftconvolve(efference_pcm, self._active_ir, mode="full").astype(
+            np.float32
+        )
+        return roomed
 
     def save_model(self, path: Optional[str] = None, metadata: Optional[dict] = None) -> str:
         """Persist the learned IR and trust state to disk.
@@ -308,8 +329,8 @@ class BabblingCerebellum:
         np.ndarray
             Predicted mel spectrogram, shape (T, 80), in dB.
         """
-        # Convolve with learned room IR
-        roomed_pcm = fftconvolve(efference_pcm, self.room_ir, mode="full").astype(
+        # Convolve with learned room IR (or best bank hypothesis)
+        roomed_pcm = fftconvolve(efference_pcm, self._active_ir, mode="full").astype(
             np.float32
         )
 

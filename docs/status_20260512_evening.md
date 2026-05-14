@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-14
 > **Branch:** main (synced with origin/main)
-> **Tests:** 410 passed, 1 skipped
+> **Tests:** 422 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -17,7 +17,7 @@
 | M4: Self-voice detector | ✅ Per-speaker adaptive threshold | 0 FP on 6 human speakers, >90% self-recall, conversational registration, wired into streaming runtime |
 | M5: Multi-speaker world model + memory | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6: Self-model and introspection | ✅ Wired + per-speaker IDs | SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects |
-| M7: Adaptive self-tracking | ✅ Phase 1 replay-validated, Phase 2 implemented | Trust-gated NLMS adapts only on confident SELF; BOTH/WORLD hold; deterministic room-drift replay passed; DriftAlarm modulates NLMS learning rate on degradation |
+| M7: Adaptive self-tracking | ✅ Phase 1-3 complete | Trust-gated NLMS + DriftAlarm + multi-hypothesis IR bank; replay-validated |
 
 ## Test Coverage
 
@@ -30,8 +30,8 @@
 
 ## Remaining Work
 
-1. Live M7 phase 1 drift validation (replay passed; hardware remains)
-2. M7 phase 3: Multi-hypothesis IR bank (3–5 models, switch on match)
+1. Live M7 drift validation on hardware (replay passed for phases 1-3)
+2. M7 phase 4: Mobile device-profile layer
 3. M6 introspective queries: exercise SAG diff against live streaming
 4. Optional: balanced live scorer dataset only if a fixed global scorer is still desired
 
