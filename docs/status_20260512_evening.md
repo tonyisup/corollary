@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-12 (evening)
 > **Branch:** main (synced with origin/main)
-> **Tests:** 380 passed, 1 skipped
+|> **Tests:** 387 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -255,61 +255,18 @@ The conversational registration is now integrated into the streaming runtime:
 - `tests/integration/test_conversational_registration.py` -- 6 tests
 
 ### Remaining technical work
-- Re-record reference clips for speakers 1, 3, 5 under current room conditions with consistent, neutral content (these have the lowest live-path similarity scores)
-- Register multiple window embeddings per speaker to improve robustness across different parts of each clip
 - Bridge the mixed-condition gap: preserve cleaner world windows during simultaneous self playback
 - Fine-tune on live BL-2021USB room-colored captures
 - Wire room filter adaptation (M7 trust-gated NLMS)
 
-## Conversational Registration — 2026-05-13
+**Note:** Re-recording reference clips and multi-window embeddings are no longer needed. The conversational registration approach makes pre-recorded reference clips redundant — the system registers speakers on-the-fly during conversation.
 
-**v1 prototype** (`scripts/conversational_registration.py`):
-- Sequential play/capture: play opener TTS → capture response → extract embedding → register
-- Successfully registered speaker on turn 1 with a single opener: "Hello! I'm Corollary. What's your name?"
-- Consistent identification across 3 turns (sim=1.00, 0.95, 0.89)
-- Limitation: uses separate play/capture, not the streaming runtime
-
-**v2 streaming-runtime version** (`scripts/conversational_registration_v2.py`):
-- Uses the actual streaming runtime for each turn (TTS through device 5, mic on device 1)
-- Found that speaker-matched frames = 0 because the registry starts empty — no pre-registered human speakers to match against
-- This confirms the two-phase approach: first extract + register, then identify
-
-**Key insight:** The conversational registration requires an initial "cold start" where the system must extract and register the speaker's embedding from the first few seconds of human speech. After that, ongoing identification works using the pre-registered embedding.
-
-**Recommended approach for PoC:**
-1. System plays 2-3 elicitation openers ("How are you?", "What's your name?", etc.)
-2. After each opener, extract embedding from accumulated WORLD/BOTH audio
-3. Once embedding quality is sufficient (enough speech, consistent matches), register the speaker
-4. Subsequent turns use the registered embedding for ongoing identification
-5. The registration happens naturally as part of the conversation's opening
+## Deployment Model — Design Notes
 
 **Scope:** Proof of concept supports a single user in a fixed environment (same mic, same room, same hardware).
 
-**Registration phase (one-time setup):**
-- Play each reference clip through device 4, capture on device 1
-- Extract best 2s window embedding from each capture
-- Register in SpeakerRegistry before the conversation starts
-- Cost: ~10 seconds of speech per speaker, done once
+**Registration:** Conversational (on-the-fly). System plays elicitation openers, accumulates WORLD audio, auto-registers speaker after >=0.3s of clean speech. No separate training phase needed.
 
-**Real-time phase (during conversation):**
-- Streaming runtime accumulates WORLD/BOTH audio in a buffer
-- Every ~20 VAD frames (~200ms), extracts one ECAPA embedding from the buffer
-- Compares against all registered reference embeddings via cosine similarity
-- Assigns speaker_id if best match exceeds threshold
-- Cost: one embedding extraction + N cosine comparisons per cycle (trivial for N≤20)
+**Real-time:** Every ~20 VAD frames, extracts ECAPA embedding from WORLD/BOTH buffer, compares against registered embeddings via cosine similarity. Cost: one embedding extraction + N cosine comparisons per cycle.
 
-**What is NOT needed in real time:**
-- Re-extracting reference embeddings
-- Re-registering known speakers
-- Playing reference clips
-
-**Re-registration triggers (future work):**
-- Mic position change
-- Room acoustics change (furniture, open/closed windows)
-- New user added to known set
-- Day-to-day embedding drift (empirically untested — worth validating)
-
-**Multi-user extension (future work):**
-- Online registration: accumulate 2-5s of clean WORLD audio from an unknown voice, extract embedding, register as new speaker
-- Already supported by `SpeakerRegistry.update_from_frame_log()`
-- Per-speaker, not per-conversation — once registered, recognized across sessions
+**Re-registration triggers (future work):** mic position change, room acoustics change, new user, day-to-day drift (untested).
