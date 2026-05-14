@@ -85,6 +85,9 @@ class BabblingCerebellum:
         # M7 phase 3: multi-hypothesis IR bank
         self._ir_bank: Optional[Any] = None
 
+        # M7 phase 4: device profile bank
+        self._device_profile_bank: Optional[Any] = None
+
     def set_drift_alarm(self, alarm: Any) -> None:
         """Attach a ``DriftAlarm`` to modulate learning rate on room drift."""
         self._drift_alarm = alarm
@@ -92,6 +95,10 @@ class BabblingCerebellum:
     def set_ir_bank(self, bank: Any) -> None:
         """Attach an ``IRBank`` for multi-hypothesis room modeling."""
         self._ir_bank = bank
+
+    def set_device_profile_bank(self, bank: Any) -> None:
+        """Attach a ``DeviceProfileBank`` for orientation-dependent profiles."""
+        self._device_profile_bank = bank
 
     @property
     def _active_ir(self) -> np.ndarray:
@@ -392,17 +399,9 @@ class BabblingCerebellum:
     def predict_pcm(self, efference_pcm: np.ndarray) -> np.ndarray:
         """Predict the raw PCM the cochlea will receive.
 
-        Parameters
-        ----------
-        efference_pcm : np.ndarray
-            Float32 PCM audio (efference copy from Broca).
-
-        Returns
-        -------
-        np.ndarray
-            Predicted room-colored PCM audio.
+        Uses the active IR (from bank or single).
         """
-        roomed = fftconvolve(efference_pcm, self.room_ir, mode="full").astype(
+        roomed = fftconvolve(efference_pcm, self._active_ir, mode="full").astype(
             np.float32
         )
         return roomed / max(np.max(np.abs(roomed)), 1e-10) * 0.9
