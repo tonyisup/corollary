@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-12 (evening)
 > **Branch:** main (synced with origin/main)
-> **Tests:** 399 passed, 1 skipped
+> **Tests:** 402 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -17,7 +17,7 @@
 | M4: Self-voice detector | ✅ Per-speaker adaptive threshold | 0 FP on 6 human speakers, >90% self-recall, wired into streaming runtime + synthetic tests |
 | M5: Multi-speaker world model + memory | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model implemented |
 | M6: Self-model and introspection | ✅ Wired + per-speaker IDs | SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects |
-| M7: Adaptive self-tracking | ✅ Phase 1 wired | Trust-gated NLMS adapts only on confident SELF; BOTH/WORLD hold; streaming runtime config + frame logs |
+| M7: Adaptive self-tracking | ✅ Phase 1 replay-validated | Trust-gated NLMS adapts only on confident SELF; BOTH/WORLD hold; deterministic room-drift replay passed |
 
 ## M4 Per-Speaker Adaptive Threshold — Complete
 
@@ -290,7 +290,7 @@ Experiment B (`data/m4_finetuned_ecapa_bl2021_live_balanced_v1`): same negatives
 
 Conclusion: feature-based live-negative tuning helps but does not close the fixed-threshold gap. The acceptance path remains per-speaker/conversational registration + adaptive thresholds, not a single global scorer. More fixed-threshold fine-tuning needs a deliberately balanced live dataset with multiple self utterances and held-out sessions; otherwise it overfits.
 
-### M7 Trust-Gated Room Adaptation — Phase 1 Wired
+### M7 Trust-Gated Room Adaptation — Phase 1 Replay-Validated
 
 Implemented the first M7 phase as a thin attribution gate around existing `BabblingCerebellum.update()`:
 - `BabblingCerebellum.update_trust_gated(...)` adapts NLMS only when `verdict == SELF`, `m4_confidence >= threshold`, and room-local/self-match score passes threshold.
@@ -298,10 +298,14 @@ Implemented the first M7 phase as a thin attribution gate around existing `Babbl
 - `StreamingRuntime` uses the actual emitted TTS chunk as efference copy and the current mic frame as captured audio. If output is gated/silent, it records `no_efference` and holds.
 - On successful adaptation, the runtime publishes the learned IR back to `ThalamicAttributor.room_filter` for subsequent room-local scoring.
 - Frame logs now include `room_adapted`, `room_adaptation_reason`, `room_adaptation_error`, and `room_adaptation_updates`.
+- Deterministic validator `scripts/m7_trust_gated_replay.py` simulates room A → room B drift with interleaved trusted SELF, WORLD, and BOTH frames.
+- Replay result (`/tmp/m7_trust_gated_replay.json`): room-B prediction MSE improved from 0.03226545 to 0.01715044 (46.8% improvement); trusted SELF produced 8 updates; WORLD and BOTH produced 0 updates.
+
+Important fix: the older high-trust interference guard inside `BabblingCerebellum.update()` can mistake room drift for interference and freeze NLMS. `update_trust_gated()` now bypasses that internal guard after external attribution has already proven trusted SELF. Ordinary `update()` keeps the older guard unchanged.
 
 Safety invariant: BOTH/WORLD/SILENCE never update the room filter, even with high M4 confidence. This prevents overlap or other-speaker speech from poisoning the self room model.
 
-Tests: 10 new M7 tests across cerebellum unit coverage and streaming integration. Full suite: 399 passed, 1 skipped.
+Tests: 13 new M7 tests across cerebellum unit coverage, streaming integration, and deterministic replay. Full suite: 402 passed, 1 skipped.
 
 ### Remaining technical work
 - Validate M7 phase 1 on live room-drift replay/hardware scenario

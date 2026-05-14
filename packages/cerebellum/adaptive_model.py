@@ -148,6 +148,8 @@ class BabblingCerebellum:
         self,
         known_pcm: np.ndarray,
         captured_pcm: np.ndarray,
+        *,
+        allow_high_trust_gate: bool = True,
     ) -> float:
         """Update the estimated room IR by minimizing prediction error.
 
@@ -190,7 +192,7 @@ class BabblingCerebellum:
         prediction_similarity = float(np.dot(captured_aligned, predicted) / denom)
 
         should_gate_update = False
-        if self.trust.state.trust >= 0.7:
+        if allow_high_trust_gate and self.trust.state.trust >= 0.7:
             avg_error_db = float(self.trust.state.avg_error_db)
             if (
                 error_db_before > avg_error_db + 10.0
@@ -271,7 +273,7 @@ class BabblingCerebellum:
                 "updates": self.total_updates,
             }
 
-        error = self.update(known_pcm, captured_pcm)
+        error = self.update(known_pcm, captured_pcm, allow_high_trust_gate=False)
         return {
             "adapted": True,
             "reason": "trusted_self",

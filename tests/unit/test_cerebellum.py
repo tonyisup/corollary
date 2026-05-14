@@ -165,6 +165,30 @@ class TestBabblingCerebellumTrustGatedUpdate:
         assert cerebellum.total_updates == initial_updates
         np.testing.assert_array_equal(cerebellum.room_ir, initial_ir)
 
+    def test_trust_gated_update_overrides_high_trust_interference_gate(self, known_signal, short_room_ir):
+        """Trusted SELF evidence should adapt even when the old high-trust gate would freeze."""
+        shifted_room_ir = np.zeros_like(short_room_ir)
+        shifted_room_ir[0] = 1.0
+        shifted_room_ir[128] = 0.85
+        shifted_room_ir[511] = -0.35
+        captured = fftconvolve(known_signal, shifted_room_ir, mode="full").astype(np.float32)
+        cerebellum = BabblingCerebellum(ir_length_ms=100, nlms_mu=0.1)
+        cerebellum.trust.state.trust = 0.9
+        cerebellum.trust.state.avg_error_db = -40.0
+        initial_updates = cerebellum.total_updates
+
+        result = cerebellum.update_trust_gated(
+            known_signal,
+            captured,
+            verdict="SELF",
+            m4_confidence=0.95,
+            self_match_score=0.8,
+        )
+
+        assert result["adapted"] is True
+        assert result["reason"] == "trusted_self"
+        assert cerebellum.total_updates == initial_updates + 1
+
     def test_trust_gated_update_holds_on_low_m4_confidence(self, known_signal, short_room_ir):
         """SELF verdict alone is insufficient; M4 confidence must pass the gate."""
         captured = fftconvolve(known_signal, short_room_ir, mode="full").astype(np.float32)
