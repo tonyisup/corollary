@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-12 (evening)
 > **Branch:** main (synced with origin/main)
-> **Tests:** 388 passed, 1 skipped
+> **Tests:** 389 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -265,10 +265,11 @@ Runtime change:
 
 Evidence:
 - Added regression coverage for both sides of the rule: BOTH ignored before registration; BOTH accumulated after a human speaker is known.
-- Full suite: 388 passed, 1 skipped.
+- Fixed `_save_logs()` to use `_log_to_dict()` so speaker fields persist into JSONL artifacts.
+- Live mixed split-output validation (`speaker2`, world_gain=0.8): 257/282 frames were BOTH; 241/257 BOTH frames had best-match diagnostics (93.8%); 200/257 BOTH frames passed the speaker registry threshold (77.8%). This confirms speaker-ID continuity through overlap.
+- Full suite: 389 passed, 1 skipped.
 
 ### Remaining technical work
-- Validate the BOTH-enabled speaker-ID buffer in a live conversational overlap run
 - Fine-tune on live BL-2021USB room-colored captures
 - Wire room filter adaptation (M7 trust-gated NLMS)
 

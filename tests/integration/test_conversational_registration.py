@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 import os
+import json
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
@@ -115,6 +116,55 @@ class TestConversationalRegistration:
         d = runtime._log_to_dict(log)
         assert "speaker_registered" in d
         assert d["speaker_registered"] == "human_testuser"
+
+    def test_save_logs_includes_speaker_fields(self, tmp_path):
+        """_save_logs must not drop speaker fields present in _log_to_dict."""
+        tts_pcm = np.zeros(16000, dtype=np.float32)
+        config = StreamingConfig(tts_pcm=tts_pcm)
+        runtime = StreamingRuntime(config)
+
+        log = StreamingFrameLog(
+            frame_index=0,
+            timestamp_s=0.0,
+            vad_speech=True,
+            verdict="BOTH",
+            controller_state="SPEAK",
+            can_speak=True,
+            should_interrupt=False,
+            tts_playing=True,
+            tts_position_s=0.5,
+            tts_total_duration_s=2.0,
+            output_source="tts",
+            repair_position_s=0.0,
+            repair_total_duration_s=0.0,
+            repair_queued=False,
+            repair_playing=False,
+            repair_completed=False,
+            m4_outcome="accepted",
+            m4_confidence=0.2,
+            energy_db=-24.0,
+            self_match_score=0.1,
+            self_match_score_per_frame=None,
+            is_in_motor_window=True,
+            deferred=False,
+            resumed=False,
+            speaker_id="human_user",
+            speaker_best_match_id="human_user",
+            speaker_best_match_similarity=0.42,
+            speaker_match_passed=True,
+            speaker_registered="human_user",
+        )
+        runtime._logs = [log]
+        output_path = tmp_path / "streaming.jsonl"
+
+        runtime._save_logs(output_path)
+
+        saved = json.loads(output_path.read_text().strip())
+        assert saved["speaker_id"] == "human_user"
+        assert saved["speaker_best_match_id"] == "human_user"
+        assert saved["speaker_best_match_similarity"] == 0.42
+        assert saved["speaker_match_passed"] is True
+        assert saved["speaker_registered"] == "human_user"
 
     def test_no_registration_without_world_audio(self):
         """Registration doesn't trigger without sufficient WORLD audio."""

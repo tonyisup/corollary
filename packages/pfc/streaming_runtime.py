@@ -989,34 +989,7 @@ class StreamingRuntime:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
             for log in self._logs:
-                entry = {
-                    "frame_index": log.frame_index,
-                    "timestamp_s": log.timestamp_s,
-                    "vad_speech": log.vad_speech,
-                    "verdict": log.verdict,
-                    "controller_state": log.controller_state,
-                    "can_speak": log.can_speak,
-                    "should_interrupt": log.should_interrupt,
-                    "tts_playing": log.tts_playing,
-                    "tts_position_s": log.tts_position_s,
-                    "tts_total_duration_s": log.tts_total_duration_s,
-                    "output_source": log.output_source,
-                    "repair_position_s": log.repair_position_s,
-                    "repair_total_duration_s": log.repair_total_duration_s,
-                    "repair_queued": log.repair_queued,
-                    "repair_playing": log.repair_playing,
-                    "repair_completed": log.repair_completed,
-                    "m4_outcome": log.m4_outcome,
-                    "m4_confidence": log.m4_confidence,
-                    "energy_db": log.energy_db,
-                    "self_match_score": log.self_match_score,
-                    "self_match_score_per_frame": log.self_match_score_per_frame,
-                    "is_in_motor_window": log.is_in_motor_window,
-                    "deferred": log.deferred,
-                    "resumed": log.resumed,
-                    "collision_repair_text": log.collision_repair_text,
-                }
-                f.write(json.dumps(entry) + "\n")
+                f.write(json.dumps(self._log_to_dict(log)) + "\n")
         print(f"  Saved {len(self._logs)} log entries to {path}")
 
     @property
