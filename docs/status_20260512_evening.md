@@ -269,9 +269,30 @@ Evidence:
 - Live mixed split-output validation (`speaker2`, world_gain=0.8): 257/282 frames were BOTH; 241/257 BOTH frames had best-match diagnostics (93.8%); 200/257 BOTH frames passed the speaker registry threshold (77.8%). This confirms speaker-ID continuity through overlap.
 - Full suite: 389 passed, 1 skipped.
 
+### Live BL-2021USB Fine-Tuning Probe
+
+Goal: test whether additional live BL-2021USB room-colored negatives can close the fixed-threshold scorer gap.
+
+Baseline (`data/m4_finetuned_ecapa_bl2021_feature2`, held-out artifact `160348`):
+- θ=0.50: eligible F1 0.7635, negative FP 81
+- θ=0.70: eligible F1 0.7979, negative FP 62
+- θ=0.90: negative FP 1, but self recall collapses (eligible F1 0.0500)
+
+Experiment A (`data/m4_finetuned_ecapa_bl2021_live_neg_v1`): feature-based frozen-encoder scorer trained with three earlier live negative playback windows + existing human negatives.
+- Training split: 40 self embeddings vs 330 other embeddings; final internal test acc 0.875
+- Held-out `160348`, θ=0.70: eligible F1 0.9179, negative FP 15
+- This materially improves negative suppression but still fails acceptance.
+
+Experiment B (`data/m4_finetuned_ecapa_bl2021_live_balanced_v1`): same negatives plus three earlier `self_only/live_captured.npy` positives.
+- Training split: 115 self embeddings vs 330 other embeddings; final internal test acc 0.9565
+- Held-out `160348`, θ=0.70: eligible F1 0.8167, negative FP 49
+- Internal split improved, held-out generalization worsened. Same-session positives are not enough.
+
+Conclusion: feature-based live-negative tuning helps but does not close the fixed-threshold gap. The acceptance path remains per-speaker/conversational registration + adaptive thresholds, not a single global scorer. More fixed-threshold fine-tuning needs a deliberately balanced live dataset with multiple self utterances and held-out sessions; otherwise it overfits.
+
 ### Remaining technical work
-- Fine-tune on live BL-2021USB room-colored captures
 - Wire room filter adaptation (M7 trust-gated NLMS)
+- Optional: collect a balanced live scorer dataset only if a fixed global scorer is still desired
 
 **Note:** Re-recording reference clips and multi-window embeddings are no longer needed. The conversational registration approach makes pre-recorded reference clips redundant — the system registers speakers on-the-fly during conversation.
 
