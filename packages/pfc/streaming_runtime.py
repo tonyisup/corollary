@@ -281,8 +281,8 @@ class StreamingRuntime:
         self._conversational_registration = config.enable_conversational_registration
         self._registration_speaker_name = config.registration_speaker_name
         self._registration_complete = False
-        self._registration_min_samples = int(1.5 * self.sr)  # Need 1.5s of WORLD speech
-        self._registration_min_similarity = 0.3  # Min embedding quality for registration
+        self._registration_min_samples = int(0.3 * self.sr)  # 0.3s of WORLD speech
+        self._registration_min_similarity = 0.0
 
         # Logging
         self._logs: list[StreamingFrameLog] = []
@@ -340,9 +340,9 @@ class StreamingRuntime:
         self._speaker_id_frame_counter = 0
 
         # Need enough audio for a reliable embedding (at least 0.5s)
-        min_samples = int(0.5 * self.sr)
+        min_samples = int(0.3 * self.sr)
         if self._speaker_id_buffer is None or len(self._speaker_id_buffer) < min_samples:
-            return
+            return None
 
         try:
             # Compute embedding and inspect registry match quality. We keep the
@@ -362,10 +362,10 @@ class StreamingRuntime:
             elif (
                 self._conversational_registration
                 and not self._registration_complete
-                and best_similarity < self._registration_min_similarity
+                and speaker_id is None
             ):
-                # No existing speaker matched — register new speaker from accumulated WORLD audio
-                # Only register once per conversation (first time we get enough clean speech)
+                # No existing speaker matched — auto-register from accumulated WORLD audio.
+                # Only register once per conversation (first time we get enough clean speech).
                 if (
                     self._speaker_id_buffer is not None
                     and len(self._speaker_id_buffer) >= self._registration_min_samples
@@ -373,7 +373,10 @@ class StreamingRuntime:
                     new_id = (
                         f"human_{self._registration_speaker_name.lower().replace(' ', '_')}"
                     )
-                    # Check if already registered (might have been registered in a previous turn)
+                    # Don't register if it would collide with "self"
+                    if new_id == "self":
+                        new_id = "human_user"
+                    # Check if already registered
                     if new_id not in registry.known_speakers:
                         registry.register_speaker(
                             new_id, self._registration_speaker_name, embedding=embedding
