@@ -97,6 +97,10 @@ class StreamingConfig:
     # Per-speaker adaptive threshold (M4+)
     speaker_threshold_adapter: Optional[Any] = None  # SpeakerThresholdAdapter instance
 
+    # Conversational registration
+    enable_conversational_registration: bool = False  # Auto-register new speakers from WORLD audio
+    registration_speaker_name: str = "User"  # Default name for auto-registered speakers
+
 
 @dataclass
 class StreamingFrameLog:
@@ -130,6 +134,7 @@ class StreamingFrameLog:
     speaker_best_match_id: Optional[str] = None
     speaker_best_match_similarity: Optional[float] = None
     speaker_match_passed: Optional[bool] = None
+    speaker_registered: Optional[str] = None  # Set to speaker_id when a new speaker is auto-registered
 
 
 @dataclass(frozen=True)
@@ -272,6 +277,13 @@ class StreamingRuntime:
         self._speaker_id_interval_frames = 20  # Run speaker ID every 20 VAD frames (~200ms)
         self._speaker_id_frame_counter = 0
 
+        # Conversational registration state
+        self._conversational_registration = config.enable_conversational_registration
+        self._registration_speaker_name = config.registration_speaker_name
+        self._registration_complete = False
+        self._registration_min_samples = int(1.5 * self.sr)  # Need 1.5s of WORLD speech
+        self._registration_min_similarity = 0.3  # Min embedding quality for registration
+
         # Logging
         self._logs: list[StreamingFrameLog] = []
         self._frame_index = 0
@@ -286,7 +298,7 @@ class StreamingRuntime:
         self,
         vad_frame: np.ndarray,
         attr_result,
-    ) -> None:
+    ) -> Optional[str]:
         """Run speaker identification on clean WORLD audio for per-speaker adaptive threshold.
 
         Accumulates audio frames classified as WORLD (not BOTH) and periodically
@@ -294,13 +306,12 @@ class StreamingRuntime:
         speaker. The result is stored in `_current_speaker_id` and passed
         to the attributor on subsequent frames.
 
-        WORLD-only accumulation is intentional: BOTH frames are overlap-contaminated
-        mixtures of self + other speech, and using them for speaker-ID adaptation
-        can raise non-self thresholds in ways that suppress self acceptance.
+        When conversational registration is enabled and no human speaker is
+        yet registered, auto-registers a new speaker from accumulated WORLD
+        audio once enough clean speech has been collected.
 
-        This is intentionally lightweight — it only runs every
-        `_speaker_id_interval_frames` VAD frames to avoid overwhelming
-        the ECAPA encoder in the audio callback path.
+        Returns the speaker_id if a new speaker was registered this cycle,
+        or None otherwise.
         """
         if self._speaker_world_model is None or self._speaker_identifier is None:
             return
@@ -348,9 +359,33 @@ class StreamingRuntime:
             self._last_speaker_match_passed = speaker_id is not None and speaker_id != "self"
             if speaker_id is not None and speaker_id != "self":
                 self._current_speaker_id = speaker_id
+            elif (
+                self._conversational_registration
+                and not self._registration_complete
+                and best_similarity < self._registration_min_similarity
+            ):
+                # No existing speaker matched — register new speaker from accumulated WORLD audio
+                # Only register once per conversation (first time we get enough clean speech)
+                if (
+                    self._speaker_id_buffer is not None
+                    and len(self._speaker_id_buffer) >= self._registration_min_samples
+                ):
+                    new_id = (
+                        f"human_{self._registration_speaker_name.lower().replace(' ', '_')}"
+                    )
+                    # Check if already registered (might have been registered in a previous turn)
+                    if new_id not in registry.known_speakers:
+                        registry.register_speaker(
+                            new_id, self._registration_speaker_name, embedding=embedding
+                        )
+                        self._registration_complete = True
+                        self._current_speaker_id = new_id
+                        self._last_speaker_match_passed = True
+                        return new_id
         except Exception:
             # Speaker identification is best-effort; don't crash the audio callback
             pass
+        return None
 
     def _update_adapter_from_clean_world_evidence(
         self,
@@ -737,7 +772,7 @@ class StreamingRuntime:
             )
 
             # 5b. Speaker identification for per-speaker adaptive threshold
-            self._update_speaker_id(vad_frame, attr_result)
+            registered_id = self._update_speaker_id(vad_frame, attr_result)
 
             # 5c. Update non-self adaptive-threshold profiles only from clean
             # WORLD evidence, after verdict resolution and speaker ID update.
@@ -754,6 +789,10 @@ class StreamingRuntime:
                 vad_speech=vad_speech,
                 self_match_score=self_match_score,
             )
+
+            # Record conversational registration event on the frame log
+            if registered_id is not None:
+                last_log.speaker_registered = registered_id
 
             output[vad_start:vad_end] = tts_chunk
 
@@ -926,6 +965,10 @@ class StreamingRuntime:
             "resumed": log.resumed,
             "collision_repair_text": log.collision_repair_text,
             "speaker_id": log.speaker_id,
+            "speaker_best_match_id": log.speaker_best_match_id,
+            "speaker_best_match_similarity": log.speaker_best_match_similarity,
+            "speaker_match_passed": log.speaker_match_passed,
+            "speaker_registered": log.speaker_registered,
         }
 
     def _save_logs(self, path: Path) -> None:
