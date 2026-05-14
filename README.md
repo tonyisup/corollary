@@ -128,8 +128,9 @@ Current Mac mini + Fifine observation:
 | M4 | Self-voice detector / explicit attribution classifier | ✅ Per-speaker adaptive threshold — 0 FP on 6 human speakers, >90% self-recall, wired into streaming runtime |
 | M5 | Multi-speaker world model + memory | ✅ Acceptance passed — Hippocampus + consolidation + multi-speaker world model implemented |
 | M6 | Self-model and introspection | ✅ Wired + per-speaker IDs — SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects |
+| M7 | Adaptive self-tracking | ✅ Phase 1 replay-validated — Trust-gated NLMS adapts only on confident SELF; BOTH/WORLD hold; deterministic room-drift replay passed |
 
-Immediate next steps: fine-tune the M4 scorer on live BL-2021USB room-colored captures, pre-register speaker embeddings so live identification can return IDs, adjust the live adaptive-threshold logic so unknown/live self audio does not immediately self-poison into a raised threshold, and exercise M6 introspective queries end-to-end against live streaming + SAG diff.
+Immediate next steps: live M7 drift validation on hardware, M7 phase 2 (SelfModel drift alarm), and M6 introspective query exercise against live streaming + SAG diff.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 
