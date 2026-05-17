@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M1c complete; M2 operational; M3 live hardware validated; M4 integrated with broader generalization pending  
+> **Status:** M0-M4 complete; M5 acceptance passed; M6 wired + introspective queries verified; M7 phases 1-4 replay-validated; live M7 drift validation attempted — domain-gap bottleneck identified (M4 live-domain calibration needed)  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 
@@ -179,9 +179,18 @@ corollary/
 - Self-concept subtree in the SAG: `Corollary.agent_voice`, `Corollary.speech_patterns`, `Corollary.known_subjects`
 - Self-tape vs world-tape mismatch detection via SAG diffing
 - Agent can query its own knowledge state and report confidence
-- **Acceptance:** Reduced mismatch over time; introspective subtree traversable
+- **Status:** ✅ Live hardware validated (2026-05-17). SAG introspective queries functional. Self-concept subtree traversable (4 nodes, 3 edges). Known subjects empty in single-speaker runs (no WORLD speech to trigger conversational registration).
+- **Acceptance:** ✅ Reduced mismatch over time; introspective subtree traversable
 
-### M7+: Amygdala / Valence / Fast-Track Responses
+### M7: Adaptive Self-Tracking
+- Continuous room adaptation via trust-gated NLMS (adapt on SELF only, hold on BOTH/WORLD)
+- DriftAlarm modulates NLMS learning rate on sustained match degradation
+- Multi-hypothesis IR bank (3–5 models, switch on best match)
+- Device-profile layer for orientation-dependent transfer function changes
+- **Status:** ✅ Phases 1-4 replay-validated. Live drift validation attempted (2026-05-17) — domain-gap bottleneck identified. M7 pipeline is correctly wired but starved by upstream M4 live-domain confidence gap.
+- **Acceptance:** Replay gates pass. Hardware validation blocked on M4 live-domain calibration.
+
+### M8+: Amygdala / Valence / Fast-Track Responses
 - Amygdala = fast-gate *on* the salience network, not a standalone module
 - High-threat salience → overrides PFC, triggers fast responses (shut up, warn, defer)
 - Emotional valence, risk assessment, urgency signaling
