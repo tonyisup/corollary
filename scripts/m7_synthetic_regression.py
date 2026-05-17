@@ -19,12 +19,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 from scipy.signal import fftconvolve
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from cerebellum.adaptive_model import BabblingCerebellum
 from cerebellum.drift_alarm import DriftAlarm, DriftStatus

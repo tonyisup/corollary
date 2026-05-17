@@ -11,11 +11,11 @@ This validates that:
 4. SAG diff between start and end shows learning
 
 Usage:
-    .venv/bin/python scripts/m6_live_introspective.py \\
-        --input-device 1 \\
-        --output-device 5 \\
-        --duration 30.0 \\
-        --output /tmp/m6_live_introspective.json
+    .venv/bin/python scripts/m6_live_introspective.py \
+        --input-device 1 \
+        --output-device 2 \
+        --duration 30.0 \
+        --output tmp/m6_live_introspective.json
 """
 
 from __future__ import annotations
@@ -26,6 +26,12 @@ import time
 from pathlib import Path
 
 import numpy as np
+
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from pfc.streaming_runtime import StreamingConfig, StreamingRuntime
 from pfc.self_model import SelfModel, NODE_ROOT, NODE_AGENT_VOICE, NODE_SPEECH_PATTERNS, NODE_KNOWN_SUBJECTS

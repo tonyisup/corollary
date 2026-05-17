@@ -11,11 +11,11 @@ Protocol:
 4. Recover: System should detect drift via DriftAlarm and adapt
 
 Usage:
-    .venv/bin/python scripts/m7_live_drift_validation.py \\
-        --input-device 1 \\
-        --output-device 5 \\
-        --duration 15.0 \\
-        --output /tmp/m7_live_drift.json
+    .venv/bin/python scripts/m7_live_drift_validation.py \
+        --input-device 1 \
+        --output-device 2 \
+        --duration 15.0 \
+        --output tmp/m7_live_drift_validation.json
 
 The script will prompt you when to change the room setup.
 """
@@ -25,9 +25,14 @@ from __future__ import annotations
 import argparse
 import json
 import time
+import os
+import sys
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from pfc.streaming_runtime import StreamingConfig, StreamingRuntime
 from pfc.self_model import SelfModel
