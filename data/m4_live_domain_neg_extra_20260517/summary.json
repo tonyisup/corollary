@@ -1,0 +1,48 @@
+{
+  "output_dir": "data/m4_live_domain_neg_extra_20260517",
+  "scenario_count": 2,
+  "scenarios": [
+    {
+      "scenario": "self_only",
+      "description": "Captured Corollary self voice; SELF during speech window.",
+      "sr": 16000,
+      "input_device": 1,
+      "output_device": 2,
+      "speech_start_sample": 4800,
+      "speech_end_sample": 41148,
+      "speech_verdict": "SELF",
+      "dry_run": false,
+      "agent_samples": 36348,
+      "acoustic_samples": 36348,
+      "capture_samples": 57148,
+      "capture_rms": 0.042334,
+      "capture_db": -27.47,
+      "self_text": "Placeholder self text.",
+      "negative_text": "Hello, I am Christopher. This is an additional negative sample from a different voice in the same room for training diversity.",
+      "self_voice": "en-US-AriaNeural",
+      "negative_voice": "en-US-ChristopherNeural"
+    },
+    {
+      "scenario": "same_domain_negative_playback_window",
+      "description": "Captured non-self voice in agent playback opportunity; WORLD during speech window.",
+      "sr": 16000,
+      "input_device": 1,
+      "output_device": 2,
+      "speech_start_sample": 4800,
+      "speech_end_sample": 134333,
+      "speech_verdict": "WORLD",
+      "dry_run": false,
+      "agent_samples": 36348,
+      "acoustic_samples": 129533,
+      "capture_samples": 150333,
+      "capture_rms": 0.037289,
+      "capture_db": -28.57,
+      "self_text": "Placeholder self text.",
+      "negative_text": "Hello, I am Christopher. This is an additional negative sample from a different voice in the same room for training diversity.",
+      "self_voice": "en-US-AriaNeural",
+      "negative_voice": "en-US-ChristopherNeural"
+    }
+  ],
+  "dry_run": false,
+  "timestamp": "20260517_095434"
+}

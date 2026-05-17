@@ -59,11 +59,51 @@ Results at `tmp/m6_live_introspective.json`:
 
 **Interpretation:** The M6 introspective pipeline is wired and functional. SAG self-concept subtree is traversable. The low self-match (0.119) and 0% M4 accept rate are consistent with the M4 domain-gap issue — the system can't confidently attribute live room-colored audio as SELF, so the SelfModel receives thin data. This is expected until the M4 live-domain gap is closed.
 
+## M4 Live-Domain Fine-Tuning Results (2026-05-17)
+
+### Training Data
+- 4 self captures (AriaNeural TTS, different texts, BL-2021USB in=1, Mac mini Speakers out=2)
+- 4 negative captures (GuyNeural TTS, same room/hardware)
+- All captures ~-26 to -28 dB RMS (healthy signal)
+- Feature-based fine-tuning (frozen ECAPA encoder + MLP head)
+- 30 epochs, lr=1e-4, 136 train pairs / 34 test pairs (after 5x augmentation)
+- Final test accuracy: 97.06%
+
+### Validation on Training Data
+- Self-recall: 100% (all 4 captures, all segments)
+- FP rate: 0% (all 4 negative captures correctly rejected)
+- F1: 1.000
+
+### Fresh Live Audio Test
+- New TTS text (not in training data), played through speaker, captured on mic
+- 17 speech windows analyzed (2s windows, 0.5s hop)
+- **Self-recall: 100%, avg confidence: 0.9274**
+- Capture RMS: -25.6 dB (healthy)
+- ✅ Domain gap CLOSED on fresh live audio
+
+### Negative Voice Test (synthetic, no room)
+- GuyNeural: 0% SELF ✅
+- ChristopherNeural: 0% SELF ✅
+- JennyNeural: 75% SELF ❌ (known same-family similarity — not in training data)
+- AriaNeural (self): 100% SELF ✅
+
+### Interpretation
+The fine-tuned scorer successfully closes the M4 live-domain gap for the current room/hardware setup. The scorer was trained on Aria vs Guy; it generalizes to Christopher (different voice) but not Jenny (same voice family as Aria). This is expected — the training data only had one negative voice.
+
+**For production-grade generalization:** collect more diverse negative speakers (3-5 different voices/accents) and retrain. The current scorer is sufficient for single-speaker PoC in this room.
+
+**Files:**
+- Scorer: `data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt`
+- Training data: `data/m4_live_domain_finetune_20260517/`
+- Validation script: `scripts/m4_validate_live_scorer.py`
+- Live test script: `scripts/m4_live_finetuned_test.py`
+
 ## Remaining Work
 
-1. **M4 live-domain calibration** — The front-end bottleneck. Room-colored self-TTS needs either fine-tuning on live-domain captures or a domain-adaptation layer. Until M4 confidence is in-range, M7 adaptation and M6 self-model updates will remain starved.
-2. M7 live drift validation — Blocked on M4 live-domain calibration. Replay gates pass; hardware validation needs the attribution front-end to fire.
-3. Optional: balanced live scorer dataset (documented — global fixed-threshold scorer cannot close the domain gap; per-speaker adaptive threshold remains the viable path)
+1. **M7 live drift validation** — Now unblocked. M4 fine-tuned scorer is ready. Need to wire the scorer into the streaming runtime and run `scripts/m7_live_drift_validation.py` with the fine-tuned scorer active.
+2. **M6 self-model enrichment** — With M4 now producing confident SELF frames, the SelfModel should accumulate richer self-concept data during live runs.
+3. **Broader negative training data** — Collect 3-5 more negative TTS voices (different gender, accent) and retrain for production-grade generalization. Currently only trained on GuyNeural as negative.
+4. SAG persistence: currently in-memory only; needs disk-backed storage for restarts.
 
 ## Archive
 

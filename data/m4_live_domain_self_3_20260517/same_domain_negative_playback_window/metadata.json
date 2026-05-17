@@ -1,0 +1,20 @@
+{
+  "scenario": "same_domain_negative_playback_window",
+  "description": "Captured non-self voice in agent playback opportunity; WORLD during speech window.",
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 2,
+  "speech_start_sample": 4800,
+  "speech_end_sample": 57542,
+  "speech_verdict": "WORLD",
+  "dry_run": false,
+  "agent_samples": 144623,
+  "acoustic_samples": 52742,
+  "capture_samples": 73542,
+  "capture_rms": 0.039274,
+  "capture_db": -28.12,
+  "self_text": "Capture 3. I am Corollary speaking in this room. This is my self voice for live domain calibration training data.",
+  "negative_text": "Negative sample 3 from a different speaker.",
+  "self_voice": "en-US-AriaNeural",
+  "negative_voice": "en-US-GuyNeural"
+}

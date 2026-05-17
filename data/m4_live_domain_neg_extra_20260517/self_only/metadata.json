@@ -1,0 +1,20 @@
+{
+  "scenario": "self_only",
+  "description": "Captured Corollary self voice; SELF during speech window.",
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 2,
+  "speech_start_sample": 4800,
+  "speech_end_sample": 41148,
+  "speech_verdict": "SELF",
+  "dry_run": false,
+  "agent_samples": 36348,
+  "acoustic_samples": 36348,
+  "capture_samples": 57148,
+  "capture_rms": 0.042334,
+  "capture_db": -27.47,
+  "self_text": "Placeholder self text.",
+  "negative_text": "Hello, I am Christopher. This is an additional negative sample from a different voice in the same room for training diversity.",
+  "self_voice": "en-US-AriaNeural",
+  "negative_voice": "en-US-ChristopherNeural"
+}

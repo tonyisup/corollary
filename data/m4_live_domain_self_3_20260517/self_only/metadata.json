@@ -1,0 +1,20 @@
+{
+  "scenario": "self_only",
+  "description": "Captured Corollary self voice; SELF during speech window.",
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 2,
+  "speech_start_sample": 4800,
+  "speech_end_sample": 149423,
+  "speech_verdict": "SELF",
+  "dry_run": false,
+  "agent_samples": 144623,
+  "acoustic_samples": 144623,
+  "capture_samples": 165423,
+  "capture_rms": 0.046427,
+  "capture_db": -26.66,
+  "self_text": "Capture 3. I am Corollary speaking in this room. This is my self voice for live domain calibration training data.",
+  "negative_text": "Negative sample 3 from a different speaker.",
+  "self_voice": "en-US-AriaNeural",
+  "negative_voice": "en-US-GuyNeural"
+}

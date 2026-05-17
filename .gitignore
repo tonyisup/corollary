@@ -29,3 +29,7 @@ data/m4_sim_test/
 data/m5_live_capture_*/
 
 data/m4_balanced_dataset*
+
+# M4 live-domain fine-tuning artifacts (2026-05-17)
+data/m4_live_domain_*/
+data/m4_finetuned_ecapa_live_domain_*/
