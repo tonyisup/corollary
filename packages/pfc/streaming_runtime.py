@@ -68,6 +68,7 @@ class StreamingConfig:
     # M4 params
     m4_self_threshold: float = 0.50
     m4_min_buffer_ms: float = 60.0
+    m4_scorer_path: Optional[str] = None  # Path to fine-tuned scorer.pt (feature-based)
 
     # Room filter
     room_filter_path: Optional[str] = None
@@ -228,9 +229,18 @@ class StreamingRuntime:
         m4_identifier = None
         if config.m4_enable:
             try:
-                from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
-                m4_identifier = SpeakerIdentifier(use_real=False)
-                m4_detector = SelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
+                if config.m4_scorer_path is not None:
+                    # Use fine-tuned scorer (real ECAPA + trained projection head)
+                    from stg.speaker import SpeakerIdentifier, FineTunedSelfVoiceDetector
+                    m4_identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
+                    m4_detector = FineTunedSelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
+                    m4_detector.load_scorer(config.m4_scorer_path)
+                    print(f"  M4: loaded fine-tuned scorer from {config.m4_scorer_path}")
+                else:
+                    # Fallback to mock detector (hash-based, no real ECAPA)
+                    from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
+                    m4_identifier = SpeakerIdentifier(use_real=False)
+                    m4_detector = SelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
                 if self._tts_pcm is not None:
                     m4_detector.register_self(self._tts_pcm)
             except Exception as e:

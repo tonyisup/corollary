@@ -106,12 +106,14 @@ def main() -> None:
         tts_text="M7 drift validation",
         input_device=args.input_device,
         output_device=args.output_device,
-        m4_enable=False,  # We're testing M7, not M4
+        m4_enable=True,
+        m4_scorer_path="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
+        m4_self_threshold=0.50,
         gated_playback=False,  # Always play TTS
         enable_room_filter_adaptation=True,
         room_adapter=cerebellum,
-        room_adapt_confidence_threshold=0.0,  # Adapt on all SELF frames
-        room_adapt_match_threshold=0.0,
+        room_adapt_confidence_threshold=0.30,  # Adapt on confident SELF frames
+        room_adapt_match_threshold=0.10,
         save_path=Path(args.output).with_suffix(".jsonl"),
     )
 

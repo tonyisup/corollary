@@ -188,6 +188,16 @@ class ThalamicAttributor:
         room_colored = np.convolve(expected_self_frame, self.room_filter, mode="same")
         room_colored = room_colored.astype(np.float32)
 
+        # Ensure room_colored matches frame_audio length
+        if len(room_colored) != len(frame_audio):
+            if len(room_colored) > len(frame_audio):
+                # Truncate center portion
+                start = (len(room_colored) - len(frame_audio)) // 2
+                room_colored = room_colored[start:start + len(frame_audio)]
+            else:
+                # Pad with zeros
+                room_colored = np.pad(room_colored, (0, len(frame_audio) - len(room_colored)))
+
         obs_norm = float(np.linalg.norm(frame_audio))
         room_norm = float(np.linalg.norm(room_colored))
 
