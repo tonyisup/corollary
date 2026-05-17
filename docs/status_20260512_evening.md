@@ -98,12 +98,28 @@ The fine-tuned scorer successfully closes the M4 live-domain gap for the current
 - Validation script: `scripts/m4_validate_live_scorer.py`
 - Live test script: `scripts/m4_live_finetuned_test.py`
 
+## M7 Live Drift Validation with Fine-Tuned Scorer (2026-05-17)
+
+Run: `scripts/m7_live_drift_validation.py` with M4 enabled + fine-tuned scorer
+
+Results at `tmp/m7_live_drift_finetuned_v3.json`:
+- 324 total frames processed
+- **10 SELF frames** (vs 0 with old scorer, 1 without M4)
+- **2 room-adapted frames** (vs 0 before) — trust-gated NLMS firing
+- Verdict distribution: 10 SELF, 312 BOTH, 2 SILENCE
+- Drift alarm: baseline not set (insufficient SELF frames for baseline)
+- IR bank: 1 hypothesis (bootstrap only)
+
+**Interpretation:** The M7 pipeline is now functional with the fine-tuned M4 scorer. The trust-gated NLMS fires on confident SELF frames. The drift alarm needs more SELF frames to establish a baseline — this is expected for a 15s run in a single room. The room filter was not re-fitted for this room, so most frames are BOTH (self TTS + room-colored capture).
+
+**Next step for full M7 validation:** Re-fit the room filter in the current room (run `m3_auto_calibrate.py`), then re-run drift validation with a longer duration and a clear room change.
+
 ## Remaining Work
 
-1. **M7 live drift validation** — Now unblocked. M4 fine-tuned scorer is ready. Need to wire the scorer into the streaming runtime and run `scripts/m7_live_drift_validation.py` with the fine-tuned scorer active.
-2. **M6 self-model enrichment** — With M4 now producing confident SELF frames, the SelfModel should accumulate richer self-concept data during live runs.
-3. **Broader negative training data** — Collect 3-5 more negative TTS voices (different gender, accent) and retrain for production-grade generalization. Currently only trained on GuyNeural as negative.
-4. SAG persistence: currently in-memory only; needs disk-backed storage for restarts.
+1. **Re-fit room filter for current room** — Run `scripts/m3_auto_calibrate.py` (in=1, out=2) to fit a room IR for the current room. This will improve SELF attribution and give the drift alarm enough data to set a baseline.
+2. **M7 full drift validation** — After room filter re-fit, run drift validation with longer duration and clear room change protocol.
+3. **M6 self-model enrichment** — With M4 now producing confident SELF frames, run `scripts/m6_live_introspective.py` to populate the SelfModel.
+4. **Broader negative training data** — Collect 3-5 more negative TTS voices and retrain for production-grade generalization.
 
 ## Archive
 
