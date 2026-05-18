@@ -67,7 +67,7 @@ def make_tts_pcm(text: str = "Hello, I am Corollary. This is a live drift valida
 def main() -> None:
     parser = argparse.ArgumentParser(description="M7 Live Drift Validation")
     parser.add_argument("--input-device", type=int, default=1)
-    parser.add_argument("--output-device", type=int, default=5)
+    parser.add_argument("--output-device", type=int, default=2)
     parser.add_argument("--duration", type=float, default=15.0)
     parser.add_argument("--output", type=str, default="/tmp/m7_live_drift.json")
     args = parser.parse_args()
@@ -110,9 +110,11 @@ def main() -> None:
         m4_scorer_path="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
         m4_self_threshold=0.50,
         gated_playback=False,  # Always play TTS
+        room_filter_path="data/m3_broca_room_filter_production.npy",
+        room_local_threshold=0.0747,
         enable_room_filter_adaptation=True,
         room_adapter=cerebellum,
-        room_adapt_confidence_threshold=0.30,  # Adapt on confident SELF frames
+        room_adapt_confidence_threshold=0.10,  # Adapt on confident SELF frames (lowered from 0.30)
         room_adapt_match_threshold=0.10,
         save_path=Path(args.output).with_suffix(".jsonl"),
     )

@@ -1,0 +1,17 @@
+{
+  "total_frames": 618,
+  "adapted_frames": 30,
+  "drift_alarm_status": "nominal",
+  "drift_alarm_baseline_db": -27.59742635146855,
+  "drift_alarm_spike_count": 0,
+  "drift_alarm_multiplier": 1.0,
+  "ir_bank_hypotheses": 1,
+  "ir_bank_best_index": 0,
+  "device_profiles": 1,
+  "device_active_orientation": "unknown",
+  "verdict_counts": {
+    "SILENCE": 3,
+    "BOTH": 422,
+    "SELF": 193
+  }
+}
