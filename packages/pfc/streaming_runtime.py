@@ -944,6 +944,10 @@ class StreamingRuntime:
         all_output: list[np.ndarray] = []
         all_input: list[np.ndarray] = []
 
+        # Keep everything at 16kHz — the OS will resample to hardware rate
+        # Use a larger buffer to reduce input overflow
+        blocksize = self._tts_chunk_samples * 2  # 400 samples = 25ms at 16kHz
+
         def callback(indata, outdata, frames, time_info, status):
             if status:
                 print(f"  Audio status: {status}")
@@ -951,21 +955,19 @@ class StreamingRuntime:
             mic_frame = indata[:, 0].copy()
             chunk, _ = self._process_frame(mic_frame)
 
-            # Output TTS (or zeros)
-            outdata[:, 0] = chunk[:frames]
-            if frames < len(chunk):
-                outdata[frames:, 0] = 0
+            outdata[:len(chunk), 0] = chunk[:frames]
+            if len(chunk) < frames:
+                outdata[len(chunk):, 0] = 0
 
-            # Logs are already appended inside _process_frame.
             all_output.append(chunk[:frames].copy())
             all_input.append(mic_frame.copy())
 
         print(f"Starting streaming runtime ({duration_s}s)...")
+        print(f"  Sample rate: {self.sr} Hz")
         print(f"  Gated playback: {self.config.gated_playback}")
         print(f"  M4 enabled: {self.config.m4_enable}")
         print(f"  TTS duration: {self._tts_total_samples / self.sr:.2f}s")
 
-        blocksize = self._tts_chunk_samples
         with sd.Stream(
             samplerate=self.sr,
             blocksize=blocksize,
