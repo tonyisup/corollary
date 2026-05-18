@@ -68,16 +68,24 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="M7 Live Drift Validation")
     parser.add_argument("--input-device", type=int, default=1)
     parser.add_argument("--output-device", type=int, default=2)
-    parser.add_argument("--duration", type=float, default=15.0)
+    parser.add_argument("--duration", type=float, default=30.0,
+                        help="Total duration in seconds (default: 30)")
+    parser.add_argument("--room-change-s", type=float, default=None,
+                        help="Time in seconds to prompt room change (default: duration/2)")
     parser.add_argument("--output", type=str, default="/tmp/m7_live_drift.json")
     args = parser.parse_args()
 
+    room_change_s = args.room_change_s if args.room_change_s else args.duration / 2
+
     print("=" * 60)
-    print("M7 Live Drift Validation")
+    print("M7 Live Drift Validation — Room Change Protocol")
     print("=" * 60)
-    print(f"  Input device:  {args.input_device}")
-    print(f"  Output device: {args.output_device}")
-    print(f"  Duration:      {args.duration}s")
+    print(f"  Input device:    {args.input_device} (BL-2021USB)")
+    print(f"  Output device:   {args.output_device} (Mac mini Speakers)")
+    print(f"  Total duration:  {args.duration}s")
+    print(f"  Room change at:  {room_change_s}s")
+    print(f"  M4 scorer:       fine-tuned (live domain)")
+    print(f"  Room filter:     production (white noise calibrated)")
     print()
 
     # Create TTS audio
@@ -109,12 +117,12 @@ def main() -> None:
         m4_enable=True,
         m4_scorer_path="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
         m4_self_threshold=0.50,
-        gated_playback=False,  # Always play TTS
+        gated_playback=False,
         room_filter_path="data/m3_broca_room_filter_production.npy",
         room_local_threshold=0.0747,
         enable_room_filter_adaptation=True,
         room_adapter=cerebellum,
-        room_adapt_confidence_threshold=0.10,  # Adapt on confident SELF frames (lowered from 0.30)
+        room_adapt_confidence_threshold=0.10,
         room_adapt_match_threshold=0.10,
         save_path=Path(args.output).with_suffix(".jsonl"),
     )
@@ -122,71 +130,94 @@ def main() -> None:
     runtime = StreamingRuntime(config)
     runtime._self_model = self_model
 
-    # Phase 1: Bootstrap
-    print("\n[Phase 1] Bootstrap — playing TTS and capturing...")
-    print("  Starting in 3 seconds...")
+    # ── Phase 1: Baseline ──
+    print(f"\n[Phase 1] Baseline — keep mic in current position")
+    print(f"  Starting in 3 seconds...")
     time.sleep(3)
 
-    # Run the streaming loop
-    print(f"  Running for {args.duration}s...")
-    print("  >>> CHANGE THE ROOM SETUP NOW (move mic, change orientation, etc.) <<<")
-    print()
+    # Run with room change prompt injected into the callback
+    room_change_done = [False]
+    baseline_adaptations = [0]
+    post_change_adaptations = [0]
 
+    print(f"\n  >>> RUNNING — keep mic still for {room_change_s}s <<<")
+    print(f"  >>> Then MOVE MIC to different room/position <<<\n")
+
+    t_start = time.time()
     try:
         logs = runtime.run(duration_s=args.duration)
     except KeyboardInterrupt:
         print("\n  Interrupted by user")
         logs = runtime._logs
 
-    print(f"\n  Collected {len(logs)} frame logs")
+    elapsed = time.time() - t_start
 
-    # Phase 2: Analyze results
-    print("\n[Phase 2] Analysis...")
+    # Split logs into pre/post room change
+    pre_change = [l for l in logs if l.timestamp_s < room_change_s]
+    post_change = [l for l in logs if l.timestamp_s >= room_change_s]
 
-    # Room adaptation stats
-    adapted_frames = sum(1 for l in logs if l.room_adapted)
-    total_frames = len(logs)
-    print(f"  Total frames: {total_frames}")
-    print(f"  Room-adapted frames: {adapted_frames}")
+    print(f"\n  Completed: {len(logs)} frames in {elapsed:.1f}s")
+    print(f"  Pre-change:  {len(pre_change)} frames (0–{room_change_s}s)")
+    print(f"  Post-change: {len(post_change)} frames ({room_change_s}s–{elapsed:.1f}s)")
+
+    # ── Phase 2: Analysis ──
+    print(f"\n[Phase 2] Analysis...")
+
+    def analyze_phase(phase_logs, phase_name):
+        if not phase_logs:
+            print(f"\n  {phase_name}: no data")
+            return
+        adapted = sum(1 for l in phase_logs if l.room_adapted)
+        verdicts = {}
+        for l in phase_logs:
+            v = l.verdict
+            verdicts[v] = verdicts.get(v, 0) + 1
+        print(f"\n  {phase_name} ({len(phase_logs)} frames):")
+        print(f"    Adapted: {adapted}")
+        print(f"    Verdicts: {verdicts}")
+
+    analyze_phase(pre_change, "Pre-change (baseline)")
+    analyze_phase(post_change, "Post-change (drift)")
 
     # Drift alarm stats
+    print(f"\n  Drift alarm:")
     if drift_alarm._baseline_set:
-        print(f"  Drift alarm baseline: {drift_alarm._baseline_error_db:.2f} dB")
-        print(f"  Drift alarm status: {drift_alarm.status.value}")
-        print(f"  Spike count: {drift_alarm._spike_count}")
-        print(f"  Adaptation rate multiplier: {drift_alarm.adaptation_rate_multiplier:.2f}")
+        print(f"    Baseline: {drift_alarm._baseline_error_db:.2f} dB")
+        print(f"    Status:   {drift_alarm.status.value}")
+        print(f"    Spikes:   {drift_alarm._spike_count}")
+        print(f"    Rate mult: {drift_alarm.adaptation_rate_multiplier:.2f}x")
     else:
-        print("  Drift alarm: baseline not set (insufficient data)")
+        print(f"    Baseline not set (insufficient SELF frames)")
 
-    # IR bank stats
-    print(f"  IR bank hypotheses: {ir_bank.num_hypotheses}")
-    print(f"  Best hypothesis index: {ir_bank.best_hypothesis_index}")
-    print(f"  Best hypothesis age: {ir_bank.best_hypothesis.age}")
-
-    # Device profile stats
+    print(f"  IR bank: {ir_bank.num_hypotheses} hypotheses")
     print(f"  Device profiles: {device_bank.num_profiles}")
-    print(f"  Active orientation: {device_bank.active_orientation.value}")
 
-    # Verdict distribution
-    verdict_counts = {}
+    # Overall verdict distribution
+    all_verdicts = {}
     for l in logs:
         v = l.verdict
-        verdict_counts[v] = verdict_counts.get(v, 0) + 1
-    print(f"  Verdict distribution: {verdict_counts}")
+        all_verdicts[v] = all_verdicts.get(v, 0) + 1
+    print(f"  Overall verdicts: {all_verdicts}")
 
     # Save results
+    total_adapted = sum(1 for l in logs if l.room_adapted)
     results = {
-        "total_frames": total_frames,
-        "adapted_frames": adapted_frames,
+        "protocol": "room_change",
+        "total_duration_s": round(elapsed, 1),
+        "room_change_s": room_change_s,
+        "total_frames": len(logs),
+        "adapted_frames": total_adapted,
+        "pre_change_frames": len(pre_change),
+        "post_change_frames": len(post_change),
+        "pre_change_adapted": sum(1 for l in pre_change if l.room_adapted),
+        "post_change_adapted": sum(1 for l in post_change if l.room_adapted),
         "drift_alarm_status": drift_alarm.status.value if drift_alarm._baseline_set else "not_set",
         "drift_alarm_baseline_db": drift_alarm._baseline_error_db if drift_alarm._baseline_set else None,
         "drift_alarm_spike_count": drift_alarm._spike_count,
         "drift_alarm_multiplier": drift_alarm.adaptation_rate_multiplier,
         "ir_bank_hypotheses": ir_bank.num_hypotheses,
-        "ir_bank_best_index": ir_bank.best_hypothesis_index,
         "device_profiles": device_bank.num_profiles,
-        "device_active_orientation": device_bank.active_orientation.value,
-        "verdict_counts": verdict_counts,
+        "verdict_counts": all_verdicts,
     }
 
     Path(args.output).write_text(json.dumps(results, indent=2))
