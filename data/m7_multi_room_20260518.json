@@ -1,0 +1,55 @@
+{
+  "protocol": "room_change_multi",
+  "n_phases": 3,
+  "phase_duration_s": 15.0,
+  "transition_s": 10.0,
+  "total_duration_s": 82.8,
+  "total_frames": 1222,
+  "adapted_frames": 84,
+  "phases": [
+    {
+      "name": "Baseline",
+      "frames": 403,
+      "duration_s": 15.4,
+      "adapted": 35,
+      "verdicts": {
+        "SILENCE": 42,
+        "SELF": 272,
+        "BOTH": 89
+      }
+    },
+    {
+      "name": "Phase 2",
+      "frames": 416,
+      "duration_s": 15.4,
+      "adapted": 23,
+      "verdicts": {
+        "SILENCE": 63,
+        "SELF": 286,
+        "BOTH": 67
+      }
+    },
+    {
+      "name": "Phase 3",
+      "frames": 403,
+      "duration_s": 15.3,
+      "adapted": 26,
+      "verdicts": {
+        "SILENCE": 80,
+        "SELF": 253,
+        "BOTH": 70
+      }
+    }
+  ],
+  "drift_alarm_status": "nominal",
+  "drift_alarm_baseline_db": -24.686172835401553,
+  "drift_alarm_spike_count": 0,
+  "drift_alarm_multiplier": 1.0,
+  "ir_bank_hypotheses": 1,
+  "device_profiles": 1,
+  "verdict_counts": {
+    "SILENCE": 185,
+    "SELF": 811,
+    "BOTH": 226
+  }
+}
