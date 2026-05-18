@@ -41,27 +41,27 @@ from cerebellum.adaptive_model import BabblingCerebellum
 from cerebellum.drift_alarm import DriftAlarm
 from cerebellum.ir_bank import IRBank
 from cerebellum.device_profile import DeviceProfileBank, DeviceOrientation
+from broca.tts import synthesize as _synthesize_tts
 
 
 def make_tts_pcm(text: str = "Hello, I am Corollary. This is a live drift validation test.", duration_s: float = 7.0) -> np.ndarray:
-    """Generate a simple TTS-like signal for testing."""
-    SR = 16000
-    n_samples = int(duration_s * SR)
-    t = np.arange(n_samples, dtype=np.float32) / SR
+    """Generate TTS audio for drift validation.
 
-    # Multi-harmonic signal simulating TTS
-    f0 = 180.0
-    signal = np.zeros(n_samples, dtype=np.float32)
-    for h in range(1, 6):
-        amp = 1.0 / h * (0.5 + 0.5 * np.sin(2 * np.pi * 3 * t))  # amplitude modulation
-        signal += amp * np.sin(2 * np.pi * f0 * h * t)
+    Uses real TTS synthesis (AriaNeural) instead of synthetic multi-harmonic
+    signal to avoid crackling/popping from amplitude modulation artifacts.
+    """
+    import asyncio
 
-    # Envelope
-    envelope = 0.5 + 0.5 * np.sin(2 * np.pi * 2 * t)
-    signal *= envelope
-    signal = signal / max(np.max(np.abs(signal)), 1e-8) * 0.5
-
-    return signal.astype(np.float32)
+    # Generate TTS — loop the text if needed to fill duration
+    loop_text = text + " " + text + " " + text  # ~3x coverage
+    pcm = asyncio.run(_synthesize_tts(loop_text, voice="en-US-AriaNeural"))
+    pcm = pcm.astype(np.float32)
+    target_samples = int(duration_s * 16000)
+    if len(pcm) < target_samples:
+        # Loop to fill
+        repeats = (target_samples // len(pcm)) + 1
+        pcm = np.tile(pcm, repeats)
+    return pcm[:target_samples]
 
 
 def main() -> None:
