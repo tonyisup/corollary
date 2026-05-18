@@ -975,10 +975,14 @@ class StreamingRuntime:
             if status:
                 print(f"  Audio status: {status}")
 
-            mic_frame = indata[:, 0].copy()
+            mic_hw = indata[:, 0].copy()
+            # Downsample mic from hw_sr (48kHz) to internal sr (16kHz)
+            n_internal = int(len(mic_hw) / sr_ratio)
+            mic_frame = _resample_chunk(mic_hw, n_internal)
+            
             chunk, _ = self._process_frame(mic_frame)
             
-            # Resample from internal sr to hardware sr
+            # Resample output from internal sr to hardware sr
             n_out = int(len(chunk) * sr_ratio)
             chunk_out = _resample_chunk(chunk, n_out)[:frames]
             
@@ -987,7 +991,7 @@ class StreamingRuntime:
                 outdata[len(chunk_out):, 0] = 0
 
             all_output.append(chunk_out.copy())
-            all_input.append(mic_frame.copy())
+            all_input.append(mic_hw.copy())
 
         print(f"Starting streaming runtime ({duration_s}s)...")
         print(f"  Internal sr: {self.sr} Hz, HW sr: {hw_sr} Hz")
