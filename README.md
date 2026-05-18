@@ -37,7 +37,7 @@ pip install -r requirements.txt
 
 ## Project Status Summary
 
-Corollary has validated the early developmental audio stack through live hardware milestones. M0-M1c established simulated loop closure, pre-linguistic self-sound attribution, babbling-driven room learning, and mixed-source SELF/WORLD/BOTH attribution. M2/M4 then moved the system into speech-aware self/world separation and explicit self-voice classification. M3 now provides the current strongest milestone: live, streaming, hardware-validated proto-turn-taking with interrupt, repair, resume, and gated playback behavior.
+Corollary has validated the early developmental audio stack through live hardware milestones. M0-M1c established simulated loop closure, pre-linguistic self-sound attribution, babbling-driven room learning, and mixed-source SELF/WORLD/BOTH attribution. M2/M4 then moved the system into speech-aware self/world separation and explicit self-voice classification. M3 provides live, streaming, hardware-validated proto-turn-taking with interrupt, repair, resume, and gated playback behavior. M7 now extends this with live-validated adaptive self-tracking — continuous room adaptation, drift detection, and device-profile management.
 
 The core early question was "did I just make that sound?" The current M3 question is sharper: "when I am speaking and another agentive voice enters the room, can I stop, acknowledge the collision, listen, and then resume without losing my own utterance?"
 
@@ -47,7 +47,7 @@ Current high-level state:
 - **M3:** artifact-backed and live-hardware-validated streaming turn-taking runtime. Deterministic acceptance passes synthetic defer/interrupt/repair behavior, repair-audio queue semantics, and saved-artifact replay smoke. Live repair-audio validation passed at `data/m3_streaming_repair_live_20260509_072237`.
 - **M4:** live-domain fine-tuned scorer closes domain gap — 100% self-recall on fresh live audio (avg conf=0.9274), 0% FP on Guy/Christopher, Jenny 75% FP (same voice family, not in training data). Wired into streaming runtime via m4_scorer_path. Single-speaker PoC in current room/hardware is promotion-grade; broader generalization needs more negative training voices.
 
-The immediate focus is: room filter re-fit for full M7 drift validation, broader M4 negative training data for production-grade generalization, M6 self-model enrichment, and continued productization/operational hardening.
+The immediate focus is: broader M4 negative training data for production-grade generalization, M6 self-model enrichment, interruption latency tuning, and continued productization/operational hardening.
 
 ### Synthetic vs audible work
 

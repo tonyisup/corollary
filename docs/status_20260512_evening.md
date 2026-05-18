@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-18
 > **Branch:** main (synced with origin/main)
-> **Tests:** 448 passed, 1 skipped
+> **Tests:** 453 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -26,7 +26,7 @@
 | Unit tests | ~200 | All packages |
 | Integration tests | ~80 | Cross-package pipelines |
 | E2E / acceptance | ~120 | Streaming, M4, M5, M7 replay |
-| **Total** | **448** | **All passing** |
+|| **Total** | **453** | **All passing** |
 
 ## Live Hardware Results (2026-05-17)
 
