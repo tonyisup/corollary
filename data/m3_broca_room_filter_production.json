@@ -1,0 +1,12 @@
+{
+  "calibration_text": "white_noise_burst_2s",
+  "calibration_time": "2026-05-18 09:05:00",
+  "room_local_score": 0.14936941862106323,
+  "dry_score": 0.011137996800243855,
+  "recommended_threshold": 0.07468470931053162,
+  "filter_taps": 64,
+  "filter_ridge": 0.000112,
+  "energy_onset_shift": 667,
+  "method": "playrec_noise",
+  "success": true
+}
