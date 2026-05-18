@@ -556,3 +556,92 @@ def test_hardware_repair_acceptance_script():
     assert verdict["criteria"]["tts_resumed_after_repair"] is True
     assert verdict["criteria"]["tts_completed"] is True
     assert verdict["criteria"]["final_idle"] is True
+
+
+def test_interruption_latency_synthetic():
+    """Interruption should be detected within a small number of VAD frames.
+
+    With both_external_min_frames=3, the controller should transition to LISTEN
+    within 3-4 frames of sustained BOTH overlap (high energy ratio).
+    """
+    frames = []
+    frame_idx = 0
+
+    # 10 frames of SELF (Corollary speaking alone)
+    for i in range(10):
+        frames.append(SyntheticAttributionFrame(
+            time_s=frame_idx * 0.03,
+            verdict=SourceVerdict.SELF,
+            is_speech=False,
+            is_in_motor_window=True,
+            self_match_score=0.9,
+            self_match_score_per_frame=1.0,
+            causal_score=1.0,
+        ))
+        frame_idx += 1
+
+    # 10 frames of BOTH with high energy (human overlapping)
+    first_both_idx = frame_idx
+    for i in range(10):
+        frames.append(SyntheticAttributionFrame(
+            time_s=frame_idx * 0.03,
+            verdict=SourceVerdict.BOTH,
+            is_speech=True,
+            is_in_motor_window=True,
+            self_match_score=0.9,
+            self_match_score_per_frame=2.0,  # Above default 1.5 threshold
+            causal_score=1.0,
+        ))
+        frame_idx += 1
+
+    # 10 frames of SELF (resumes after human stops)
+    for i in range(10):
+        frames.append(SyntheticAttributionFrame(
+            time_s=frame_idx * 0.03,
+            verdict=SourceVerdict.SELF,
+            is_speech=False,
+            is_in_motor_window=True,
+            self_match_score=0.9,
+            self_match_score_per_frame=1.0,
+            causal_score=1.0,
+        ))
+        frame_idx += 1
+
+    config = StreamingConfig(
+        tts_pcm=np.zeros(16000 * 5, dtype=np.float32),
+        tts_text="latency test",
+        gated_playback=True,
+        callback_blocksize_ms=120.0,
+        sr=16000,
+        m4_enable=False,
+        both_external_min_frames=3,
+        both_external_energy_ratio=1.5,
+        cooldown_ms=120.0,
+    )
+    runtime = StreamingRuntime(config)
+    logs = runtime.run_synthetic(frames)
+
+    # Find first LISTEN
+    first_listen_idx = None
+    for i, log in enumerate(logs):
+        if log.controller_state == "LISTEN":
+            first_listen_idx = i
+            break
+
+    assert first_listen_idx is not None, "Controller should have entered LISTEN"
+
+    # Latency should be <= both_external_min_frames + 1 (for the trigger frame)
+    # i.e., at most 4 frames from first BOTH to first LISTEN
+    latency_frames = first_listen_idx - first_both_idx
+    assert latency_frames <= 4, (
+        f"Interruption latency {latency_frames} frames exceeds expected max 4 "
+        f"(first_both={first_both_idx}, first_listen={first_listen_idx})"
+    )
+
+    # Verify interrupt was flagged
+    interrupted = [l for l in logs if l.should_interrupt]
+    assert len(interrupted) >= 1
+
+    # Verify system resumed after LISTEN
+    summary = runtime.get_summary()
+    assert summary["resumed_events"] >= 1
