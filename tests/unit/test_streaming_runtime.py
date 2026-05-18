@@ -419,24 +419,24 @@ class TestStreamingRuntimeGating:
 
         runtime._attributor.attribute = fail_if_called
 
-        chunk = runtime._render_output_frame(6240, timestamp_s=0.0)
+        chunk = runtime._render_output_frame(1920, timestamp_s=0.0)
 
-        assert chunk.shape == (6240,)
+        assert chunk.shape == (1920,)
         assert np.sqrt(np.mean(chunk ** 2)) > 0.01
-        assert runtime._tts_position == 6240
+        assert runtime._tts_position == 1920
 
     def test_live_callback_timestamps_use_sample_clock(self):
         """Live callback timestamps should be monotonic and independent of wall-clock jitter."""
         runtime = StreamingRuntime(StreamingConfig(tts_pcm=_make_test_pcm(duration_s=1.0), sr=16000))
         runtime._reset_live_diagnostics()
 
-        t0 = runtime._claim_live_callback_timestamp(6240)
-        t1 = runtime._claim_live_callback_timestamp(6240)
+        t0 = runtime._claim_live_callback_timestamp(1920)
+        t1 = runtime._claim_live_callback_timestamp(1920)
         t2 = runtime._claim_live_callback_timestamp(1920)
 
         assert t0 == 0.0
-        assert t1 == 6240 / 16000
-        assert t2 == 12480 / 16000
+        assert t1 == 1920 / 16000
+        assert t2 == 3840 / 16000
         assert runtime._live_callback_count == 3
 
     def test_summary_includes_live_analysis_diagnostics(self):

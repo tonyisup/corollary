@@ -60,7 +60,11 @@ class StreamingConfig:
     sr: int = 16000
 
     # TTS chunking
-    tts_chunk_ms: float = 200.0  # callback/request buffer size; internally split into VAD frames
+    tts_chunk_ms: float = 200.0  # TTS consumption unit; internally split into VAD frames
+    # Hardware callback blocksize. Smaller = lower interruption latency but more
+    # callback overhead. Must be evenly divisible by VAD_FRAME_SAMPLES (480).
+    # Default 120 ms (1920 samples = 4 × 480). Previous default was 390 ms (6240).
+    callback_blocksize_ms: float = 120.0
     output_request_s: float = 0.0  # when the agent first intends to speak
 
     # Feature flags
@@ -1109,10 +1113,10 @@ class StreamingRuntime:
         # Keep everything at 16kHz — the OS will resample to hardware rate.
         # Blocksize must be evenly divisible by VAD_FRAME_SAMPLES to avoid
         # zero-padding gaps that cause audible clicks.
-        blocksize = self._tts_chunk_samples * 2  # 6400 samples at 16 kHz
         vad_frame = VAD_FRAME_SAMPLES  # 480 samples
+        blocksize = int(self.config.callback_blocksize_ms * self.sr / 1000.0)
         n_vad_frames = max(1, blocksize // vad_frame)
-        blocksize = n_vad_frames * vad_frame  # 6240 samples (13 * 480)
+        blocksize = n_vad_frames * vad_frame  # VAD-aligned
 
         analysis_queue: queue.Queue[tuple[np.ndarray, np.ndarray, float] | None] = queue.Queue(maxsize=8)
         stop_worker = threading.Event()
