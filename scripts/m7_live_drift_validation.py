@@ -173,12 +173,18 @@ def main() -> None:
             l.timestamp_s += offset
 
         all_logs.extend(phase_logs)
+        phase_summary = runtime.get_summary()
         phase_results.append({
             "name": phase_name,
             "frames": len(phase_logs),
             "duration_s": round(t_phase_end - t_phase_start, 1),
             "adapted": sum(1 for l in phase_logs if l.room_adapted),
             "verdicts": dict(__import__('collections').Counter(l.verdict for l in phase_logs)),
+            "live_callback_count": phase_summary.get("live_callback_count", 0),
+            "analysis_blocks_enqueued": phase_summary.get("analysis_blocks_enqueued", 0),
+            "analysis_blocks_dropped": phase_summary.get("analysis_blocks_dropped", 0),
+            "analysis_queue_max_depth": phase_summary.get("analysis_queue_max_depth", 0),
+            "analysis_worker_errors": phase_summary.get("analysis_worker_errors", []),
         })
 
         print(f"  {phase_name}: {len(phase_logs)} frames, {phase_results[-1]['adapted']} adapted")
@@ -232,6 +238,13 @@ def main() -> None:
 
     # Save results
     total_adapted = sum(1 for l in all_logs if l.room_adapted)
+    total_analysis_blocks_enqueued = sum(pr.get("analysis_blocks_enqueued", 0) for pr in phase_results)
+    total_analysis_blocks_dropped = sum(pr.get("analysis_blocks_dropped", 0) for pr in phase_results)
+    all_worker_errors = [
+        err
+        for pr in phase_results
+        for err in pr.get("analysis_worker_errors", [])
+    ]
     results = {
         "protocol": "room_change_multi",
         "n_phases": n_phases,
@@ -248,6 +261,13 @@ def main() -> None:
         "ir_bank_hypotheses": ir_bank.num_hypotheses,
         "device_profiles": device_bank.num_profiles,
         "verdict_counts": all_verdicts,
+        "analysis_blocks_enqueued": total_analysis_blocks_enqueued,
+        "analysis_blocks_dropped": total_analysis_blocks_dropped,
+        "analysis_queue_max_depth": max(
+            (pr.get("analysis_queue_max_depth", 0) for pr in phase_results),
+            default=0,
+        ),
+        "analysis_worker_errors": all_worker_errors,
     }
 
     Path(args.output).write_text(json.dumps(results, indent=2))

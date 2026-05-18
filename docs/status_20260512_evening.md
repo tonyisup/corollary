@@ -113,15 +113,15 @@ Results:
 - IR bank: 1 hypothesis; device profiles: 1.
 - Adaptation errors: median 0.0489, mean 0.0537; baseline median 0.0481, post-change median 0.0503.
 
-Interpretation: M7 is now live-validated for clean audio, self-listening, trusted SELF adaptation, and drift-baseline establishment. The tested room/mic movement did not produce a large enough error shift to trigger a drift alarm; that is a nominal result, not an adaptation failure. Remaining hardening is operational: use sample-clock timestamps (current async logs have small ~18 ms non-monotonic wall-clock pairs), expose analysis queue/drop diagnostics, and test smaller callback blocks for interruption latency.
+Interpretation: M7 is now live-validated for clean audio, self-listening, trusted SELF adaptation, and drift-baseline establishment. The tested room/mic movement did not produce a large enough error shift to trigger a drift alarm; that is a nominal result, not an adaptation failure. Sample-clock timestamps and analysis queue/drop diagnostics are now implemented; remaining operational hardening is smaller callback blocks for interruption latency.
 
 ## Remaining Work
 
 1. ~~**Re-fit room filter for current room**~~ — Done (2026-05-18). White noise stimulus, room-local score 0.1494 (13.4x over dry).
 2. ~~**M7 full drift validation**~~ — Done (2026-05-18). Realtime callback fix + gate fix restored clean audio and produced 257 adaptation updates with drift baseline set at -25.02 dB.
 3. ~~**M7 room change protocol**~~ — Done (2026-05-18). Latest room-change run was nominal: no drift spike, stable M4, active adaptation before/after move.
-4. **Live log timestamp hardening** — Replace callback wall-clock + nominal offsets with a monotonic sample-clock timeline.
-5. **Analysis queue diagnostics** — Save callback count, analysis block count, dropped analysis blocks, worker errors, and max queue depth in live summaries.
+4. ~~**Live log timestamp hardening**~~ — Done (2026-05-18). Runtime uses a monotonic sample-clock timeline for live callback frame logs.
+5. ~~**Analysis queue diagnostics**~~ — Done (2026-05-18). Live summaries include callback count, analysis blocks enqueued/dropped, max queue depth, and worker errors.
 6. **Interruption latency tuning** — Test smaller VAD-aligned callback blocks (e.g. 1920 samples / 120 ms) now that render is callback-safe.
 7. **M6 self-model enrichment** — With M4 now producing confident SELF frames, run `scripts/m6_live_introspective.py` to populate the SelfModel.
 8. **Broader negative training data** — Collect 3-5 more negative TTS voices and retrain for production-grade generalization.

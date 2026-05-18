@@ -328,6 +328,28 @@ class StreamingRuntime:
         # realtime-safe, so run() uses this lock only for short controller/TTS
         # state transitions; heavy VAD/M4/attribution runs on a worker thread.
         self._state_lock = threading.RLock()
+        self._reset_live_diagnostics()
+
+    def _reset_live_diagnostics(self) -> None:
+        """Reset live-run timing and async-analysis diagnostics."""
+        self._live_sample_cursor = 0
+        self._live_callback_count = 0
+        self._live_analysis_blocks_enqueued = 0
+        self._live_analysis_blocks_dropped = 0
+        self._live_analysis_queue_max_depth = 0
+        self._live_analysis_worker_errors: list[str] = []
+
+    def _claim_live_callback_timestamp(self, frame_samples: int) -> float:
+        """Return callback start time from a monotonic sample clock.
+
+        Wall-clock callback cadence can jitter; frame logs should reflect the
+        audio stream timeline, not scheduler timing. The callback owns this
+        method, so no heavyweight locking is required.
+        """
+        timestamp_s = self._live_sample_cursor / self.sr
+        self._live_sample_cursor += int(frame_samples)
+        self._live_callback_count += 1
+        return timestamp_s
 
     def _update_room_filter_adaptation(
         self,
@@ -1080,6 +1102,7 @@ class StreamingRuntime:
 
         self._start_time = time.time()
         self._logs = []
+        self._reset_live_diagnostics()
         all_output: list[np.ndarray] = []
         all_input: list[np.ndarray] = []
 
@@ -1092,8 +1115,6 @@ class StreamingRuntime:
         blocksize = n_vad_frames * vad_frame  # 6240 samples (13 * 480)
 
         analysis_queue: queue.Queue[tuple[np.ndarray, np.ndarray, float] | None] = queue.Queue(maxsize=8)
-        dropped_analysis_frames = 0
-        worker_errors: list[str] = []
         stop_worker = threading.Event()
 
         def analysis_worker() -> None:
@@ -1109,7 +1130,7 @@ class StreamingRuntime:
                 try:
                     self._analyze_mic_frame(mic_frame, output_frame, timestamp_s)
                 except Exception as exc:  # best-effort analysis must not break playback
-                    worker_errors.append(repr(exc))
+                    self._live_analysis_worker_errors.append(repr(exc))
                 finally:
                     analysis_queue.task_done()
 
@@ -1117,11 +1138,10 @@ class StreamingRuntime:
         worker.start()
 
         def callback(indata, outdata, frames, time_info, status):
-            nonlocal dropped_analysis_frames
             if status:
                 print(f"  Audio status: {status}")
 
-            timestamp_s = time.time() - self._start_time
+            timestamp_s = self._claim_live_callback_timestamp(frames)
             mic_frame = indata[:, 0].copy()
             chunk = self._render_output_frame(frames, timestamp_s=timestamp_s)
 
@@ -1131,6 +1151,11 @@ class StreamingRuntime:
 
             try:
                 analysis_queue.put_nowait((mic_frame.copy(), chunk[:frames].copy(), timestamp_s))
+                self._live_analysis_blocks_enqueued += 1
+                self._live_analysis_queue_max_depth = max(
+                    self._live_analysis_queue_max_depth,
+                    analysis_queue.qsize(),
+                )
             except queue.Full:
                 # Drop oldest analysis block rather than ever blocking the realtime callback.
                 try:
@@ -1138,11 +1163,16 @@ class StreamingRuntime:
                     analysis_queue.task_done()
                 except queue.Empty:
                     pass
-                dropped_analysis_frames += 1
+                self._live_analysis_blocks_dropped += 1
                 try:
                     analysis_queue.put_nowait((mic_frame.copy(), chunk[:frames].copy(), timestamp_s))
+                    self._live_analysis_blocks_enqueued += 1
+                    self._live_analysis_queue_max_depth = max(
+                        self._live_analysis_queue_max_depth,
+                        analysis_queue.qsize(),
+                    )
                 except queue.Full:
-                    dropped_analysis_frames += 1
+                    self._live_analysis_blocks_dropped += 1
 
             all_output.append(chunk[:frames].copy())
             all_input.append(mic_frame.copy())
@@ -1178,10 +1208,10 @@ class StreamingRuntime:
 
         elapsed = time.time() - self._start_time
         print(f"  Completed: {self._frames} frames in {elapsed:.2f}s")
-        if dropped_analysis_frames:
-            print(f"  Dropped analysis blocks: {dropped_analysis_frames}")
-        if worker_errors:
-            print(f"  Analysis worker errors: {worker_errors[:3]}")
+        if self._live_analysis_blocks_dropped:
+            print(f"  Dropped analysis blocks: {self._live_analysis_blocks_dropped}")
+        if self._live_analysis_worker_errors:
+            print(f"  Analysis worker errors: {self._live_analysis_worker_errors[:3]}")
 
         # Save logs
         if self.config.save_path:
@@ -1350,4 +1380,9 @@ class StreamingRuntime:
             "tts_completed": self._tts_position >= self._tts_total_samples,
             "gated_playback": self.config.gated_playback,
             "m4_enabled": self.config.m4_enable,
+            "live_callback_count": self._live_callback_count,
+            "analysis_blocks_enqueued": self._live_analysis_blocks_enqueued,
+            "analysis_blocks_dropped": self._live_analysis_blocks_dropped,
+            "analysis_queue_max_depth": self._live_analysis_queue_max_depth,
+            "analysis_worker_errors": list(self._live_analysis_worker_errors),
         }

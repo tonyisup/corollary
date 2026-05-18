@@ -188,7 +188,7 @@ corollary/
 - Multi-hypothesis IR bank (3–5 models, switch on best match)
 - Device-profile layer for orientation-dependent transfer function changes
 - **Status:** ✅ Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal.
-- **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Current follow-up work is operational hardening: monotonic sample-clock timestamps, analysis queue/drop diagnostics, and lower-latency callback sizing for interruption response.
+- **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Sample-clock timestamps and analysis queue/drop diagnostics are implemented; current follow-up work is lower-latency callback sizing for interruption response.
 
 ### M8+: Amygdala / Valence / Fast-Track Responses
 - Amygdala = fast-gate *on* the salience network, not a standalone module

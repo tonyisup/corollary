@@ -130,7 +130,7 @@ Current Mac mini + Fifine observation:
 | M6 | Self-model and introspection | ✅ Wired + per-speaker IDs — SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects |
 | M7 | Adaptive self-tracking | ✅ Phases 1-4 complete — Trust-gated NLMS + DriftAlarm + IR bank + device profile; replay-validated and live room-change validated after realtime callback/gating fixes. Latest 15s+15s room-change run: 636 SELF, 260 BOTH, 257 adapted, drift baseline -25.02 dB, status nominal. |
 
-Immediate next steps: tighten live-log timestamp/sample-clock ordering, add analysis-queue/drop diagnostics to summaries, test lower-latency callback block sizes for interruption response, then broaden M4 negative training data (3-5 voices) and enrich the M6 self-model with confident SELF frames.
+Immediate next steps: test lower-latency callback block sizes for interruption response, then broaden M4 negative training data (3-5 voices) and enrich the M6 self-model with confident SELF frames. Live-log sample-clock ordering and analysis queue/drop diagnostics are now implemented in the M7 validation path.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 
