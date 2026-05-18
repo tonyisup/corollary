@@ -1,6 +1,6 @@
 # Corollary — Project Status
 
-> **Date:** 2026-05-17
+> **Date:** 2026-05-18
 > **Branch:** main (synced with origin/main)
 > **Tests:** 448 passed, 1 skipped
 
@@ -98,28 +98,29 @@ The fine-tuned scorer successfully closes the M4 live-domain gap for the current
 - Validation script: `scripts/m4_validate_live_scorer.py`
 - Live test script: `scripts/m4_live_finetuned_test.py`
 
-## M7 Live Drift Validation with Fine-Tuned Scorer (2026-05-17)
+## M7 Live Drift Validation — Room Filter + Fine-Tuned Scorer (2026-05-18)
 
-Run: `scripts/m7_live_drift_validation.py` with M4 enabled + fine-tuned scorer
+Run: `scripts/m7_live_drift_validation.py` (30s, in=1, out=2, room filter + M4 fine-tuned scorer)
 
-Results at `tmp/m7_live_drift_finetuned_v3.json`:
-- 324 total frames processed
-- **10 SELF frames** (vs 0 with old scorer, 1 without M4)
-- **2 room-adapted frames** (vs 0 before) — trust-gated NLMS firing
-- Verdict distribution: 10 SELF, 312 BOTH, 2 SILENCE
-- Drift alarm: baseline not set (insufficient SELF frames for baseline)
-- IR bank: 1 hypothesis (bootstrap only)
+Results at `data/m7_live_drift_validation_20260518.json`:
+- 618 total frames processed
+- **193 SELF frames**, 422 BOTH, 3 SILENCE
+- **30 room-adapted frames** — trust-gated NLMS actively adapting
+- **Drift alarm baseline: -27.60 dB**, status: nominal
+- Spike count: 0, adaptation rate multiplier: 1.00x
+- IR bank: 1 hypothesis, device profiles: 1
 
-**Interpretation:** The M7 pipeline is now functional with the fine-tuned M4 scorer. The trust-gated NLMS fires on confident SELF frames. The drift alarm needs more SELF frames to establish a baseline — this is expected for a 15s run in a single room. The room filter was not re-fitted for this room, so most frames are BOTH (self TTS + room-colored capture).
+**Interpretation:** The M7 pipeline is fully functional. With the room filter re-fitted (white noise stimulus, 13.4x improvement) and the fine-tuned M4 scorer, the system produces confident SELF frames that drive trust-gated NLMS adaptation. The drift alarm successfully establishes a baseline. No drift was detected during this single-room run (expected).
 
-**Next step for full M7 validation:** Re-fit the room filter in the current room (run `m3_auto_calibrate.py`), then re-run drift validation with a longer duration and a clear room change.
+**Next step:** Run with a clear room change protocol (move mic to different room mid-run) to validate drift detection and recovery.
 
 ## Remaining Work
 
-1. **Re-fit room filter for current room** — Run `scripts/m3_auto_calibrate.py` (in=1, out=2) to fit a room IR for the current room. This will improve SELF attribution and give the drift alarm enough data to set a baseline.
-2. **M7 full drift validation** — After room filter re-fit, run drift validation with longer duration and clear room change protocol.
-3. **M6 self-model enrichment** — With M4 now producing confident SELF frames, run `scripts/m6_live_introspective.py` to populate the SelfModel.
-4. **Broader negative training data** — Collect 3-5 more negative TTS voices and retrain for production-grade generalization.
+1. ~~**Re-fit room filter for current room**~~ — Done (2026-05-18). White noise stimulus, room-local score 0.1494 (13.4x over dry).
+2. ~~**M7 full drift validation**~~ — Done (2026-05-18). 30 adaptations, drift alarm baseline set at -27.60 dB.
+3. **M7 room change protocol** — Run drift validation with a clear room change mid-run to validate drift detection and recovery.
+4. **M6 self-model enrichment** — With M4 now producing confident SELF frames, run `scripts/m6_live_introspective.py` to populate the SelfModel.
+5. **Broader negative training data** — Collect 3-5 more negative TTS voices and retrain for production-grade generalization.
 
 ## Archive
 
