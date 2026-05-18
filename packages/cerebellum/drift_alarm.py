@@ -85,6 +85,18 @@ class DriftAlarm:
             # Slowly update baseline during stable periods
             self._baseline_error_db = 0.9 * self._baseline_error_db + 0.1 * recent_avg
 
+    def reset_baseline(self) -> None:
+        """Reset baseline tracking for a new phase (e.g., after room change).
+
+        Clears accumulated errors and marks baseline as not set, so the
+        next record_error() calls will establish a fresh baseline.
+        """
+        self._errors.clear()
+        self._baseline_set = False
+        self._baseline_error_db = 0.0
+        self._spike_count = 0
+        self._status = DriftStatus.NOMINAL
+
     @property
     def status(self) -> DriftStatus:
         return self._status

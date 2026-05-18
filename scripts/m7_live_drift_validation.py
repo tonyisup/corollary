@@ -68,28 +68,27 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="M7 Live Drift Validation")
     parser.add_argument("--input-device", type=int, default=1)
     parser.add_argument("--output-device", type=int, default=2)
-    parser.add_argument("--duration", type=float, default=30.0,
-                        help="Total duration in seconds (default: 30)")
-    parser.add_argument("--room-change-s", type=float, default=None,
-                        help="Time in seconds to prompt room change (default: duration/2)")
+    parser.add_argument("--duration", type=float, default=15.0,
+                        help="Post-change duration in seconds (default: 15)")
     parser.add_argument("--output", type=str, default="/tmp/m7_live_drift.json")
     args = parser.parse_args()
-
-    room_change_s = args.room_change_s if args.room_change_s else args.duration / 2
 
     print("=" * 60)
     print("M7 Live Drift Validation — Room Change Protocol")
     print("=" * 60)
     print(f"  Input device:    {args.input_device} (BL-2021USB)")
     print(f"  Output device:   {args.output_device} (Mac mini Speakers)")
-    print(f"  Total duration:  {args.duration}s")
-    print(f"  Room change at:  {room_change_s}s")
-    print(f"  M4 scorer:       fine-tuned (live domain)")
-    print(f"  Room filter:     production (white noise calibrated)")
+    print(f"  Post-change duration: {args.duration}s")
+    print(f"  M4 scorer:            fine-tuned (live domain)")
+    print(f"  Room filter:          production (white noise calibrated)")
     print()
 
-    # Create TTS audio
-    tts_pcm = make_tts_pcm(duration_s=args.duration)
+    # Timing
+    baseline_duration = 15.0  # seconds for baseline phase
+
+    # Create TTS audio (cover both phases)
+    total_duration = baseline_duration + args.duration
+    tts_pcm = make_tts_pcm(duration_s=total_duration)
     print(f"  TTS audio: {len(tts_pcm)} samples ({len(tts_pcm)/16000:.1f}s)")
 
     # Set up M7 components
@@ -135,30 +134,61 @@ def main() -> None:
     print(f"  Starting in 3 seconds...")
     time.sleep(3)
 
-    # Run with room change prompt injected into the callback
-    room_change_done = [False]
-    baseline_adaptations = [0]
-    post_change_adaptations = [0]
+    # Disable file saving during runs; we'll save combined logs at the end
+    config.save_path = None
 
-    print(f"\n  >>> RUNNING — keep mic still for {room_change_s}s <<<")
-    print(f"  >>> Then MOVE MIC to different room/position <<<\n")
-
-    t_start = time.time()
+    # ── Phase 1: Baseline (mic stationary) ──
+    print(f"\n[Phase 1] Baseline — keep mic stationary for {baseline_duration}s...")
+    t_phase1_start = time.time()
     try:
-        logs = runtime.run(duration_s=args.duration)
+        runtime.run(duration_s=baseline_duration)
     except KeyboardInterrupt:
         print("\n  Interrupted by user")
-        logs = runtime._logs
+    logs_baseline = list(runtime._logs)
+    t_phase1_end = time.time()
 
-    elapsed = time.time() - t_start
+    # ── Phase 2: Room change ──
+    print(f"\n{'='*60}")
+    print(f"  >>> MOVE MIC TO DIFFERENT ROOM NOW <<<")
+    print(f"  >>> Waiting 10 seconds for room change <<<")
+    print(f"{'='*60}")
+    # Audible beep to signal room change
+    try:
+        import os
+        for _ in range(3):
+            os.system('afplay /System/Library/Sounds/Glass.aiff 2>/dev/null')
+            time.sleep(0.5)
+    except Exception:
+        pass
+    time.sleep(10.0)
+    t_change = time.time()
+    print(f"  Room change complete at t={t_change - t_phase1_start:.1f}s")
 
-    # Split logs into pre/post room change
-    pre_change = [l for l in logs if l.timestamp_s < room_change_s]
-    post_change = [l for l in logs if l.timestamp_s >= room_change_s]
+    # Reset drift alarm baseline for post-change phase
+    drift_alarm.reset_baseline()
 
-    print(f"\n  Completed: {len(logs)} frames in {elapsed:.1f}s")
-    print(f"  Pre-change:  {len(pre_change)} frames (0–{room_change_s}s)")
-    print(f"  Post-change: {len(post_change)} frames ({room_change_s}s–{elapsed:.1f}s)")
+    # ── Phase 3: Post-change (mic in new position) ──
+    post_duration = args.duration
+    print(f"\n[Phase 3] Post-change — running for {post_duration}s...")
+    t_phase3_start = time.time()
+    try:
+        runtime.run(duration_s=post_duration)
+    except KeyboardInterrupt:
+        print("\n  Interrupted by user")
+    # Collect only the NEW logs from this phase
+    logs_post = list(runtime._logs[len(logs_baseline):])
+    t_phase3_end = time.time()
+
+    # Adjust post-change timestamps
+    for l in logs_post:
+        l.timestamp_s += baseline_duration
+
+    # Combine logs and save
+    all_logs = logs_baseline + logs_post
+
+    print(f"\n  Baseline:  {len(logs_baseline)} frames in {t_phase1_end - t_phase1_start:.1f}s")
+    print(f"  Post-change: {len(logs_post)} frames in {t_phase3_end - t_phase3_start:.1f}s")
+    print(f"  Total: {len(all_logs)} frames")
 
     # ── Phase 2: Analysis ──
     print(f"\n[Phase 2] Analysis...")
@@ -176,10 +206,10 @@ def main() -> None:
         print(f"    Adapted: {adapted}")
         print(f"    Verdicts: {verdicts}")
 
-    analyze_phase(pre_change, "Pre-change (baseline)")
-    analyze_phase(post_change, "Post-change (drift)")
+    analyze_phase(logs_baseline, "Baseline (pre-change)")
+    analyze_phase(logs_post, "Post-change (drift)")
 
-    # Drift alarm stats
+    # Drift alarm stats (post-change)
     print(f"\n  Drift alarm:")
     if drift_alarm._baseline_set:
         print(f"    Baseline: {drift_alarm._baseline_error_db:.2f} dB")
@@ -194,23 +224,23 @@ def main() -> None:
 
     # Overall verdict distribution
     all_verdicts = {}
-    for l in logs:
+    for l in all_logs:
         v = l.verdict
         all_verdicts[v] = all_verdicts.get(v, 0) + 1
     print(f"  Overall verdicts: {all_verdicts}")
 
     # Save results
-    total_adapted = sum(1 for l in logs if l.room_adapted)
+    total_adapted = sum(1 for l in all_logs if l.room_adapted)
     results = {
         "protocol": "room_change",
-        "total_duration_s": round(elapsed, 1),
-        "room_change_s": room_change_s,
-        "total_frames": len(logs),
+        "baseline_duration_s": round(t_phase1_end - t_phase1_start, 1),
+        "post_duration_s": round(t_phase3_end - t_phase3_start, 1),
+        "total_frames": len(all_logs),
         "adapted_frames": total_adapted,
-        "pre_change_frames": len(pre_change),
-        "post_change_frames": len(post_change),
-        "pre_change_adapted": sum(1 for l in pre_change if l.room_adapted),
-        "post_change_adapted": sum(1 for l in post_change if l.room_adapted),
+        "baseline_frames": len(logs_baseline),
+        "post_frames": len(logs_post),
+        "baseline_adapted": sum(1 for l in logs_baseline if l.room_adapted),
+        "post_adapted": sum(1 for l in logs_post if l.room_adapted),
         "drift_alarm_status": drift_alarm.status.value if drift_alarm._baseline_set else "not_set",
         "drift_alarm_baseline_db": drift_alarm._baseline_error_db if drift_alarm._baseline_set else None,
         "drift_alarm_spike_count": drift_alarm._spike_count,
@@ -222,6 +252,13 @@ def main() -> None:
 
     Path(args.output).write_text(json.dumps(results, indent=2))
     print(f"\n  Results saved to {args.output}")
+
+    # Save combined JSONL
+    jsonl_path = Path(args.output).with_suffix(".jsonl")
+    with open(jsonl_path, "w") as f:
+        for l in all_logs:
+            f.write(json.dumps(runtime._log_to_dict(l)) + "\n")
+    print(f"  Frame logs saved to {jsonl_path}")
     print("Done.")
 
 
