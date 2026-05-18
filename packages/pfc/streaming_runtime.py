@@ -953,29 +953,51 @@ class StreamingRuntime:
         n_vad_frames = max(1, blocksize // vad_frame)
         blocksize = n_vad_frames * vad_frame  # 6240 samples (13 * 480)
 
+        # Resample output to 48kHz for clean hardware playback
+        # Internal processing stays at 16kHz; only the output is resampled
+        hw_sr = 48000
+        # Pre-compute resampling ratio
+        sr_ratio = hw_sr / self.sr  # 3.0
+        
+        def _resample_chunk(x, n_out):
+            """Fast linear interpolation resampling."""
+            n_in = len(x)
+            if n_in == n_out:
+                return x.copy()
+            old_x = np.linspace(0, 1, n_in)
+            new_x = np.linspace(0, 1, n_out)
+            return np.interp(new_x, old_x, x).astype(np.float32)
+        
+        # Blocksize at hardware rate
+        blocksize_hw = int(blocksize * sr_ratio)
+        
         def callback(indata, outdata, frames, time_info, status):
             if status:
                 print(f"  Audio status: {status}")
 
             mic_frame = indata[:, 0].copy()
             chunk, _ = self._process_frame(mic_frame)
+            
+            # Resample from internal sr to hardware sr
+            n_out = int(len(chunk) * sr_ratio)
+            chunk_out = _resample_chunk(chunk, n_out)[:frames]
+            
+            outdata[:len(chunk_out), 0] = chunk_out
+            if len(chunk_out) < frames:
+                outdata[len(chunk_out):, 0] = 0
 
-            outdata[:len(chunk), 0] = chunk[:frames]
-            if len(chunk) < frames:
-                outdata[len(chunk):, 0] = 0
-
-            all_output.append(chunk[:frames].copy())
+            all_output.append(chunk_out.copy())
             all_input.append(mic_frame.copy())
 
         print(f"Starting streaming runtime ({duration_s}s)...")
-        print(f"  Sample rate: {self.sr} Hz")
+        print(f"  Internal sr: {self.sr} Hz, HW sr: {hw_sr} Hz")
         print(f"  Gated playback: {self.config.gated_playback}")
         print(f"  M4 enabled: {self.config.m4_enable}")
         print(f"  TTS duration: {self._tts_total_samples / self.sr:.2f}s")
 
         with sd.Stream(
-            samplerate=self.sr,
-            blocksize=blocksize,
+            samplerate=hw_sr,
+            blocksize=blocksize_hw,
             dtype="float32",
             channels=1,
             callback=callback,
