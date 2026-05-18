@@ -945,8 +945,13 @@ class StreamingRuntime:
         all_input: list[np.ndarray] = []
 
         # Keep everything at 16kHz — the OS will resample to hardware rate
-        # Use a larger buffer to reduce input overflow
-        blocksize = self._tts_chunk_samples * 2  # 400 samples = 25ms at 16kHz
+        # Blocksize must be evenly divisible by VAD_FRAME_SAMPLES to avoid
+        # zero-padding gaps that cause audible clicks
+        blocksize = self._tts_chunk_samples * 2  # 6400 samples
+        vad_frame = VAD_FRAME_SAMPLES  # 480 samples
+        # Adjust blocksize to be a multiple of VAD_FRAME_SAMPLES
+        n_vad_frames = max(1, blocksize // vad_frame)
+        blocksize = n_vad_frames * vad_frame  # 6240 samples (13 * 480)
 
         def callback(indata, outdata, frames, time_info, status):
             if status:
