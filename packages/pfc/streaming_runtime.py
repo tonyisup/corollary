@@ -27,6 +27,8 @@ Usage:
 from __future__ import annotations
 
 import json
+import queue
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -321,6 +323,11 @@ class StreamingRuntime:
         self._output_requested = False
         self._was_deferred = False
         self._was_resumed = False
+
+        # Live hardware runtime state. The CoreAudio callback must stay
+        # realtime-safe, so run() uses this lock only for short controller/TTS
+        # state transitions; heavy VAD/M4/attribution runs on a worker thread.
+        self._state_lock = threading.RLock()
 
     def _update_room_filter_adaptation(
         self,
@@ -844,14 +851,6 @@ class StreamingRuntime:
                 self._controller.state == AgentState.SPEAK
                 and self._tts_position < self._tts_total_samples
             )
-            
-            # Suppress mic input during TTS playback to prevent acoustic feedback
-            # from mic picking up speaker output. The self-match score and attribution
-            # will still work because they compare against the known TTS reference.
-            if is_playing:
-                vad_frame = np.zeros_like(vad_frame)
-                rms_db = -200.0
-                vad_speech = False
 
             # 4. Compute self-match score
             tts_position_s = self._tts_position / self.sr
@@ -926,6 +925,128 @@ class StreamingRuntime:
 
         return output, last_log  # type: ignore[return-value]
 
+    def _render_output_frame(self, frame_samples: int, timestamp_s: float) -> np.ndarray:
+        """Render one hardware callback worth of output without mic analysis.
+
+        This method is intentionally realtime-safe: it only advances controller
+        request/resume state and copies queued TTS/repair audio. It must not run
+        VAD, M4, speaker-ID, room adaptation, or attribution.
+        """
+        output = np.zeros(frame_samples, dtype=np.float32)
+        num_vad_frames = max(1, frame_samples // VAD_FRAME_SAMPLES)
+        with self._state_lock:
+            for vad_i in range(num_vad_frames):
+                vad_start = vad_i * VAD_FRAME_SAMPLES
+                vad_end = vad_start + VAD_FRAME_SAMPLES
+                if vad_end > frame_samples:
+                    break
+                sub_timestamp = timestamp_s + (vad_i * VAD_FRAME_SAMPLES / self.sr)
+                self._maybe_request_or_resume_output(sub_timestamp)
+                can_speak = (not self.config.gated_playback) or self._controller.state != AgentState.LISTEN
+                tts_chunk, _, _, _, _ = self._gate_tts_chunk(can_speak)
+                output[vad_start:vad_end] = tts_chunk
+        return output
+
+    def _analyze_mic_frame(
+        self,
+        mic_frame: np.ndarray,
+        output_frame: np.ndarray,
+        timestamp_s: float,
+    ) -> None:
+        """Analyze mic input off the audio callback and append frame logs.
+
+        This mirrors the attribution side of _process_frame but does not render
+        or advance playback. Controller decisions affect future callback blocks.
+        """
+        num_vad_frames = max(1, len(mic_frame) // VAD_FRAME_SAMPLES)
+        current_speaker_id: Optional[str] = self._current_speaker_id
+        for vad_i in range(num_vad_frames):
+            vad_start = vad_i * VAD_FRAME_SAMPLES
+            vad_end = vad_start + VAD_FRAME_SAMPLES
+            vad_frame = mic_frame[vad_start:vad_end]
+            known_chunk = output_frame[vad_start:vad_end]
+            if len(vad_frame) < VAD_FRAME_SAMPLES:
+                padded = np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32)
+                padded[:len(vad_frame)] = vad_frame
+                vad_frame = padded
+            if len(known_chunk) < VAD_FRAME_SAMPLES:
+                padded = np.zeros(VAD_FRAME_SAMPLES, dtype=np.float32)
+                padded[:len(known_chunk)] = known_chunk
+                known_chunk = padded
+
+            vad_speech = self._vad.process_frame(vad_frame)
+            rms = float(np.sqrt(np.mean(vad_frame ** 2)))
+            rms_db = 20.0 * np.log10(max(rms, 1e-10))
+            tts_playing = bool(np.sqrt(np.mean(known_chunk ** 2)) > 1e-8)
+
+            self_match_score = 0.0
+            if tts_playing:
+                self_match_score = self._compute_normalized_xcorr(vad_frame, known_chunk)
+
+            sub_timestamp = timestamp_s + (vad_i * VAD_FRAME_SAMPLES / self.sr)
+            with self._state_lock:
+                tts_position_snapshot = self._tts_position
+                speaker_id_snapshot = current_speaker_id
+
+            attr_result = self._attributor.attribute(
+                match_score=self_match_score,
+                observed_onset_samples=tts_position_snapshot,
+                expected_onset_samples=0,
+                rms_db=rms_db,
+                is_playing=tts_playing,
+                is_speech=vad_speech,
+                frame_audio=vad_frame,
+                self_pcm=self._tts_pcm,
+                agent_start_sample=0,
+                speaker_id=speaker_id_snapshot,
+            )
+
+            registered_id = self._update_speaker_id(vad_frame, attr_result)
+            self._update_adapter_from_clean_world_evidence(
+                attr_result,
+                self._current_speaker_id,
+            )
+            room_adaptation = self._update_room_filter_adaptation(
+                known_pcm=known_chunk,
+                captured_pcm=vad_frame,
+                attr_result=attr_result,
+                self_match_score=self_match_score,
+            )
+
+            with self._state_lock:
+                decision = self._controller.process_attribution(attr_result, current_time=sub_timestamp)
+                if decision.collision_repair_text and self._repair_pcm is not None:
+                    self._repair_pending = True
+                    self._repair_started = False
+                    self._repair_completed = False
+                    self._repair_position = 0
+
+                log = self._log_attribution_decision(
+                    attr_result=attr_result,
+                    timestamp_s=sub_timestamp,
+                    vad_speech=vad_speech,
+                    tts_playing=tts_playing,
+                    output_source="tts" if tts_playing else "none",
+                    repair_playing=False,
+                    repair_completed=False,
+                    deferred=False,
+                    resumed=False,
+                    self_match_score=self_match_score,
+                    collision_repair_text=decision.collision_repair_text,
+                    speaker_id=self._current_speaker_id,
+                )
+                log.should_interrupt = decision.should_interrupt
+                log.can_speak = decision.can_speak
+                log.controller_state = self._controller.state.name
+                if registered_id is not None:
+                    log.speaker_registered = registered_id
+                if room_adaptation is not None:
+                    log.room_adapted = room_adaptation.get("adapted")
+                    log.room_adaptation_reason = room_adaptation.get("reason")
+                    err = room_adaptation.get("error")
+                    log.room_adaptation_error = round(float(err), 6) if err is not None else None
+                    log.room_adaptation_updates = room_adaptation.get("updates")
+
     def _get_tts_vad_chunk(self) -> np.ndarray:
         """Return one VAD_FRAME_SAMPLES-sized TTS chunk, or zeros."""
         if self._tts_pcm is None or self._tts_position >= self._tts_total_samples:
@@ -952,34 +1073,66 @@ class StreamingRuntime:
         all_output: list[np.ndarray] = []
         all_input: list[np.ndarray] = []
 
-        # Keep everything at 16kHz — the OS will resample to hardware rate
+        # Keep everything at 16kHz — the OS will resample to hardware rate.
         # Blocksize must be evenly divisible by VAD_FRAME_SAMPLES to avoid
-        # zero-padding gaps that cause audible clicks
-        blocksize = self._tts_chunk_samples * 2  # 6400 samples
+        # zero-padding gaps that cause audible clicks.
+        blocksize = self._tts_chunk_samples * 2  # 6400 samples at 16 kHz
         vad_frame = VAD_FRAME_SAMPLES  # 480 samples
-        # Adjust blocksize to be a multiple of VAD_FRAME_SAMPLES
         n_vad_frames = max(1, blocksize // vad_frame)
         blocksize = n_vad_frames * vad_frame  # 6240 samples (13 * 480)
 
-        # Keep everything at 16kHz — the OS will resample to hardware rate
-        # Blocksize must be evenly divisible by VAD_FRAME_SAMPLES to avoid
-        # zero-padding gaps that cause audible clicks
-        blocksize = self._tts_chunk_samples * 2  # 6400 samples
-        vad_frame = VAD_FRAME_SAMPLES  # 480 samples
-        # Adjust blocksize to be a multiple of VAD_FRAME_SAMPLES
-        n_vad_frames = max(1, blocksize // vad_frame)
-        blocksize = n_vad_frames * vad_frame  # 6240 samples (13 * 480)
+        analysis_queue: queue.Queue[tuple[np.ndarray, np.ndarray, float] | None] = queue.Queue(maxsize=8)
+        dropped_analysis_frames = 0
+        worker_errors: list[str] = []
+        stop_worker = threading.Event()
+
+        def analysis_worker() -> None:
+            while not stop_worker.is_set() or not analysis_queue.empty():
+                try:
+                    item = analysis_queue.get(timeout=0.05)
+                except queue.Empty:
+                    continue
+                if item is None:
+                    analysis_queue.task_done()
+                    break
+                mic_frame, output_frame, timestamp_s = item
+                try:
+                    self._analyze_mic_frame(mic_frame, output_frame, timestamp_s)
+                except Exception as exc:  # best-effort analysis must not break playback
+                    worker_errors.append(repr(exc))
+                finally:
+                    analysis_queue.task_done()
+
+        worker = threading.Thread(target=analysis_worker, name="corollary-audio-analysis", daemon=True)
+        worker.start()
 
         def callback(indata, outdata, frames, time_info, status):
+            nonlocal dropped_analysis_frames
             if status:
                 print(f"  Audio status: {status}")
 
+            timestamp_s = time.time() - self._start_time
             mic_frame = indata[:, 0].copy()
-            chunk, _ = self._process_frame(mic_frame)
+            chunk = self._render_output_frame(frames, timestamp_s=timestamp_s)
 
             outdata[:len(chunk), 0] = chunk[:frames]
             if len(chunk) < frames:
                 outdata[len(chunk):, 0] = 0
+
+            try:
+                analysis_queue.put_nowait((mic_frame.copy(), chunk[:frames].copy(), timestamp_s))
+            except queue.Full:
+                # Drop oldest analysis block rather than ever blocking the realtime callback.
+                try:
+                    analysis_queue.get_nowait()
+                    analysis_queue.task_done()
+                except queue.Empty:
+                    pass
+                dropped_analysis_frames += 1
+                try:
+                    analysis_queue.put_nowait((mic_frame.copy(), chunk[:frames].copy(), timestamp_s))
+                except queue.Full:
+                    dropped_analysis_frames += 1
 
             all_output.append(chunk[:frames].copy())
             all_input.append(mic_frame.copy())
@@ -1000,8 +1153,25 @@ class StreamingRuntime:
         ):
             time.sleep(duration_s)
 
+        stop_worker.set()
+        try:
+            analysis_queue.put_nowait(None)
+        except queue.Full:
+            try:
+                analysis_queue.get_nowait()
+                analysis_queue.task_done()
+            except queue.Empty:
+                pass
+            analysis_queue.put_nowait(None)
+        analysis_queue.join()
+        worker.join(timeout=2.0)
+
         elapsed = time.time() - self._start_time
         print(f"  Completed: {self._frames} frames in {elapsed:.2f}s")
+        if dropped_analysis_frames:
+            print(f"  Dropped analysis blocks: {dropped_analysis_frames}")
+        if worker_errors:
+            print(f"  Analysis worker errors: {worker_errors[:3]}")
 
         # Save logs
         if self.config.save_path:

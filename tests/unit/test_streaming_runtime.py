@@ -382,6 +382,49 @@ class TestStreamingRuntimeGating:
         for i in range(1, len(positions)):
             assert positions[i] >= positions[i-1] - 0.001  # small tolerance
 
+    def test_live_processing_does_not_mute_mic_during_tts(self):
+        """Self-listening path must still analyze mic audio while TTS is playing."""
+        pcm = _make_test_pcm(duration_s=0.5)
+        mic_speech = _make_test_pcm(duration_s=0.39)
+        config = StreamingConfig(
+            tts_pcm=pcm,
+            tts_text="test",
+            gated_playback=False,
+            sr=16000,
+            energy_threshold_db=-55.0,
+        )
+        runtime = StreamingRuntime(config)
+        runtime._start_time = 0.0
+        runtime._logs = []
+
+        runtime._process_frame(mic_speech[:6240])
+
+        assert runtime._logs
+        assert any(log.vad_speech for log in runtime._logs)
+        assert any(log.energy_db > -55.0 for log in runtime._logs)
+
+    def test_realtime_output_render_does_not_run_attribution(self):
+        """Realtime playback rendering must stay independent of heavy analysis/M4."""
+        pcm = _make_test_pcm(duration_s=0.5)
+        config = StreamingConfig(
+            tts_pcm=pcm,
+            tts_text="test",
+            gated_playback=False,
+            sr=16000,
+        )
+        runtime = StreamingRuntime(config)
+
+        def fail_if_called(*args, **kwargs):
+            raise AssertionError("attribution must not run in realtime render path")
+
+        runtime._attributor.attribute = fail_if_called
+
+        chunk = runtime._render_output_frame(6240, timestamp_s=0.0)
+
+        assert chunk.shape == (6240,)
+        assert np.sqrt(np.mean(chunk ** 2)) > 0.01
+        assert runtime._tts_position == 6240
+
 
 class TestStreamingRuntimeFrameLog:
     def test_log_fields(self):
