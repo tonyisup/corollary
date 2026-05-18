@@ -137,6 +137,32 @@ class TestStreamingM7RoomAdaptation:
         assert adapter.calls[0]["self_match_score"] == 0.45
         np.testing.assert_array_equal(runtime._attributor.room_filter, adapter.get_learned_ir())
 
+    def test_uses_best_live_self_match_evidence_for_adaptation(self):
+        """Live room-local score can be stale/low; strong per-frame evidence should count."""
+        adapter = FakeRoomAdapter()
+        runtime = StreamingRuntime(
+            StreamingConfig(
+                tts_pcm=np.zeros(16000, dtype=np.float32),
+                enable_room_filter_adaptation=True,
+                room_adapter=adapter,
+                room_adapt_confidence_threshold=0.8,
+                room_adapt_match_threshold=0.2,
+            )
+        )
+        attr = _attr(SourceVerdict.SELF, m4_confidence=0.99, room_score=0.05)
+        attr.self_match_score_per_frame = 0.42
+
+        result = runtime._update_room_filter_adaptation(
+            known_pcm=np.ones(480, dtype=np.float32),
+            captured_pcm=np.ones(480, dtype=np.float32),
+            attr_result=attr,
+            self_match_score=0.01,
+        )
+
+        assert result["adapted"] is True
+        assert result["reason"] == "trusted_self"
+        assert adapter.calls[0]["self_match_score"] == 0.42
+
     def test_no_efference_chunk_holds_without_calling_adapter(self):
         adapter = FakeRoomAdapter()
         runtime = StreamingRuntime(

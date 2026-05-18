@@ -360,11 +360,21 @@ class StreamingRuntime:
             return result
 
         metadata = attr_result.metadata or {}
-        match_score = attr_result.room_local_score
-        if match_score is None:
-            match_score = attr_result.self_match_score_per_frame
-        if match_score is None:
-            match_score = self_match_score
+        match_candidates = [
+            attr_result.room_local_score,
+            attr_result.self_match_score_per_frame,
+            self_match_score,
+        ]
+        finite_matches = [
+            float(score)
+            for score in match_candidates
+            if score is not None and np.isfinite(float(score))
+        ]
+        # Live playback often has stale/low room-local scores while the
+        # per-frame self evidence and M4 confidence are strong. Use the best
+        # available finite match signal for the trust gate, while still requiring
+        # SELF verdict + M4 confidence in the adapter itself.
+        match_score = max(finite_matches) if finite_matches else None
 
         result = self._room_adapter.update_trust_gated(
             known_pcm.astype(np.float32),
