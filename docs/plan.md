@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M4 complete; M5 acceptance passed; M6 wired + introspective queries verified; M7 phases 1-4 replay-validated; live M7 drift validation attempted — domain-gap bottleneck identified (M4 live-domain calibration needed)  
+> **Status:** M0-M4 complete; M5 acceptance passed; M6 wired + introspective queries verified; M7 phases 1-4 replay-validated; M4 live-domain fine-tuned scorer closes domain gap (100% self-recall on fresh live audio); M7 live drift validation with fine-tuned scorer functional (10 SELF, 2 adapted); room filter re-fit needed for full M7 drift test  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 
@@ -187,8 +187,8 @@ corollary/
 - DriftAlarm modulates NLMS learning rate on sustained match degradation
 - Multi-hypothesis IR bank (3–5 models, switch on best match)
 - Device-profile layer for orientation-dependent transfer function changes
-- **Status:** ✅ Phases 1-4 replay-validated. Live drift validation attempted (2026-05-17) — domain-gap bottleneck identified. M7 pipeline is correctly wired but starved by upstream M4 live-domain confidence gap.
-- **Acceptance:** Replay gates pass. Hardware validation blocked on M4 live-domain calibration.
+- **Status:** ✅ Phases 1-4 replay-validated. Live drift validation with fine-tuned M4 scorer (2026-05-17): 10 SELF frames, 2 adapted frames — trust-gated NLMS firing. Room filter re-fit needed for full drift test.
+- **Acceptance:** Replay gates pass. Live drift validation with fine-tuned scorer confirms trust-gated NLMS fires (2 adapted frames). Full drift test pending room filter re-fit.
 
 ### M8+: Amygdala / Valence / Fast-Track Responses
 - Amygdala = fast-gate *on* the salience network, not a standalone module

@@ -45,9 +45,9 @@ Current high-level state:
 
 - **M2:** operational speech-aware self/world separation harness with calibrated room-local scoring and benchmark artifacts; still research-grade rather than productized.
 - **M3:** artifact-backed and live-hardware-validated streaming turn-taking runtime. Deterministic acceptance passes synthetic defer/interrupt/repair behavior, repair-audio queue semantics, and saved-artifact replay smoke. Live repair-audio validation passed at `data/m3_streaming_repair_live_20260509_072237`.
-- **M4:** artifact-backed on replay and held-out capture gates, but not yet live-ready on BL-2021USB room-colored audio. Self-voice detection is wired into the live harness/streaming path with frame-level metadata; synthetic and captured replay gates pass with the fine-tuned scorer, but fresh live hardware validation currently exposes a domain-transfer gap rather than promotion-grade live performance.
+- **M4:** live-domain fine-tuned scorer closes domain gap — 100% self-recall on fresh live audio (avg conf=0.9274), 0% FP on Guy/Christopher, Jenny 75% FP (same voice family, not in training data). Wired into streaming runtime via m4_scorer_path. Single-speaker PoC in current room/hardware is promotion-grade; broader generalization needs more negative training voices.
 
-The immediate focus is productization and operational hardening: stable runbooks, reproducible hardware validation wrappers, cleaner runtime interfaces, live-domain M4 calibration/fine-tuning, and broader M4 generalization checks.
+The immediate focus is: room filter re-fit for full M7 drift validation, broader M4 negative training data for production-grade generalization, M6 self-model enrichment, and continued productization/operational hardening.
 
 ### Synthetic vs audible work
 
@@ -128,9 +128,9 @@ Current Mac mini + Fifine observation:
 | M4 | Self-voice detector / explicit attribution classifier | ✅ Per-speaker adaptive threshold — 0 FP on 6 human speakers, >90% self-recall, wired into streaming runtime |
 | M5 | Multi-speaker world model + memory | ✅ Acceptance passed — Hippocampus + consolidation + multi-speaker world model implemented |
 | M6 | Self-model and introspection | ✅ Wired + per-speaker IDs — SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects |
-| M7 | Adaptive self-tracking | ✅ Phase 1 replay-validated — Trust-gated NLMS adapts only on confident SELF; BOTH/WORLD hold; deterministic room-drift replay passed |
+| M7 | Adaptive self-tracking | ✅ Phases 1-4 complete — Trust-gated NLMS + DriftAlarm + IR bank + device profile; replay-validated; live drift with fine-tuned scorer: 10 SELF, 2 adapted (pipeline functional) |
 
-Immediate next steps: live M7 drift validation on hardware, M7 phase 2 (SelfModel drift alarm), and M6 introspective query exercise against live streaming + SAG diff.
+Immediate next steps: room filter re-fit in current room, then full M7 drift validation with longer duration + room change; broaden M4 negative training data (3-5 voices); M6 self-model enrichment with confident SELF frames.
 
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 
