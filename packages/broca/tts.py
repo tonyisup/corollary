@@ -105,25 +105,35 @@ def _decode_mp3_to_pcm(mp3_bytes: bytes) -> np.ndarray:
 
     wav_path = mp3_path.replace(".mp3", ".wav")
     try:
+        # Decode MP3 at native rate first, then resample to target SR
+        # This avoids ffmpeg's low-quality resampling of low-bitrate MP3
+        raw_wav_path = mp3_path.replace(".mp3", "_raw.wav")
         result = subprocess.run(
             [
                 ffmpeg, "-y", "-i", mp3_path,
-                "-ar", str(SR), "-ac", "1",
+                "-ar", "24000", "-ac", "1",
                 "-f", "s16le", "-c:a", "pcm_s16le",
-                wav_path,
+                raw_wav_path,
             ],
             capture_output=True,
             check=True,
             timeout=30,
         )
-        # Read raw PCM
-        with open(wav_path, "rb") as f:
+        with open(raw_wav_path, "rb") as f:
             raw = f.read()
-        samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-
-        # Edge-TTS MP3 decode often includes a consistent leading silence pad.
-        # Trim only the front using a conservative energy threshold so soft
-        # onsets still survive.
+        samples_24k = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        
+        # High-quality resample from 24kHz to target SR
+        from scipy.signal import resample as _resamp
+        n_target = int(len(samples_24k) * SR / 24000)
+        samples = _resamp(samples_24k, n_target).astype(np.float32)
+        
+        # Clean up temp files
+        for p in [mp3_path, raw_wav_path]:
+            if os.path.exists(p):
+                os.unlink(p)
+        
+        # Trim leading silence
         if len(samples) > 0:
             peak = float(np.max(np.abs(samples)))
             if peak > 0.0:
@@ -134,7 +144,7 @@ def _decode_mp3_to_pcm(mp3_bytes: bytes) -> np.ndarray:
 
         return samples
     finally:
-        for p in [mp3_path, wav_path]:
+        for p in [mp3_path]:
             if os.path.exists(p):
                 os.unlink(p)
 
