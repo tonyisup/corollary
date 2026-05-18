@@ -168,6 +168,8 @@ def main() -> None:
     drift_alarm.reset_baseline()
 
     # ── Phase 3: Post-change (mic in new position) ──
+    # Save baseline count before run() clears _logs
+    n_baseline = len(logs_baseline)
     post_duration = args.duration
     print(f"\n[Phase 3] Post-change — running for {post_duration}s...")
     t_phase3_start = time.time()
@@ -175,8 +177,8 @@ def main() -> None:
         runtime.run(duration_s=post_duration)
     except KeyboardInterrupt:
         print("\n  Interrupted by user")
-    # Collect only the NEW logs from this phase
-    logs_post = list(runtime._logs[len(logs_baseline):])
+    # run() clears _logs, so post-change logs are now in runtime._logs
+    logs_post = list(runtime._logs)
     t_phase3_end = time.time()
 
     # Adjust post-change timestamps

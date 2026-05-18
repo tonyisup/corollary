@@ -1,0 +1,22 @@
+{
+  "protocol": "room_change",
+  "baseline_duration_s": 15.4,
+  "post_duration_s": 15.5,
+  "total_frames": 660,
+  "adapted_frames": 1,
+  "baseline_frames": 330,
+  "post_frames": 330,
+  "baseline_adapted": 1,
+  "post_adapted": 0,
+  "drift_alarm_status": "not_set",
+  "drift_alarm_baseline_db": null,
+  "drift_alarm_spike_count": 0,
+  "drift_alarm_multiplier": 1.0,
+  "ir_bank_hypotheses": 1,
+  "device_profiles": 1,
+  "verdict_counts": {
+    "SILENCE": 6,
+    "BOTH": 169,
+    "SELF": 485
+  }
+}
