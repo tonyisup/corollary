@@ -98,42 +98,33 @@ The fine-tuned scorer successfully closes the M4 live-domain gap for the current
 - Validation script: `scripts/m4_validate_live_scorer.py`
 - Live test script: `scripts/m4_live_finetuned_test.py`
 
-## M7 Live Drift Validation — Room Filter + Fine-Tuned Scorer (2026-05-18)
+## M7 Live Drift Validation — Realtime Callback + Gate Fixes (2026-05-18)
 
-Run: `scripts/m7_live_drift_validation.py` (30s, in=1, out=2, room filter + M4 fine-tuned scorer)
+Root-cause correction: the earlier "acoustic feedback / mic suppression" explanation was too strong. The actual audio-doubling failure was live mic audio activating fine-tuned M4/attribution inside the realtime CoreAudio callback, causing callback cadence jitter. The fix is render-only playback in the callback with mic analysis on a worker queue (`b8b09b6`), followed by adaptation-gate evidence selection that uses the strongest finite live self-match signal while still requiring SELF + M4 confidence (`b4cbb39`). Mic suppression is superseded and should not be described as the solution.
 
-Results at `data/m7_live_drift_validation_20260518.json`:
-- 618 total frames processed
-- **193 SELF frames**, 422 BOTH, 3 SILENCE
-- **30 room-adapted frames** — trust-gated NLMS actively adapting
-- **Drift alarm baseline: -27.60 dB**, status: nominal
-- Spike count: 0, adaptation rate multiplier: 1.00x
-- IR bank: 1 hypothesis, device profiles: 1
+Latest run: `/tmp/m7_post_gate_fix.json` / `.jsonl` — 15s baseline + 10s transition + 15s room-change, in=1 BL-2021USB, out=2 Mac mini Speakers.
 
-**Interpretation:** The M7 pipeline is fully functional. With the room filter re-fitted (white noise stimulus, 13.4x improvement) and the fine-tuned M4 scorer, the system produces confident SELF frames that drive trust-gated NLMS adaptation. The drift alarm successfully establishes a baseline. No drift was detected during this single-room run (expected).
+Results:
+- 988 total frames, all rendered as TTS output; controller stayed in SPEAK while analysis remained active.
+- Overall verdicts: **636 SELF**, 260 BOTH, 92 SILENCE.
+- M4 outcomes: 579 accepted, 22 below-threshold, 386 not-attempted, 1 buffer-too-short; median M4 confidence 0.9978 when present.
+- **257 room-adapted frames**: 118 baseline, 139 post-change.
+- Drift alarm baseline: **-25.02 dB**, status: **nominal**, spike count 0, multiplier 1.00x.
+- IR bank: 1 hypothesis; device profiles: 1.
+- Adaptation errors: median 0.0489, mean 0.0537; baseline median 0.0481, post-change median 0.0503.
 
-## M7 Room Change Validation (2026-05-18)
-
-Protocol: 15s baseline (mic stationary) + 10s transition (move mic to different room) + 15s post-change.
-
-Results at `data/m7_room_change_20260518.json`:
-- Baseline: 330 frames, 228 SELF, 100 BOTH, 1 adapted
-- Post-change: 330 frames, 257 SELF, 69 BOTH, 0 adapted
-- Self-match: baseline mean=0.0085, post mean=-0.0080 (minimal change)
-- M4 confidence: baseline mean=0.941, post mean=0.985 (stable)
-- Drift alarm: baseline not set (insufficient post-change frames)
-
-**Interpretation:** Room change did not cause significant drift in self-attribution. M4 confidence remained high throughout. Self-match scores stable. The fine-tuned M4 scorer is robust to room changes for single-speaker TTS. No drift alarm trigger — the room filter + M4 combination handles the transition gracefully.
-
-**Key finding:** For single-speaker TTS in different rooms, the M4 fine-tuned scorer alone is sufficient for stable SELF attribution. The room filter adaptation provides additional robustness but is not strictly necessary for this use case.
+Interpretation: M7 is now live-validated for clean audio, self-listening, trusted SELF adaptation, and drift-baseline establishment. The tested room/mic movement did not produce a large enough error shift to trigger a drift alarm; that is a nominal result, not an adaptation failure. Remaining hardening is operational: use sample-clock timestamps (current async logs have small ~18 ms non-monotonic wall-clock pairs), expose analysis queue/drop diagnostics, and test smaller callback blocks for interruption latency.
 
 ## Remaining Work
 
 1. ~~**Re-fit room filter for current room**~~ — Done (2026-05-18). White noise stimulus, room-local score 0.1494 (13.4x over dry).
-2. ~~**M7 full drift validation**~~ — Done (2026-05-18). 30 adaptations, drift alarm baseline set at -27.60 dB.
-3. ~~**M7 room change protocol**~~ — Done (2026-05-18). No significant drift detected; M4 scorer robust to room changes.
-4. **M6 self-model enrichment** — With M4 now producing confident SELF frames, run `scripts/m6_live_introspective.py` to populate the SelfModel.
-5. **Broader negative training data** — Collect 3-5 more negative TTS voices and retrain for production-grade generalization.
+2. ~~**M7 full drift validation**~~ — Done (2026-05-18). Realtime callback fix + gate fix restored clean audio and produced 257 adaptation updates with drift baseline set at -25.02 dB.
+3. ~~**M7 room change protocol**~~ — Done (2026-05-18). Latest room-change run was nominal: no drift spike, stable M4, active adaptation before/after move.
+4. **Live log timestamp hardening** — Replace callback wall-clock + nominal offsets with a monotonic sample-clock timeline.
+5. **Analysis queue diagnostics** — Save callback count, analysis block count, dropped analysis blocks, worker errors, and max queue depth in live summaries.
+6. **Interruption latency tuning** — Test smaller VAD-aligned callback blocks (e.g. 1920 samples / 120 ms) now that render is callback-safe.
+7. **M6 self-model enrichment** — With M4 now producing confident SELF frames, run `scripts/m6_live_introspective.py` to populate the SelfModel.
+8. **Broader negative training data** — Collect 3-5 more negative TTS voices and retrain for production-grade generalization.
 
 ## Archive
 
