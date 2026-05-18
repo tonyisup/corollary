@@ -69,25 +69,33 @@ def main() -> None:
     parser.add_argument("--input-device", type=int, default=1)
     parser.add_argument("--output-device", type=int, default=2)
     parser.add_argument("--duration", type=float, default=15.0,
-                        help="Post-change duration in seconds (default: 15)")
+                        help="Duration per phase in seconds (default: 15)")
+    parser.add_argument("--phases", type=int, default=2,
+                        help="Number of phases (default: 2 = baseline + post-change)")
+    parser.add_argument("--transition-s", type=float, default=10.0,
+                        help="Seconds between phases for room change (default: 10)")
     parser.add_argument("--output", type=str, default="/tmp/m7_live_drift.json")
     args = parser.parse_args()
 
+    n_phases = max(2, args.phases)
+    phase_duration = args.duration
+    transition_s = args.transition_s
+
     print("=" * 60)
-    print("M7 Live Drift Validation — Room Change Protocol")
+    print(f"M7 Live Drift Validation — {n_phases}-Phase Room Change Protocol")
     print("=" * 60)
     print(f"  Input device:    {args.input_device} (BL-2021USB)")
     print(f"  Output device:   {args.output_device} (Mac mini Speakers)")
-    print(f"  Post-change duration: {args.duration}s")
-    print(f"  M4 scorer:            fine-tuned (live domain)")
-    print(f"  Room filter:          production (white noise calibrated)")
+    print(f"  Phases:          {n_phases}")
+    print(f"  Phase duration:  {phase_duration}s each")
+    print(f"  Transition:      {transition_s}s between phases")
+    print(f"  M4 scorer:       fine-tuned (live domain)")
+    print(f"  Room filter:     production (white noise calibrated)")
     print()
 
     # Timing
-    baseline_duration = 15.0  # seconds for baseline phase
-
-    # Create TTS audio (cover both phases)
-    total_duration = baseline_duration + args.duration
+    # Create TTS audio (cover all phases)
+    total_duration = phase_duration * n_phases
     tts_pcm = make_tts_pcm(duration_s=total_duration)
     print(f"  TTS audio: {len(tts_pcm)} samples ({len(tts_pcm)/16000:.1f}s)")
 
@@ -129,89 +137,83 @@ def main() -> None:
     runtime = StreamingRuntime(config)
     runtime._self_model = self_model
 
-    # ── Phase 1: Baseline ──
-    print(f"\n[Phase 1] Baseline — keep mic in current position")
-    print(f"  Starting in 3 seconds...")
-    time.sleep(3)
-
     # Disable file saving during runs; we'll save combined logs at the end
     config.save_path = None
 
-    # ── Phase 1: Baseline (mic stationary) ──
-    print(f"\n[Phase 1] Baseline — keep mic stationary for {baseline_duration}s...")
-    t_phase1_start = time.time()
-    try:
-        runtime.run(duration_s=baseline_duration)
-    except KeyboardInterrupt:
-        print("\n  Interrupted by user")
-    logs_baseline = list(runtime._logs)
-    t_phase1_end = time.time()
+    # ── Countdown ──
+    print(f"\n  Starting in 3 seconds...")
+    time.sleep(3)
 
-    # ── Phase 2: Room change ──
-    print(f"\n{'='*60}")
-    print(f"  >>> MOVE MIC TO DIFFERENT ROOM NOW <<<")
-    print(f"  >>> Waiting 10 seconds for room change <<<")
-    print(f"{'='*60}")
-    # Audible beep to signal room change
-    try:
-        import os
-        for _ in range(3):
-            os.system('afplay /System/Library/Sounds/Glass.aiff 2>/dev/null')
-            time.sleep(0.5)
-    except Exception:
-        pass
-    time.sleep(10.0)
-    t_change = time.time()
-    print(f"  Room change complete at t={t_change - t_phase1_start:.1f}s")
+    # ── Run N phases ──
+    all_logs = []
+    phase_results = []
+    t_global_start = time.time()
 
-    # Reset drift alarm baseline for post-change phase
-    drift_alarm.reset_baseline()
+    for phase_idx in range(n_phases):
+        phase_name = "Baseline" if phase_idx == 0 else f"Phase {phase_idx + 1}"
+        print(f"\n{'='*60}")
+        print(f"  [{phase_name}] — Running for {phase_duration}s")
+        if phase_idx == 0:
+            print(f"  Keep mic in current position")
+        else:
+            print(f"  Mic should be in new position")
+        print(f"{'='*60}")
 
-    # ── Phase 3: Post-change (mic in new position) ──
-    # Save baseline count before run() clears _logs
-    n_baseline = len(logs_baseline)
-    post_duration = args.duration
-    print(f"\n[Phase 3] Post-change — running for {post_duration}s...")
-    t_phase3_start = time.time()
-    try:
-        runtime.run(duration_s=post_duration)
-    except KeyboardInterrupt:
-        print("\n  Interrupted by user")
-    # run() clears _logs, so post-change logs are now in runtime._logs
-    logs_post = list(runtime._logs)
-    t_phase3_end = time.time()
+        t_phase_start = time.time()
+        try:
+            runtime.run(duration_s=phase_duration)
+        except KeyboardInterrupt:
+            print("\n  Interrupted by user")
+        phase_logs = list(runtime._logs)
+        t_phase_end = time.time()
 
-    # Adjust post-change timestamps
-    for l in logs_post:
-        l.timestamp_s += baseline_duration
-
-    # Combine logs and save
-    all_logs = logs_baseline + logs_post
-
-    print(f"\n  Baseline:  {len(logs_baseline)} frames in {t_phase1_end - t_phase1_start:.1f}s")
-    print(f"  Post-change: {len(logs_post)} frames in {t_phase3_end - t_phase3_start:.1f}s")
-    print(f"  Total: {len(all_logs)} frames")
-
-    # ── Phase 2: Analysis ──
-    print(f"\n[Phase 2] Analysis...")
-
-    def analyze_phase(phase_logs, phase_name):
-        if not phase_logs:
-            print(f"\n  {phase_name}: no data")
-            return
-        adapted = sum(1 for l in phase_logs if l.room_adapted)
-        verdicts = {}
+        # Adjust timestamps to be global
+        offset = t_phase_start - t_global_start
         for l in phase_logs:
-            v = l.verdict
-            verdicts[v] = verdicts.get(v, 0) + 1
-        print(f"\n  {phase_name} ({len(phase_logs)} frames):")
-        print(f"    Adapted: {adapted}")
-        print(f"    Verdicts: {verdicts}")
+            l.timestamp_s += offset
 
-    analyze_phase(logs_baseline, "Baseline (pre-change)")
-    analyze_phase(logs_post, "Post-change (drift)")
+        all_logs.extend(phase_logs)
+        phase_results.append({
+            "name": phase_name,
+            "frames": len(phase_logs),
+            "duration_s": round(t_phase_end - t_phase_start, 1),
+            "adapted": sum(1 for l in phase_logs if l.room_adapted),
+            "verdicts": dict(__import__('collections').Counter(l.verdict for l in phase_logs)),
+        })
 
-    # Drift alarm stats (post-change)
+        print(f"  {phase_name}: {len(phase_logs)} frames, {phase_results[-1]['adapted']} adapted")
+
+        # Transition between phases (except after last)
+        if phase_idx < n_phases - 1:
+            print(f"\n{'='*60}")
+            print(f"  >>> MOVE MIC TO DIFFERENT ROOM NOW <<<")
+            print(f"  >>> Waiting {transition_s}s... <<<")
+            print(f"{'='*60}")
+            # Audible beep
+            try:
+                import os
+                for _ in range(3):
+                    os.system('afplay /System/Library/Sounds/Glass.aiff 2>/dev/null')
+                    time.sleep(0.5)
+            except Exception:
+                pass
+            time.sleep(transition_s)
+            # Reset drift alarm for new phase
+            drift_alarm.reset_baseline()
+
+    elapsed_total = time.time() - t_global_start
+
+    print(f"\n  Total: {len(all_logs)} frames in {elapsed_total:.1f}s")
+
+    # ── Analysis ──
+    print(f"\n[Analysis]")
+
+    for pr in phase_results:
+        print(f"\n  {pr['name']} ({pr['frames']} frames, {pr['duration_s']}s):")
+        print(f"    Adapted: {pr['adapted']}")
+        print(f"    Verdicts: {pr['verdicts']}")
+
+    # Drift alarm stats
     print(f"\n  Drift alarm:")
     if drift_alarm._baseline_set:
         print(f"    Baseline: {drift_alarm._baseline_error_db:.2f} dB")
@@ -225,24 +227,20 @@ def main() -> None:
     print(f"  Device profiles: {device_bank.num_profiles}")
 
     # Overall verdict distribution
-    all_verdicts = {}
-    for l in all_logs:
-        v = l.verdict
-        all_verdicts[v] = all_verdicts.get(v, 0) + 1
+    all_verdicts = dict(__import__('collections').Counter(l.verdict for l in all_logs))
     print(f"  Overall verdicts: {all_verdicts}")
 
     # Save results
     total_adapted = sum(1 for l in all_logs if l.room_adapted)
     results = {
-        "protocol": "room_change",
-        "baseline_duration_s": round(t_phase1_end - t_phase1_start, 1),
-        "post_duration_s": round(t_phase3_end - t_phase3_start, 1),
+        "protocol": "room_change_multi",
+        "n_phases": n_phases,
+        "phase_duration_s": phase_duration,
+        "transition_s": transition_s,
+        "total_duration_s": round(elapsed_total, 1),
         "total_frames": len(all_logs),
         "adapted_frames": total_adapted,
-        "baseline_frames": len(logs_baseline),
-        "post_frames": len(logs_post),
-        "baseline_adapted": sum(1 for l in logs_baseline if l.room_adapted),
-        "post_adapted": sum(1 for l in logs_post if l.room_adapted),
+        "phases": phase_results,
         "drift_alarm_status": drift_alarm.status.value if drift_alarm._baseline_set else "not_set",
         "drift_alarm_baseline_db": drift_alarm._baseline_error_db if drift_alarm._baseline_set else None,
         "drift_alarm_spike_count": drift_alarm._spike_count,
