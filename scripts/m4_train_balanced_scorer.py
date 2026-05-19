@@ -153,11 +153,13 @@ def prepare_balanced_training_dir(
                 # Also save agent for reference
                 np.save(str(self_dir / f"synthetic_agent_{i:03d}.npy"), agent)
 
-    # Save all captures
+    # Save all captures with names that m4_finetune_ecapa.py expects
+    # Self: captured_*.npy (or agent_pcm_*.npy)
+    # Other: human_negative_*.npy
     for i, pcm in enumerate(self_pcms):
-        np.save(str(self_dir / f"capture_{i:03d}.ncm"), pcm)
+        np.save(str(self_dir / f"captured_{i:03d}.npy"), pcm)
     for i, pcm in enumerate(other_pcms):
-        np.save(str(other_dir / f"capture_{i:03d}.npy"), pcm)
+        np.save(str(other_dir / f"human_negative_{i:03d}.npy"), pcm)
 
     meta = {
         "n_self": len(self_pcms),
@@ -206,8 +208,6 @@ def main() -> None:
         "--output", args.output,
         "--num-epochs", str(args.num_epochs),
         "--lr", str(args.lr),
-        "--aug-factor", str(args.aug_factor),
-        "--seed", str(args.seed),
     ]
 
     print(f"  Command: {' '.join(cmd)}")
