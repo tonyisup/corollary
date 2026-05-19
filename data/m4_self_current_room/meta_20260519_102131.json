@@ -1,0 +1,13 @@
+{
+  "text": "Hello, I am Corollary. This is a self-recording for the current room.",
+  "agent_samples": 88338,
+  "agent_duration_sr": 5.521125,
+  "capture_samples": 120338,
+  "capture_duration_s": 7.521,
+  "capture_rms": 0.034728,
+  "capture_db": -29.19,
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 3,
+  "timestamp": "20260519_102131"
+}

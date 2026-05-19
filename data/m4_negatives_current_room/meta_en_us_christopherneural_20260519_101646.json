@@ -1,0 +1,13 @@
+{
+  "voice": "en-US-ChristopherNeural",
+  "text": "Hello, this is a test recording for speaker identification. The quick brown fox jumps over the lazy dog. I am speaking to help train a voice attribution system.",
+  "agent_samples": 185515,
+  "capture_samples": 217515,
+  "capture_duration_s": 13.595,
+  "capture_rms": 0.031088,
+  "capture_db": -30.15,
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 3,
+  "timestamp": "20260519_101646"
+}

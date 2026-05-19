@@ -1,0 +1,13 @@
+{
+  "text": "I am Corollary. Fourth recording. The quick brown fox jumps over the lazy dog.",
+  "agent_samples": 117971,
+  "agent_duration_sr": 7.3731875,
+  "capture_samples": 149971,
+  "capture_duration_s": 9.373,
+  "capture_rms": 0.033829,
+  "capture_db": -29.41,
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 3,
+  "timestamp": "20260519_102818"
+}

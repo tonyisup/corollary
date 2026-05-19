@@ -1,0 +1,57 @@
+{
+  "captures": [
+    {
+      "voice": "en-US-EricNeural",
+      "text": "Hello, this is a test recording for speaker identification. The quick brown fox jumps over the lazy dog. I am speaking to help train a voice attribution system.",
+      "agent_samples": 188319,
+      "capture_samples": 220319,
+      "capture_duration_s": 13.77,
+      "capture_rms": 0.030083,
+      "capture_db": -30.43,
+      "sr": 16000,
+      "input_device": 1,
+      "output_device": 3,
+      "timestamp": "20260519_101958"
+    },
+    {
+      "voice": "en-US-AndrewNeural",
+      "text": "Hello, this is a test recording for speaker identification. The quick brown fox jumps over the lazy dog. I am speaking to help train a voice attribution system.",
+      "agent_samples": 153943,
+      "capture_samples": 185943,
+      "capture_duration_s": 11.621,
+      "capture_rms": 0.032793,
+      "capture_db": -29.68,
+      "sr": 16000,
+      "input_device": 1,
+      "output_device": 3,
+      "timestamp": "20260519_101958"
+    },
+    {
+      "voice": "en-US-BrianNeural",
+      "text": "Hello, this is a test recording for speaker identification. The quick brown fox jumps over the lazy dog. I am speaking to help train a voice attribution system.",
+      "agent_samples": 172895,
+      "capture_samples": 204895,
+      "capture_duration_s": 12.806,
+      "capture_rms": 0.027816,
+      "capture_db": -31.11,
+      "sr": 16000,
+      "input_device": 1,
+      "output_device": 3,
+      "timestamp": "20260519_101958"
+    },
+    {
+      "voice": "en-US-EmmaNeural",
+      "text": "Hello, this is a test recording for speaker identification. The quick brown fox jumps over the lazy dog. I am speaking to help train a voice attribution system.",
+      "agent_samples": 162103,
+      "capture_samples": 194103,
+      "capture_duration_s": 12.131,
+      "capture_rms": 0.039598,
+      "capture_db": -28.05,
+      "sr": 16000,
+      "input_device": 1,
+      "output_device": 3,
+      "timestamp": "20260519_101958"
+    }
+  ],
+  "timestamp": "20260519_101958"
+}

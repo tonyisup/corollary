@@ -1,0 +1,6 @@
+{
+  "n_self": 8,
+  "n_other": 8,
+  "aug_factor": 5,
+  "seed": 42
+}

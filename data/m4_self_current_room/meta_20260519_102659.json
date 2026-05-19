@@ -1,0 +1,13 @@
+{
+  "text": "I am Corollary. This is the second self-recording for training data. The weather is nice today.",
+  "agent_samples": 123347,
+  "agent_duration_sr": 7.7091875,
+  "capture_samples": 155346,
+  "capture_duration_s": 9.709,
+  "capture_rms": 0.031991,
+  "capture_db": -29.9,
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 3,
+  "timestamp": "20260519_102659"
+}

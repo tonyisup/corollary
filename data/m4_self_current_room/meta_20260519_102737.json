@@ -1,0 +1,13 @@
+{
+  "text": "Hello, I am Corollary. Recording number three for the self-model. I am testing different phrases.",
+  "agent_samples": 130194,
+  "agent_duration_sr": 8.137125,
+  "capture_samples": 162194,
+  "capture_duration_s": 10.137,
+  "capture_rms": 0.033671,
+  "capture_db": -29.45,
+  "sr": 16000,
+  "input_device": 1,
+  "output_device": 3,
+  "timestamp": "20260519_102737"
+}
