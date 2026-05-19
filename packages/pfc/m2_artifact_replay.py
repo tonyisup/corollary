@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,11 @@ def attribution(verdict: SourceVerdict, is_speech: bool, energy_db: float = -30.
 
 def load_m2_summary(path: str | Path) -> dict[str, Any]:
     p = Path(path)
+    if not p.exists() and not p.is_absolute():
+        repo_root = Path(__file__).resolve().parents[2]
+        candidate = repo_root / p
+        if candidate.exists():
+            p = candidate
     if p.is_dir():
         p = p / "summary.json"
     return json.loads(p.read_text(encoding="utf-8"))

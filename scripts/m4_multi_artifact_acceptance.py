@@ -113,15 +113,6 @@ def run_multi_artifact_acceptance(
             })
 
     for artifact_dir in artifact_dirs:
-        artifact_path = Path(artifact_dir)
-        if not artifact_path.exists():
-            results.append({
-                "artifact_dir": artifact_dir,
-                "error": f"Directory not found: {artifact_dir}",
-                "pass": False,
-            })
-            continue
-
         try:
             verdict = run_acceptance(
                 replay_dir=artifact_dir,
