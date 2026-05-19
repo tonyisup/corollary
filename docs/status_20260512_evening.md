@@ -124,7 +124,7 @@ Interpretation: M7 is now live-validated for clean audio, self-listening, truste
 5. ~~**Analysis queue diagnostics**~~ — Done (2026-05-18). Live summaries include callback count, analysis blocks enqueued/dropped, max queue depth, and worker errors.
 6. **Interruption latency tuning** — Done (2026-05-18). Live two-speaker test with `callback_blocksize_ms=120` (1920 samples). Measured **1390ms interruption latency** (human starts at 2.0s, LISTEN at 3.39s). This is comparable to human conversational interruption latency (~1500ms). The dominant factor is energy buildup time for the human voice to become detectable at the mic, not the callback blocksize. Pipeline itself adds only ~330ms (2 callbacks + 3-frame classifier). Test script at `scripts/m7_live_interruption_latency.py`.
 7. **M6 self-model enrichment** — Done (2026-05-19). Ran `m6_live_introspective.py` with M4-enabled pipeline (fine-tuned scorer, 15s session). Results: 500 frames, M4 accepted 402/420 (95.7%), SAG self-concept populated with agent_voice (mean self-match=-0.001, M4 accept rate 95.7%) and speech_patterns (100% speaking, 4.8% self-attributed, mean energy -33.6dB). Known subjects empty (no WORLD speech during single-speaker run).
-8. **Broader negative training data** — Collect 3-5 more negative TTS voices and retrain for production-grade generalization.
+8. **Broader negative training data** — Done (2026-05-19). Captured 8 negative voices + 4 self-variations in current room. Trained balanced scorer: 100% self-recall, 16.4% FP rate (concentrated in same-family voices). Scorer at `data/m4_balanced_current_room_v2/fine_tuned/fine_tuned/scorer.pt`.
 
 ## Archive
 
