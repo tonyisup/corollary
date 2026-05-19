@@ -17,6 +17,18 @@ A single static filter works in a controlled environment but breaks as soon as t
 1. **Continuous room adaptation** (audio-only, builds on existing NLMS)
 2. **Multi-sensor attribution** (visual priors as cross-modal evidence)
 
+## Interruption Latency Acceptance Policy
+
+The live M7 interruption test reports both intended cue timing and actual
+human-onset timing when a second audio device is used.
+
+- **Second-device playback mode:** gate on actual onset latency when available.
+- **Manual-human mode:** gate on intended cue latency only, because no reliable
+  onset timestamp exists.
+
+This is a research-harness policy for the current room/hardware setup, not a
+formal human physiology threshold.
+
 ---
 
 ## Part 1: Continuous Room Adaptation (Audio-Only)

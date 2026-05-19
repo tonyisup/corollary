@@ -281,12 +281,12 @@ def main() -> None:
 
     # Run
     print(f"\nRunning live streaming for {args.duration_s}s...")
-    t_start = time.time()
+    stream_start_wall = time.time()
     try:
         runtime.run(duration_s=args.duration_s)
     except KeyboardInterrupt:
         print("\nInterrupted by user")
-    elapsed = time.time() - t_start
+    elapsed = time.time() - stream_start_wall
 
     print(f"  Completed in {elapsed:.1f}s")
     print()
@@ -296,18 +296,20 @@ def main() -> None:
     logs = runtime._logs
     summary = runtime.get_summary()
 
-    # Calculate human start time relative to stream start
-    # The streaming runtime starts after the 3s countdown
-    # Human plays at: script_start + 3.0 + human_delay_s
-    # Stream starts at: script_start + 3.0
-    # So human_start_time_stream = human_delay_s
-    human_start_time_stream = None
+    # Calculate human start time relative to stream start.
+    # When the script schedules the second-device playback, we can estimate the
+    # actual wall-clock onset of the human audio. For manual playback, the cue
+    # time is the best available reference.
+    intended_human_start_time_stream = args.human_delay_s
+    actual_human_start_time_stream = None
     if human_actual_start_time is not None:
-        human_start_time_stream = args.human_delay_s
-    elif args.manual_human:
-        human_start_time_stream = args.human_delay_s
-    else:
-        human_start_time_stream = args.human_delay_s
+        actual_human_start_time_stream = human_actual_start_time - stream_start_wall
+
+    human_start_time_stream = (
+        actual_human_start_time_stream
+        if actual_human_start_time_stream is not None
+        else intended_human_start_time_stream
+    )
 
     # Find first LISTEN frame after human speech starts
     first_listen_idx = None
@@ -322,6 +324,18 @@ def main() -> None:
     interrupt_latency_ms = None
     if first_listen_time is not None:
         interrupt_latency_ms = (first_listen_time - human_start_time_stream) * 1000.0
+
+    interrupt_latency_from_intended_ms = None
+    if first_listen_time is not None:
+        interrupt_latency_from_intended_ms = (
+            first_listen_time - intended_human_start_time_stream
+        ) * 1000.0
+
+    interrupt_latency_from_actual_ms = None
+    if first_listen_time is not None and actual_human_start_time_stream is not None:
+        interrupt_latency_from_actual_ms = (
+            first_listen_time - actual_human_start_time_stream
+        ) * 1000.0
 
     # Collect transition region
     transition_region = []
@@ -377,10 +391,14 @@ def main() -> None:
             "analysis_worker_errors": summary.get("analysis_worker_errors", []),
         },
         "interruption": {
+            "intent_human_start_time_s": round(intended_human_start_time_stream, 3),
+            "actual_human_start_time_s": round(actual_human_start_time_stream, 3) if actual_human_start_time_stream is not None else None,
             "human_start_time_s": round(human_start_time_stream, 3) if human_start_time_stream is not None else None,
             "first_listen_frame_idx": first_listen_idx,
             "first_listen_time_s": round(first_listen_time, 4) if first_listen_time else None,
             "interrupt_latency_ms": round(interrupt_latency_ms, 1) if interrupt_latency_ms is not None else None,
+            "interrupt_latency_from_intended_ms": round(interrupt_latency_from_intended_ms, 1) if interrupt_latency_from_intended_ms is not None else None,
+            "interrupt_latency_from_actual_ms": round(interrupt_latency_from_actual_ms, 1) if interrupt_latency_from_actual_ms is not None else None,
         },
         "transition_region": transition_region,
     }
@@ -404,9 +422,14 @@ def main() -> None:
     print()
 
     if interrupt_latency_ms is not None:
-        print(f"  Human speech starts at:    {human_start_time_stream:.3f}s (stream time)")
+        print(f"  Intended human start:      {intended_human_start_time_stream:.3f}s (stream time)")
+        if actual_human_start_time_stream is not None:
+            print(f"  Actual human start:        {actual_human_start_time_stream:.3f}s (stream time)")
+        print(f"  Human speech ref used:     {human_start_time_stream:.3f}s (stream time)")
         print(f"  First LISTEN frame:        #{first_listen_idx} at {first_listen_time:.4f}s")
         print(f"  INTERRUPTION LATENCY:      {interrupt_latency_ms:.1f} ms")
+        if args.manual_human:
+            print("  NOTE: manual mode uses intended cue time, not measured onset")
     else:
         print(f"  INTERRUPTION LATENCY:      NO INTERRUPTION DETECTED")
         if human_start_time_stream is not None:
@@ -446,7 +469,11 @@ def main() -> None:
         print("  - Mic not picking up human speaker output")
         sys.exit(1)
 
-    latency = interrupt_latency_ms
+    latency = (
+        interrupt_latency_from_actual_ms
+        if interrupt_latency_from_actual_ms is not None
+        else interrupt_latency_ms
+    )
     blocksize = args.callback_blocksize_ms
     vad_frame_ms = 30.0
     n_vad_per_callback = max(1, int(blocksize / vad_frame_ms))
@@ -473,7 +500,12 @@ def main() -> None:
     print(f"  Classifier window:         {classifier_ms:.0f} ms (3 frames)")
     print(f"  Pipeline worst case:       ~{theoretical_worst_ms:.0f} ms (callback + classifier)")
     print(f"  Human typical range:       ~{HUMAN_TYPICAL_MS:.0f} ms")
-    print(f"  Measured latency:          {latency:.1f} ms")
+    print(f"  Gate latency:              {latency:.1f} ms")
+    if interrupt_latency_from_intended_ms is not None and actual_human_start_time_stream is not None:
+        print(f"  From intended cue:        {interrupt_latency_from_intended_ms:.1f} ms")
+        print(f"  From actual onset:        {interrupt_latency_from_actual_ms:.1f} ms")
+    elif args.manual_human:
+        print(f"  From intended cue:        {interrupt_latency_from_intended_ms:.1f} ms")
 
     if latency < 0:
         print(f"  WARN — Negative latency (LISTEN before human started)")

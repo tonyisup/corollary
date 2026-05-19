@@ -132,6 +132,8 @@ Current Mac mini + Fifine observation:
 
 Immediate next steps: test lower-latency callback block sizes for interruption response, then broaden M4 negative training data (3-5 voices) and enrich the M6 self-model with confident SELF frames. Live-log sample-clock ordering and analysis queue/drop diagnostics are now implemented in the M7 validation path.
 
+M7 interruption-latency acceptance policy: the live test reports both intended cue time and actual human-onset time when a second audio device is available. Gate on actual onset latency in second-device mode; in manual-human mode, gate on intended cue latency only because no reliable onset timestamp exists. This is a research-harness policy for the current room/hardware setup, not a formal human physiology threshold.
+
 ### Benchmark summaries (benchmark_summary.json / calibration_summary.json)
 
 M2/M4 results are saved as JSON summaries (under `data/m2_benchmark/.../benchmark_summary.json` and `data/m2_benchmark/.../calibration_summary.json`).  Each summary contains a top-level `config` object with all attribution and gating parameters used to produce that run.  Since the M4 integration sweep, summaries now include the following additional M4 fields in `config`:
@@ -309,4 +311,3 @@ To find minimal viable conditions for M4 self-attribution we added a sweep/autor
 The driver runs repeated M2 benchmarks, records self_frame counts, and saves the best configuration to `data/autoresearch_m4/best_config.json`.
 
 This will reveal whether longer buffers + relaxed thresholds allow M4 to register self frames, and if so, the minimal conditions needed to integrate M4 into the real-time loop.
-
