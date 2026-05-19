@@ -39,19 +39,11 @@ from sag.graph import SemanticAbstractionGraph
 
 
 def make_tts_pcm(text: str = "Hello, I am Corollary. I am starting a conversation.", duration_s: float = 5.0) -> np.ndarray:
-    """Generate a simple TTS-like signal."""
-    SR = 16000
-    n_samples = int(duration_s * SR)
-    t = np.arange(n_samples, dtype=np.float32) / SR
-    f0 = 180.0
-    signal = np.zeros(n_samples, dtype=np.float32)
-    for h in range(1, 6):
-        amp = 1.0 / h * (0.5 + 0.5 * np.sin(2 * np.pi * 3 * t))
-        signal += amp * np.sin(2 * np.pi * f0 * h * t)
-    envelope = 0.5 + 0.5 * np.sin(2 * np.pi * 2 * t)
-    signal *= envelope
-    signal = signal / max(np.max(np.abs(signal)), 1e-8) * 0.5
-    return signal.astype(np.float32)
+    """Generate real TTS audio."""
+    import asyncio
+    from broca.tts import synthesize as _synthesize_tts
+    pcm = asyncio.run(_synthesize_tts(text, voice="en-US-AriaNeural"))
+    return pcm.astype(np.float32)
 
 
 def main() -> None:
@@ -83,13 +75,21 @@ def main() -> None:
     print()
 
     # Create TTS and run streaming
-    tts_pcm = make_tts_pcm(duration_s=args.duration)
+    self_text = (
+        "I am Corollary. I am speaking to test the self-model enrichment. "
+        "This session will populate the SelfModel with confident SELF frames "
+        "from the fine-tuned M4 scorer. The system should register my voice "
+        "and update the SAG self-concept subtree with observed patterns."
+    )
+    tts_pcm = make_tts_pcm(text=self_text)
     config = StreamingConfig(
         tts_pcm=tts_pcm,
-        tts_text="M6 introspective validation",
+        tts_text="M6 self-model enrichment",
         input_device=args.input_device,
         output_device=args.output_device,
-        m4_enable=False,
+        m4_enable=True,
+        m4_scorer_path="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
+        m4_self_threshold=0.50,
         gated_playback=False,
         enable_conversational_registration=True,
         save_path=Path(args.output).with_suffix(".jsonl"),

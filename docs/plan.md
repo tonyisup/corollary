@@ -179,7 +179,7 @@ corollary/
 - Self-concept subtree in the SAG: `Corollary.agent_voice`, `Corollary.speech_patterns`, `Corollary.known_subjects`
 - Self-tape vs world-tape mismatch detection via SAG diffing
 - Agent can query its own knowledge state and report confidence
-- **Status:** ✅ Live hardware validated (2026-05-17). SAG introspective queries functional. Self-concept subtree traversable (4 nodes, 3 edges). Known subjects empty in single-speaker runs (no WORLD speech to trigger conversational registration).
+- **Status:** ✅ Live hardware validated (2026-05-19). SAG introspective queries functional with M4-enabled pipeline. Self-concept subtree traversable (4 nodes, 3 edges). M4 accept rate 95.7% (402/420 frames). Known subjects empty in single-speaker runs (no WORLD speech to trigger conversational registration).
 - **Acceptance:** ✅ Reduced mismatch over time; introspective subtree traversable
 
 ### M7: Adaptive Self-Tracking
