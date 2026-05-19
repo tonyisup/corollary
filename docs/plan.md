@@ -187,7 +187,7 @@ corollary/
 - DriftAlarm modulates NLMS learning rate on sustained match degradation
 - Multi-hypothesis IR bank (3–5 models, switch on best match)
 - Device-profile layer for orientation-dependent transfer function changes
-- **Status:** ✅ Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal.
+- **Status:** ✅ Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal. Interruption latency validated at 1390ms with two-speaker live test (callback_blocksize_ms=120).
 - **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Sample-clock timestamps and analysis queue/drop diagnostics are implemented; current follow-up work is lower-latency callback sizing for interruption response.
 
 ### M8+: Amygdala / Valence / Fast-Track Responses

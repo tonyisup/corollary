@@ -122,7 +122,7 @@ Interpretation: M7 is now live-validated for clean audio, self-listening, truste
 3. ~~**M7 room change protocol**~~ — Done (2026-05-18). Latest room-change run was nominal: no drift spike, stable M4, active adaptation before/after move.
 4. ~~**Live log timestamp hardening**~~ — Done (2026-05-18). Runtime uses a monotonic sample-clock timeline for live callback frame logs.
 5. ~~**Analysis queue diagnostics**~~ — Done (2026-05-18). Live summaries include callback count, analysis blocks enqueued/dropped, max queue depth, and worker errors.
-6. **Interruption latency tuning** — Test smaller VAD-aligned callback blocks (e.g. 1920 samples / 120 ms) now that render is callback-safe.
+6. **Interruption latency tuning** — Done (2026-05-18). Live two-speaker test with `callback_blocksize_ms=120` (1920 samples). Measured **1390ms interruption latency** (human starts at 2.0s, LISTEN at 3.39s). This is comparable to human conversational interruption latency (~1500ms). The dominant factor is energy buildup time for the human voice to become detectable at the mic, not the callback blocksize. Pipeline itself adds only ~330ms (2 callbacks + 3-frame classifier). Test script at `scripts/m7_live_interruption_latency.py`.
 7. **M6 self-model enrichment** — With M4 now producing confident SELF frames, run `scripts/m6_live_introspective.py` to populate the SelfModel.
 8. **Broader negative training data** — Collect 3-5 more negative TTS voices and retrain for production-grade generalization.
 
