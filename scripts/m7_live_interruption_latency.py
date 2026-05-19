@@ -252,7 +252,7 @@ def main() -> None:
                 "match": round(logs[i].self_match_score, 3),
                 "match_per_frame": round(logs[i].self_match_score_per_frame or 0, 3),
                 "should_interrupt": logs[i].should_interrupt,
-                "tts_position": logs[i].tts_position,
+                "tts_position": logs[i].tts_position_s,
             })
 
     # Count states
