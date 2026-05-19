@@ -129,7 +129,7 @@ class AgentiveController:
         # the agent PCM template.
         #
         both_is_external = False
-        if (res.is_speech and res.verdict == SourceVerdict.BOTH 
+        if (res.verdict == SourceVerdict.BOTH
             and res.is_in_motor_window
             and res.self_match_score_per_frame is not None):
             if res.self_match_score_per_frame > self.both_external_energy_ratio_threshold:

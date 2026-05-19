@@ -4,26 +4,39 @@
 Measures end-to-end interruption response latency on live hardware.
 
 Protocol:
-1. Corollary speaks a long TTS utterance through the speaker
+1. Corollary speaks a long TTS utterance through the primary speaker
 2. At a known time (~2s), a "human" voice (different TTS voice) is played
-   through the SAME speaker, simulating a human speaking over Corollary
-3. The mic captures the mixed audio (Corollary + human)
+   through a SECOND speaker (e.g., laptop/phone), simulating a human
+   speaking from a different location in the room
+3. The mic captures both audio sources
 4. The system should detect the collision and gate off Corollary's TTS
 5. Latency is measured from the human-TTS start to the first LISTEN frame
 
-The "human" voice is injected by pre-mixing it into the TTS PCM at a known
-sample offset, then playing the combined stream. This means the mic hears
-both voices from the same speaker — the system must separate them via
-attribution (SELF vs WORLD/BOTH).
+The human voice is played on a separate output device at a known wall-clock
+time, so the mic hears two genuinely different acoustic paths.
 
 Usage:
-    .venv/bin/python scripts/m7_live_interruption_latency.py
-    .venv/bin/python scripts/m7_live_interruption_latency.py --input-device 3 --output-device 5
-    .venv/bin/python scripts/m7_live_interruption_latency.py --output /tmp/m7_latency_live.json
-    .venv/bin/python scripts/m7_live_interruption_latency.py --human-delay-s 1.5 --human-duration-s 2.0
+    # List available devices
+    .venv/bin/python scripts/m7_live_interruption_latency.py --list-devices
+
+    # Run with two speakers (human on device 2, self on device 3)
+    .venv/bin/python scripts/m7_live_interruption_latency.py \\
+        --input-device 1 \\
+        --self-output-device 3 \\
+        --human-output-device 2 \\
+        --output /tmp/m7_latency_live.json
+
+    # Run with phone/laptop as human speaker (no --human-output-device)
+    # Script will prompt you to play the human audio manually
+    .venv/bin/python scripts/m7_live_interruption_latency.py \\
+        --input-device 1 \\
+        --self-output-device 3 \\
+        --manual-human
 
 Requirements:
-    - Mic and speaker connected (same as M7 drift validation)
+    - Mic connected (e.g., BL-2021USB)
+    - Primary speaker for Corollary TTS
+    - Second audio source for human voice (second speaker, phone, or laptop)
     - .venv activated
     - Fine-tuned M4 scorer at data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt
     - Room filter at data/m3_broca_room_filter_production.npy
@@ -35,6 +48,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -56,50 +70,69 @@ def make_tts_pcm(text: str, voice: str = "en-US-AriaNeural", sr: int = 16000) ->
     return pcm.astype(np.float32)
 
 
-def make_interruption_pcm(
-    self_text: str,
-    human_text: str,
-    human_delay_s: float,
-    human_duration_s: float,
-    self_voice: str = "en-US-AriaNeural",
-    human_voice: str = "en-US-GuyNeural",
-    sr: int = 16000,
-) -> tuple[np.ndarray, int, int]:
-    """Create a TTS PCM with self speech + injected human speech.
+def list_devices() -> None:
+    """Print available audio devices."""
+    import sounddevice as sd
+    print("Available audio devices:")
+    print(f"  {'#':>3}  {'Name':<30}  {'In':>3}  {'Out':>3}")
+    for i, d in enumerate(sd.query_devices()):
+        if d['max_input_channels'] > 0 or d['max_output_channels'] > 0:
+            marker = ""
+            if d['max_input_channels'] > 0 and d['max_output_channels'] > 0:
+                marker = " (duplex)"
+            print(f"  {i:3d}  {d['name']:<30}  {d['max_input_channels']:3d}  {d['max_output_channels']:3d}{marker}")
+    print()
+    print("Usage example:")
+    print("  --input-device 1 --self-output-device 3 --human-output-device 2")
 
-    The human voice is mixed into the same PCM at a known offset, simulating
-    a human speaking over Corollary through the same speaker.
+
+def play_human_on_second_device(
+    human_pcm: np.ndarray,
+    human_output_device: int,
+    human_delay_s: float,
+    start_reference: float,
+    sr: int = 16000,
+) -> tuple[threading.Thread, float]:
+    """Start a thread that will play human audio on a second device after a delay.
+
+    Args:
+        start_reference: Wall-clock time (time.time()) from which human_delay_s is measured
 
     Returns:
-        pcm: Combined TTS audio (self + human mixed)
-        human_start_sample: Sample index where human speech begins
-        human_end_sample: Sample index where human speech ends
+        (thread, human_actual_start_time)
     """
-    self_pcm = make_tts_pcm(self_text, voice=self_voice, sr=sr)
-    human_pcm = make_tts_pcm(human_text, voice=human_voice, sr=sr)
+    human_actual_start = start_reference + human_delay_s
 
-    # Trim human to desired duration
-    human_samples = int(human_duration_s * sr)
-    human_pcm = human_pcm[:human_samples]
+    def _play():
+        wait_s = human_actual_start - time.time()
+        if wait_s > 0:
+            time.sleep(wait_s)
+        import sounddevice as sd
+        actual_start = time.time()
+        print(f"\n  [HUMAN] Playing on device {human_output_device} at t={actual_start - start_reference:.2f}s (stream time)")
+        sd.play(human_pcm, samplerate=sr, device=human_output_device)
+        sd.wait()
+        print(f"  [HUMAN] Finished at t={time.time() - start_reference:.2f}s")
 
-    # Mix: self at full volume, human at slightly lower (simulating distance)
-    human_start = int(human_delay_s * sr)
-    total_samples = max(len(self_pcm), human_start + len(human_pcm))
-    combined = np.zeros(total_samples, dtype=np.float32)
-    combined[:len(self_pcm)] += self_pcm * 0.8
-    combined[human_start:human_start + len(human_pcm)] += human_pcm * 0.6
-
-    return combined, human_start, human_start + len(human_pcm)
+    t = threading.Thread(target=_play, daemon=True)
+    t.start()
+    return t, human_actual_start
 
 
 # ── Main test ────────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="M7 Live Interruption Latency Test")
-    parser.add_argument("--input-device", type=int, default=3,
-                        help="Input device index (default: 3 = fifine Microphone)")
-    parser.add_argument("--output-device", type=int, default=5,
-                        help="Output device index (default: 5 = Mac mini Speakers)")
+    parser.add_argument("--list-devices", action="store_true",
+                        help="List available audio devices and exit")
+    parser.add_argument("--input-device", type=int, default=None,
+                        help="Input device index (mic)")
+    parser.add_argument("--self-output-device", type=int, default=None,
+                        help="Output device index for Corollary TTS (primary speaker)")
+    parser.add_argument("--human-output-device", type=int, default=None,
+                        help="Output device index for human voice (second speaker, phone, etc.)")
+    parser.add_argument("--manual-human", action="store_true",
+                        help="Prompt user to play human audio manually (no second device)")
     parser.add_argument("--human-delay-s", type=float, default=2.0,
                         help="Seconds before human speech starts (default: 2.0)")
     parser.add_argument("--human-duration-s", type=float, default=2.0,
@@ -118,19 +151,38 @@ def main() -> None:
                         help="Output JSON path")
     args = parser.parse_args()
 
+    if args.list_devices:
+        list_devices()
+        sys.exit(0)
+
+    # Validate args
+    if args.input_device is None:
+        print("ERROR: --input-device is required (use --list-devices to see options)")
+        sys.exit(1)
+    if args.self_output_device is None:
+        print("ERROR: --self-output-device is required (use --list-devices to see options)")
+        sys.exit(1)
+    if args.human_output_device is None and not args.manual_human:
+        print("ERROR: Either --human-output-device or --manual-human is required")
+        sys.exit(1)
+
     sr = 16000
 
     print("=" * 60)
     print("M7 Live Interruption Latency Test")
     print("=" * 60)
-    print(f"  Input device:       {args.input_device} (mic)")
-    print(f"  Output device:      {args.output_device} (speaker)")
-    print(f"  Callback blocksize: {args.callback_blocksize_ms} ms")
-    print(f"  Human delay:        {args.human_delay_s} s")
-    print(f"  Human duration:     {args.human_duration_s} s")
-    print(f"  Total duration:     {args.duration_s} s")
-    print(f"  M4 scorer:          {args.m4_scorer}")
-    print(f"  Room filter:        {args.room_filter}")
+    print(f"  Input device:         {args.input_device} (mic)")
+    print(f"  Self output device:   {args.self_output_device} (primary speaker)")
+    if args.human_output_device is not None:
+        print(f"  Human output device:  {args.human_output_device} (second speaker)")
+    else:
+        print(f"  Human output:         MANUAL (you play the audio)")
+    print(f"  Callback blocksize:   {args.callback_blocksize_ms} ms")
+    print(f"  Human delay:          {args.human_delay_s} s")
+    print(f"  Human duration:       {args.human_duration_s} s")
+    print(f"  Total duration:       {args.duration_s} s")
+    print(f"  M4 scorer:            {args.m4_scorer}")
+    print(f"  Room filter:          {args.room_filter}")
     print()
 
     # Check files exist
@@ -155,31 +207,29 @@ def main() -> None:
     )
     human_text = "Excuse me, I need to say something important right now."
 
-    combined_pcm, human_start, human_end = make_interruption_pcm(
-        self_text=self_text,
-        human_text=human_text,
-        human_delay_s=args.human_delay_s,
-        human_duration_s=args.human_duration_s,
-    )
+    self_pcm = make_tts_pcm(self_text, voice="en-US-AriaNeural", sr=sr)
+    human_pcm = make_tts_pcm(human_text, voice="en-US-GuyNeural", sr=sr)
 
-    # Trim to desired duration
-    total_samples = int(args.duration_s * sr)
-    combined_pcm = combined_pcm[:total_samples]
+    # Trim human to desired duration
+    human_samples = int(args.human_duration_s * sr)
+    human_pcm = human_pcm[:human_samples]
+
+    human_start = int(args.human_delay_s * sr)
 
     print(f"  Self text:   '{self_text[:60]}...'")
     print(f"  Human text:  '{human_text}'")
-    print(f"  PCM length:  {len(combined_pcm)} samples ({len(combined_pcm)/sr:.1f}s)")
+    print(f"  Self PCM:    {len(self_pcm)} samples ({len(self_pcm)/sr:.1f}s)")
+    print(f"  Human PCM:   {len(human_pcm)} samples ({len(human_pcm)/sr:.1f}s)")
     print(f"  Human start: {human_start} samples ({human_start/sr:.1f}s)")
-    print(f"  Human end:   {human_end} samples ({human_end/sr:.1f}s)")
     print(f"  TTS generation took: {time.time()-t0:.1f}s")
     print()
 
-    # Configure streaming runtime
+    # Configure streaming runtime (self TTS only — human is separate)
     config = StreamingConfig(
-        tts_pcm=combined_pcm,
+        tts_pcm=self_pcm,
         tts_text="interruption latency test",
         input_device=args.input_device,
-        output_device=args.output_device,
+        output_device=args.self_output_device,
         sr=sr,
         callback_blocksize_ms=args.callback_blocksize_ms,
         gated_playback=True,
@@ -199,9 +249,34 @@ def main() -> None:
 
     runtime = StreamingRuntime(config)
 
+    # Start human audio thread (if using second device)
+    human_thread = None
+    human_actual_start_time = None
+    if args.human_output_device is not None:
+        # Start the human thread NOW, but it will wait until
+        # (script_start + 3s countdown + human_delay_s) to actually play
+        # This ensures human audio starts human_delay_s AFTER the stream begins
+        script_start = time.time()
+        human_thread, human_actual_start_time = play_human_on_second_device(
+            human_pcm=human_pcm,
+            human_output_device=args.human_output_device,
+            human_delay_s=args.human_delay_s + 3.0,  # account for countdown
+            start_reference=script_start,
+            sr=sr,
+        )
+
     # Countdown
     print("Starting in 3 seconds...")
-    print("  (Make sure mic is positioned correctly)")
+    if args.manual_human:
+        print(f"  >>> Play the human audio at t={args.human_delay_s}s <<<")
+        print(f"  >>> (human audio saved to /tmp/m7_human_audio.wav) <<<")
+        # Save human audio for manual playback
+        import wave
+        with wave.open("/tmp/m7_human_audio.wav", "w") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sr)
+            wf.writeframes((human_pcm * 32767).astype(np.int16).tobytes())
     time.sleep(3)
 
     # Run
@@ -220,13 +295,25 @@ def main() -> None:
 
     logs = runtime._logs
     summary = runtime.get_summary()
-    human_start_time = human_start / sr
+
+    # Calculate human start time relative to stream start
+    # The streaming runtime starts after the 3s countdown
+    # Human plays at: script_start + 3.0 + human_delay_s
+    # Stream starts at: script_start + 3.0
+    # So human_start_time_stream = human_delay_s
+    human_start_time_stream = None
+    if human_actual_start_time is not None:
+        human_start_time_stream = args.human_delay_s
+    elif args.manual_human:
+        human_start_time_stream = args.human_delay_s
+    else:
+        human_start_time_stream = args.human_delay_s
 
     # Find first LISTEN frame after human speech starts
     first_listen_idx = None
     first_listen_time = None
     for i, log in enumerate(logs):
-        if log.controller_state == "LISTEN" and log.timestamp_s >= human_start_time - 0.5:
+        if log.controller_state == "LISTEN" and log.timestamp_s >= human_start_time_stream - 0.5:
             first_listen_idx = i
             first_listen_time = log.timestamp_s
             break
@@ -234,7 +321,7 @@ def main() -> None:
     # Calculate latency
     interrupt_latency_ms = None
     if first_listen_time is not None:
-        interrupt_latency_ms = (first_listen_time - human_start_time) * 1000.0
+        interrupt_latency_ms = (first_listen_time - human_start_time_stream) * 1000.0
 
     # Collect transition region
     transition_region = []
@@ -265,7 +352,9 @@ def main() -> None:
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "config": {
             "input_device": args.input_device,
-            "output_device": args.output_device,
+            "self_output_device": args.self_output_device,
+            "human_output_device": args.human_output_device,
+            "manual_human": args.manual_human,
             "callback_blocksize_ms": args.callback_blocksize_ms,
             "human_delay_s": args.human_delay_s,
             "human_duration_s": args.human_duration_s,
@@ -288,8 +377,7 @@ def main() -> None:
             "analysis_worker_errors": summary.get("analysis_worker_errors", []),
         },
         "interruption": {
-            "human_start_sample": human_start,
-            "human_start_time_s": round(human_start_time, 3),
+            "human_start_time_s": round(human_start_time_stream, 3) if human_start_time_stream is not None else None,
             "first_listen_frame_idx": first_listen_idx,
             "first_listen_time_s": round(first_listen_time, 4) if first_listen_time else None,
             "interrupt_latency_ms": round(interrupt_latency_ms, 1) if interrupt_latency_ms is not None else None,
@@ -316,12 +404,13 @@ def main() -> None:
     print()
 
     if interrupt_latency_ms is not None:
-        print(f"  Human speech starts at:    {human_start_time:.3f}s (sample {human_start})")
+        print(f"  Human speech starts at:    {human_start_time_stream:.3f}s (stream time)")
         print(f"  First LISTEN frame:        #{first_listen_idx} at {first_listen_time:.4f}s")
         print(f"  INTERRUPTION LATENCY:      {interrupt_latency_ms:.1f} ms")
     else:
         print(f"  INTERRUPTION LATENCY:      NO INTERRUPTION DETECTED")
-        print(f"  (human started at {human_start_time:.3f}s)")
+        if human_start_time_stream is not None:
+            print(f"  (human started at {human_start_time_stream:.3f}s)")
 
     print()
     print("Transition region (frames around interrupt):")
@@ -339,6 +428,8 @@ def main() -> None:
     print()
     print(f"Results saved to: {args.output}")
     print(f"Frame log saved to: {Path(args.output).with_suffix('.jsonl')}")
+    if args.manual_human:
+        print(f"Human audio saved to: /tmp/m7_human_audio.wav")
 
     # ── Acceptance ───────────────────────────────────────────────────────────
     print()
@@ -351,8 +442,8 @@ def main() -> None:
         print("  Possible causes:")
         print("  - M4 scorer not loaded (check --m4-scorer path)")
         print("  - Room filter not loaded (check --room-filter path)")
-        print("  - Human audio too quiet relative to self TTS")
-        print("  - Mic not picking up speaker output")
+        print("  - Human audio too quiet or too far from mic")
+        print("  - Mic not picking up human speaker output")
         sys.exit(1)
 
     latency = interrupt_latency_ms
