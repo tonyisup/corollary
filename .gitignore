@@ -7,29 +7,7 @@ __pycache__
 archive/
 .worktrees/
 tmp/
+data/
+~/
 
 scripts/scratch.py
-
-# Ignore ad hoc live streaming hardware captures by default.
-# Promotion artifacts can still be force-added explicitly.
-data/m3_streaming_repair_live_*/
-
-# Ignore ad hoc M4 benchmark outputs and local clean-capture recordings;
-# promotion artifacts should be written to a named tracked path and force-added explicitly.
-data/m4_fine_tuned_*/
-data/m4_finetuned_*/
-data/m4_f1_benchmark_*.json
-data/m4_clean_captures*/
-data/m4_capture_validation_*/
-
-# Guard against libraries treating '~' as a literal relative cache path.
-~/
-data/m4_simulated_captures/
-data/m4_sim_test/
-data/m5_live_capture_*/
-
-data/m4_balanced_dataset*
-
-# M4 live-domain fine-tuning artifacts (2026-05-17)
-data/m4_live_domain_*/
-data/m4_finetuned_ecapa_live_domain_*/

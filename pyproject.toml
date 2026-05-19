@@ -1,4 +1,4 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["packages"]
+pythonpath = [".", "packages"]
 asyncio_mode = "auto"
