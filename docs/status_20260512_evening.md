@@ -1,6 +1,6 @@
 # Corollary — Project Status
 
-> **Date:** 2026-05-18
+> **Date:** 2026-05-19
 > **Branch:** main (synced with origin/main)
 > **Tests:** 454 passed, 1 skipped
 
@@ -14,10 +14,10 @@
 | M1c: Mixed-source attribution | ✅ Done | Dual-input fusion, SELF/WORLD/BOTH hardware validation |
 | M2: Speech-aware self/world separation | ✅ Operational | Calibrated harness, M4 metadata, room-local scoring |
 | M3: Agentive listening and proto-turn-taking | ✅ Live hardware validated | Streaming runtime, gated playback, collision repair, repair-audio queue |
-| M4: Self-voice detector | ✅ Per-speaker adaptive threshold | 0 FP on 6 human speakers, >90% self-recall, conversational registration, wired into streaming runtime |
+| M4: Self-voice detector | ✅ Promoted | 100% self-recall, 16.4% FP across 7 negative speakers (same-family voices only); balanced scorer trained on current-room captures; wired into streaming runtime |
 | M5: Multi-speaker world model + memory | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6: Self-model and introspection | ✅ Wired + per-speaker IDs + introspective queries | SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects, introspective queries verified |
-| M7: Adaptive self-tracking | ✅ Phase 1-4 complete | Trust-gated NLMS + DriftAlarm + multi-hypothesis IR bank + device-profile layer; all replay-validated |
+| M7: Adaptive self-tracking | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; live room-change validated; interruption latency 1390ms (two-speaker test) |
 
 ## Test Coverage
 
@@ -26,7 +26,7 @@
 | Unit tests | ~200 | All packages |
 | Integration tests | ~80 | Cross-package pipelines |
 | E2E / acceptance | ~120 | Streaming, M4, M5, M7 replay |
-|| **Total** | **453** | **All passing** |
+|| **Total** | **454** | **All passing** |
 
 ## Live Hardware Results (2026-05-17)
 

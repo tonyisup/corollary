@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M4 complete; M5 acceptance passed; M6 wired + introspective queries verified; M7 phases 1-4 replay-validated and live room-change validated with fine-tuned M4 scorer after realtime callback/gating fixes (636 SELF, 257 adapted, drift baseline -25.02 dB, status nominal in latest 15s+15s run)  
+> **Status:** M0-M7 complete; M4 balanced scorer trained on current-room captures (100% self-recall, 16.4% FP); M6 self-model enriched (M4 accept rate 95.7%); M7 interruption latency validated at 1390ms with two-speaker live test; 454 tests passing  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 
