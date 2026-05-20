@@ -48,6 +48,16 @@ Results at `/tmp/m7_live_interruption_latency_smoke.json`:
 - PASS — latency within acceptable range
 - PASS — no analysis blocks dropped
 
+### Broader Same-Domain Validation
+
+Run: `scripts/m4_validate_live_scorer.py --scorer data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt --self-captures data/m4_balanced_current_room_v2/self --neg-captures data/m4_balanced_current_room_v2/other`
+
+Results at `/tmp/m4_validate_live_scorer_current_room_v2.json`:
+- Self-recall: 22.0%
+- FP rate: 5.2%
+- Threshold: 0.99
+- Domain gap persists on this broader current-room capture set
+
 ## Live Hardware Results (2026-05-17)
 
 ### M7 Live Drift Validation
