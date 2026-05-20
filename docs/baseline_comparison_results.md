@@ -4,6 +4,8 @@
 **Script:** `scripts/baseline_vad_comparison.py`
 **Data:** `data/m3_live_e2e_v35_m4/` (5 scenarios, 1 capture each)
 
+This is an offline comparison on captured audio using simplified heuristics for region labeling and scoring. The numbers are useful for directional comparison, not as a final ground-truth benchmark.
+
 ## Summary
 
 | Stack | Avg Self-leak dB | Avg False-mute % | Overlap Survival % | Wake Recall |
@@ -15,50 +17,52 @@
 
 ## Key Findings
 
-### 1. Self-leak: VAD stacks win
+### 1. Self-leak: VAD stacks win on this metric
 
-VAD-only (B) and VAD+AEC (C) suppress self-voice to -59 to -62 dB, compared to Corollary's -34 dB. This is expected: VAD aggressively mutes anything it detects as speech during agent playback, while Corollary's energy-ratio-based detector is more conservative.
+VAD-only (B) and VAD+AEC (C) suppress self-voice to roughly -59 to -62 dB, compared to Corollary's -34 dB. That is the expected shape of this comparison: VAD aggressively mutes anything it detects as speech during agent playback, while Corollary's energy-ratio-based detector is intentionally more conservative.
 
-### 2. "False mute": Corollary is doing the right thing
+### 2. "False mute" is a proxy, not a universal error rate
 
-Corollary shows 48% false-mute rate vs VAD's 11%. But this is **not actually false muting** — it's correct full-duplex behavior. Corollary detects the external human voice via the `both_external` energy-ratio detector and enters LISTEN state, which gates off the TTS output. This is exactly what a full-duplex system should do: stop talking when someone else is talking.
+Corollary shows a 48% false-mute rate vs VAD's 11%, but this metric is really measuring how often human speech is muted under the scorer's overlap definition. In Corollary's case, the higher number reflects a different policy: it detects external human speech via the `both_external` energy-ratio detector and enters LISTEN, which gates off TTS output.
 
-The VAD stacks don't have this capability — they simply mute based on speech energy, which means they either:
-- **Aggressive (B):** Mute everything during agent playback, including human speech
-- **Conservative (D):** Never mute, but leak massive self-voice
+That is the right behavior for a full-duplex turn-taking system, but the metric itself should not be read as a generic failure score.
 
-### 3. Corollary correctly handles all scenarios
+The VAD stacks do not model the same behavior. They either:
+- **Aggressive (B):** mute very broadly during agent playback, including some human speech
+- **Conservative (D):** preserve more audio, but leave substantially more self-voice
+
+### 3. Corollary handled the scenarios in this sample
 
 Per-scenario verification from `live_e2e_results.json`:
-- `human_early`: ✅ Interrupt detected, deferred, resumed (1/1)
-- `human_before`: ✅ Deferred correctly (no interrupt expected)
-- `human_after`: ✅ Responded after TTS completion
-- `human_late`: ✅ Interrupt detected, deferred, resumed (1/1)
-- `overlap_self_first`: ✅ Interrupt detected, deferred, resumed (1/1)
+- `human_early`: interrupt detected, deferred, resumed
+- `human_before`: deferred correctly, no interrupt expected
+- `human_after`: responded after TTS completion
+- `human_late`: interrupt detected, deferred, resumed
+- `overlap_self_first`: interrupt detected, deferred, resumed
 
-### 4. Overlap survival and wake recall are not discriminating
+### 4. Overlap survival and wake recall are not discriminating here
 
 All stacks show 100% overlap survival and 1.0 wake recall. These metrics don't discriminate between stacks because:
 - The ground truth overlap regions are small
 - No stack fully mutes an entire human utterance
 - The wake-word simulation is too coarse for this dataset
 
-## Philosophical Difference
+## Behavioral Difference
 
 | Approach | What it mutes | What it preserves |
 |----------|--------------|-------------------|
-| VAD stacks | Speech energy (everything loud) | Quiet audio, but leaks self |
-| Corollary | Self-predicted audio + detected external speakers | Human speech during overlap (by design) |
+| VAD stacks | Speech energy, with no attribution | Quiet audio, but may leak self |
+| Corollary | Self-predicted audio plus detected external speakers | Human speech during overlap, by design |
 
-Corollary's approach is fundamentally different: it uses speaker attribution to distinguish self from world, then gates accordingly. The "false mute" metric from the spec conflates these two different design goals.
+Corollary's approach is different in kind: it uses speaker attribution to distinguish self from world, then gates accordingly. The "false mute" metric in this comparison captures a real tradeoff, but it does not fully express that design goal.
 
 ## Recommendations for Grant Reviewers
 
-1. **Don't compare on false-mute rate alone.** Corollary's higher "false mute" is correct full-duplex behavior. The right metric is: does the system resume after the human stops? (Yes, 1/1 in all scenarios.)
+1. **Don't compare on false-mute rate alone.** Corollary's higher false-mute score reflects turn-taking behavior, not just suppression quality. A better question is whether the system resumes cleanly after the human stops.
 
-2. **Self-leak is a tradeoff, not a failure.** Corollary's -34 dB self-leak is worse than VAD's -60 dB, but it comes with the ability to detect and respond to external speakers. A VAD stack can't do this at all.
+2. **Self-leak is a tradeoff, not a failure.** Corollary's -34 dB self-leak is worse than the VAD baselines here, but it comes with speaker attribution and explicit turn-taking behavior.
 
-3. **The real advantage is behavioral, not numerical.** Corollary detects that a human is speaking, stops its own output, and resumes after the human finishes. No VAD stack can do this — they can only mute based on energy, which is a fundamentally limited approach.
+3. **The main advantage is behavioral, not numerical.** Corollary detects that a human is speaking, stops its own output, and resumes after the human finishes. These VAD baselines only reason about audio energy, so they do not represent the same control problem.
 
 ## Next Steps
 

@@ -9,10 +9,10 @@ Usage:
         --captures data/m3_live_e2e_v35_m4 \\
         --output /tmp/baseline_comparison.json
 
-    .venv/bin/python scripts/baseline_vad_comparison.py \\
-        --captures data/m3_live_e2e_v35_m4 \\
-        --output /tmp/baseline_comparison.json \\
-        --plot-output /tmp/baseline_plots/
+    .venv/bin/python scripts/baseline_vad_comparison.py \
+        --captures data/m3_live_e2e_v35_m4 \
+        --output tmp/baseline_comparison.json \
+        --plot-output tmp/baseline_plots/
 """
 
 from __future__ import annotations
