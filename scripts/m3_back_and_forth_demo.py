@@ -231,7 +231,7 @@ async def main_async() -> None:
     # M4 self-voice detection
     parser.add_argument("--m4-enable", action="store_true", help="Enable M4 speaker embedding detector")
     parser.add_argument("--m4-min-buffer-ms", type=float, default=60.0, help="M4 minimum buffer ms")
-    parser.add_argument("--m4-self-threshold", type=float, default=0.10, help="M4 self-decision threshold")
+    parser.add_argument("--m4-self-threshold", type=float, default=0.99, help="M4 self-decision threshold")
     
     args = apply_broca_room_local_operating_defaults(parser.parse_args())
     

@@ -62,7 +62,7 @@ def load_scenario(scenario_dir: Path) -> dict:
 def analyze_scenario(
     scenario: dict,
     m4_enable: bool = False,
-    m4_self_threshold: float = 0.50,
+    m4_self_threshold: float = 0.99,
     cerebellum_model: str | None = None,
     listen_threshold_ms: float = 100.0,
     cooldown_ms: float = 200.0,

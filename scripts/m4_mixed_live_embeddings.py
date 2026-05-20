@@ -41,7 +41,7 @@ def main() -> None:
     parser.add_argument("--world-output-device", type=int, default=4)
     parser.add_argument("--duration", type=float, default=10.0)
     parser.add_argument("--text", type=str, default="Hello, I am Corollary. Mixed validation with live-path speaker embeddings.")
-    parser.add_argument("--m4-threshold", type=float, default=0.10)
+    parser.add_argument("--m4-threshold", type=float, default=0.99)
     parser.add_argument("--m4-buffer-ms", type=float, default=300.0)
     parser.add_argument("--register-speaker-dir", type=str, default="data/m4_human_negative_bl2021")
     parser.add_argument("--play-world-audio", type=str, default="data/m4_human_negative_bl2021/human_negative_speaker2.npy")

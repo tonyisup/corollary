@@ -89,7 +89,7 @@ def main() -> None:
         output_device=args.output_device,
         m4_enable=True,
         m4_scorer_path="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
-        m4_self_threshold=0.50,
+        m4_self_threshold=0.99,
         gated_playback=False,
         enable_conversational_registration=True,
         save_path=Path(args.output).with_suffix(".jsonl"),

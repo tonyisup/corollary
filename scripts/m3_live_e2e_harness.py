@@ -1073,8 +1073,8 @@ async def main_async() -> None:
                         help="Enable M4 speaker-embedding self-voice detector")
     parser.add_argument("--m4-min-buffer-ms", type=float, default=60.0,
                         help="M4 minimum buffer ms (default 60)")
-    parser.add_argument("--m4-self-threshold", type=float, default=0.50,
-                        help="M4 self-decision threshold (default 0.50)")
+    parser.add_argument("--m4-self-threshold", type=float, default=0.99,
+                        help="M4 self-decision threshold (default 0.99)")
     parser.add_argument("--gated-playback", action="store_true",
                         help="Physically gate TTS playback around scheduled/controller-detected human speech")
     parser.add_argument("--gated-resume-delay-ms", type=float, default=200.0,

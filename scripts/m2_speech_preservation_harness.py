@@ -294,7 +294,7 @@ def run_m2_trial(
     # M4 self-voice detection
     m4_enable: bool = False,
     m4_min_buffer_ms: float = 60.0,
-    m4_self_threshold: float = 0.50,
+    m4_self_threshold: float = 0.99,
     cerebellum_model: str | None = None,
 ) -> dict[str, Any]:
     if both_policy == "family":

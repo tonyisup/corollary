@@ -117,6 +117,32 @@ def test_attributor_m4_falls_back_to_both_when_not_self() -> None:
     assert res.metadata["m4_confidence"] == 0.2
 
 
+def test_attributor_m4_strict_threshold_still_accepts_strong_self() -> None:
+    """Hardened live-domain threshold should still accept strong self frames."""
+    attributor = ThalamicAttributor(
+        m4_detector=DummyDetector(True, 0.995),
+        m4_self_threshold=0.99,
+        sr=16000,
+    )
+    frame = np.ones(16000 // 30, dtype=np.float32)
+
+    res = attributor.attribute(
+        match_score=0.8,
+        observed_onset_samples=800,
+        expected_onset_samples=800,
+        rms_db=-30.0,
+        is_playing=True,
+        is_speech=True,
+        frame_audio=np.tile(frame, 20),
+    )
+
+    assert res.verdict == SourceVerdict.SELF
+    assert res.metadata is not None
+    assert res.metadata["m4_attempted"] is True
+    assert res.metadata["m4_outcome"] == "accepted"
+    assert res.metadata["m4_confidence"] == 0.995
+
+
 def test_attributor_m4_exception_returns_both() -> None:
     """Test that M4 exceptions result in BOTH with outcome='exception'."""
     class FailingDetector:

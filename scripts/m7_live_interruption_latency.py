@@ -235,7 +235,8 @@ def main() -> None:
         gated_playback=True,
         m4_enable=args.m4_scorer is not None,
         m4_scorer_path=args.m4_scorer,
-        m4_self_threshold=0.50,
+        # Hardened live-domain threshold for the current scorer.
+        m4_self_threshold=0.99,
         room_filter_path=args.room_filter,
         room_local_threshold=0.0747,
         energy_threshold_db=-55.0,

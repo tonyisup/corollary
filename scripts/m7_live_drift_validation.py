@@ -123,7 +123,8 @@ def main() -> None:
         output_device=args.output_device,
         m4_enable=True,
         m4_scorer_path="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
-        m4_self_threshold=0.50,
+        # Hardened live-domain threshold for the current scorer.
+        m4_self_threshold=0.99,
         gated_playback=False,
         room_filter_path="data/m3_broca_room_filter_production.npy",
         room_local_threshold=0.0747,

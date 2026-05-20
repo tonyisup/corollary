@@ -43,7 +43,9 @@ def main() -> None:
     parser.add_argument("--scorer", required=True, help="Path to fine-tuned scorer.pt")
     parser.add_argument("--self-captures", required=True, help="Dir with self .npy captures")
     parser.add_argument("--neg-captures", required=True, help="Dir with negative .npy captures (or subdirs)")
-    parser.add_argument("--threshold", type=float, default=0.5, help="Decision threshold")
+    # Hardened live-domain threshold: self stays green, while same-family
+    # negatives in the current voice stress test stay red.
+    parser.add_argument("--threshold", type=float, default=0.99, help="Decision threshold")
     parser.add_argument("--output", default="/tmp/m4_validate_live_scorer.json")
     args = parser.parse_args()
 

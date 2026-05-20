@@ -31,7 +31,7 @@ def main():
         energy_threshold_db=-55.0,
         causal_tolerance_ms=175.0,
         m4_detector=True,  # pretend M4 is available (we'll use saved m4_metadata)
-        m4_self_threshold=0.50,
+        m4_self_threshold=0.99,
         m4_window_ms=1000.0,
         m4_min_buffer_ms=60.0,
     )

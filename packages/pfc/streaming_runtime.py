@@ -72,7 +72,7 @@ class StreamingConfig:
     gated_playback: bool = True  # if False, always play TTS (no gating)
 
     # M4 params
-    m4_self_threshold: float = 0.50
+    m4_self_threshold: float = 0.99
     m4_min_buffer_ms: float = 60.0
     m4_scorer_path: Optional[str] = None  # Path to fine-tuned scorer.pt (feature-based)
 

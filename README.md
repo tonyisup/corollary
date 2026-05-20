@@ -34,7 +34,7 @@ pip install -r requirements.txt
 
 ## Project Status
 
-**Tests:** 454 passed, 1 skipped
+**Tests:** 455 passed, 1 skipped
 
 ### Milestone Summary
 
@@ -46,18 +46,18 @@ pip install -r requirements.txt
 | M1c | ✅ Done | Dual-input fusion, SELF/WORLD/BOTH hardware validation |
 | M2 | ✅ Operational | Calibrated harness, M4 metadata, room-local scoring |
 | M3 | ✅ Live hardware validated | Streaming runtime, gated playback, collision repair, repair-audio queue |
-| M4 | ✅ Promoted | 100% self-recall, 0% FP on 6/8 negative speakers, wired into streaming runtime |
+| M4 | ✅ Promoted | Hardened live baseline 0.99; 100% self-recall, 0% FP on current live-domain validation; wired into streaming runtime |
 | M5 | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6 | ✅ Live validated | SAG introspective queries functional, M4 accept rate 95.7% |
 | M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; live room-change validated |
 
 ### M4 Self-Voice Detector
 
-Fine-tuned ECAPA scorer trained on current-room captures (4 self + 8 negative speakers):
+Fine-tuned ECAPA scorer trained on current-room captures and run with the hardened live baseline (0.99):
 
 - **Self-recall: 100%** on held-out self-captures
-- **FP rate: 16.4%** across 7 negative speakers (concentrated in same-family voices JennyNeural 33%, EmmaNeural 27%; 0-10% on others)
-- **Scorer:** `data/m4_balanced_current_room_v2/fine_tuned/fine_tuned/scorer.pt`
+- **FP rate: 0%** on the current negative live-domain validation set
+- **Scorer:** `data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt`
 
 ### M7 Interruption Latency
 
@@ -114,7 +114,7 @@ corollary/
 
 | Metric | Target | Current |
 |--------|--------|---------|
-| Self/not-self attribution accuracy | ≥ 95% | 100% recall, 16.4% FP |
+| Self/not-self attribution accuracy | ≥ 95% | 100% recall, 0% FP (current live-domain validation) |
 | Interruption latency | < 200ms human-like | 1390ms (comparable to human ~1500ms) |
 | End-to-end latency | < 200ms | Pipeline: ~330ms |
 | Loop index (self-trigger rate) | 0 | 0 |

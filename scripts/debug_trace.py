@@ -50,7 +50,7 @@ if input_sr != SR:
     gt_agent = np.interp(np.linspace(0, len(gt_agent), len(observed)), np.arange(len(gt_agent)), gt_agent.astype(float)) > 0.5
 
 attributor = ThalamicAttributor(sr=SR, similarity_threshold=0.05, causal_tolerance_ms=175.0,
-                                 m4_detector=None, m4_self_threshold=0.50, m4_min_buffer_ms=60.0)
+                                 m4_detector=None, m4_self_threshold=0.99, m4_min_buffer_ms=60.0)
 controller = AgentiveController(listen_threshold_ms=100.0, cooldown_ms=200.0, motor_holdoff_ms=200.0)
 vad = SmoothedVAD()
 

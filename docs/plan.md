@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M7 complete; M4 balanced scorer trained on current-room captures (100% self-recall, 16.4% FP); M6 self-model enriched (M4 accept rate 95.7%); M7 interruption latency validated at 1390ms with two-speaker live test; 454 tests passing  
+> **Status:** M0-M7 complete; M4 live baseline hardened to 0.99 with current live-domain validation at 100% self-recall and 0% FP; M6 self-model enriched (M4 accept rate 95.7%); M7 interruption latency validated at 1390ms with two-speaker live test; 455 tests passing  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 

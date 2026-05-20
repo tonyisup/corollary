@@ -326,7 +326,7 @@ class ScenarioResult:
 
 
 def evaluate_scenario(scenario: Scenario, m4_enabled: bool = False,
-                      m4_self_threshold: float = 0.50) -> ScenarioResult:
+                      m4_self_threshold: float = 0.99) -> ScenarioResult:
     """Run a scenario through the M3 bridge and evaluate the result."""
 
     # Build M2 frames from scenario events

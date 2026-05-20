@@ -49,7 +49,7 @@ def main():
     )
     parser.add_argument("--duration", type=float, default=8.0, help="Capture duration in seconds")
     parser.add_argument("--text", type=str, default="Hello, I am Corollary. This is a live self-voice detection test.")
-    parser.add_argument("--m4-threshold", type=float, default=0.10, help="Base M4 self-voice threshold")
+    parser.add_argument("--m4-threshold", type=float, default=0.99, help="Base M4 self-voice threshold")
     parser.add_argument("--m4-buffer-ms", type=float, default=300.0, help="M4 min buffer ms")
     parser.add_argument("--output", type=str, default="/tmp/m4_live_adaptive.json", help="Output JSON path")
     parser.add_argument(

@@ -17,7 +17,9 @@ async def main():
     scorer_path = "data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt"
     
     identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
-    detector = FineTunedSelfVoiceDetector(identifier, threshold=0.5)
+    # Hardened live-domain threshold: the same-family Jenny negative that still
+    # slips at 0.5 is rejected here, while Aria self remains accepted.
+    detector = FineTunedSelfVoiceDetector(identifier, threshold=0.99)
     detector.load_scorer(scorer_path)
     
     # Register self from AriaNeural

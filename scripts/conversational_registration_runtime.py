@@ -143,7 +143,7 @@ def main() -> None:
             output_device=args.output_device,
             m4_enable=True,
             gated_playback=False,
-            m4_self_threshold=0.10,
+            m4_self_threshold=0.99,
             m4_min_buffer_ms=300.0,
             speaker_threshold_adapter=adapter,
         )
