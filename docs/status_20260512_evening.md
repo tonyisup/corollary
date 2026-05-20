@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-19
 > **Branch:** main (synced with origin/main)
-> **Tests:** 454 passed, 1 skipped
+> **Tests:** 455 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -14,7 +14,7 @@
 | M1c: Mixed-source attribution | ✅ Done | Dual-input fusion, SELF/WORLD/BOTH hardware validation |
 | M2: Speech-aware self/world separation | ✅ Operational | Calibrated harness, M4 metadata, room-local scoring |
 | M3: Agentive listening and proto-turn-taking | ✅ Live hardware validated | Streaming runtime, gated playback, collision repair, repair-audio queue |
-| M4: Self-voice detector | ✅ Promoted | 100% self-recall, 16.4% FP across 7 negative speakers (same-family voices only); balanced scorer trained on current-room captures; wired into streaming runtime |
+| M4: Self-voice detector | ✅ Promoted | Hardened live baseline 0.99; 100% self-recall, 0% FP on current live-domain validation; wired into streaming runtime |
 | M5: Multi-speaker world model + memory | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6: Self-model and introspection | ✅ Wired + per-speaker IDs + introspective queries | SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects, introspective queries verified |
 | M7: Adaptive self-tracking | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; live room-change validated; interruption latency 1390ms (two-speaker test) |
@@ -124,7 +124,7 @@ Interpretation: M7 is now live-validated for clean audio, self-listening, truste
 5. ~~**Analysis queue diagnostics**~~ — Done (2026-05-18). Live summaries include callback count, analysis blocks enqueued/dropped, max queue depth, and worker errors.
 6. **Interruption latency tuning** — Done (2026-05-18). Live two-speaker test with `callback_blocksize_ms=120` (1920 samples). Measured **1390ms interruption latency** (human starts at 2.0s, LISTEN at 3.39s). This is comparable to human conversational interruption latency (~1500ms). The dominant factor is energy buildup time for the human voice to become detectable at the mic, not the callback blocksize. Pipeline itself adds only ~330ms (2 callbacks + 3-frame classifier). Test script at `scripts/m7_live_interruption_latency.py`.
 7. **M6 self-model enrichment** — Done (2026-05-19). Ran `m6_live_introspective.py` with M4-enabled pipeline (fine-tuned scorer, 15s session). Results: 500 frames, M4 accepted 402/420 (95.7%), SAG self-concept populated with agent_voice (mean self-match=-0.001, M4 accept rate 95.7%) and speech_patterns (100% speaking, 4.8% self-attributed, mean energy -33.6dB). Known subjects empty (no WORLD speech during single-speaker run).
-8. **Broader negative training data** — Done (2026-05-19). Captured 8 negative voices + 4 self-variations in current room. Trained balanced scorer: 100% self-recall, 16.4% FP rate (concentrated in same-family voices). Scorer at `data/m4_balanced_current_room_v2/fine_tuned/fine_tuned/scorer.pt`.
+8. **Broader negative training data** — Done (2026-05-19). Captured 8 negative voices + 4 self-variations in current room. Trained balanced scorer that informed the hardened live baseline; current live-domain validation is 100% self-recall and 0% FP. Scorer at `data/m4_balanced_current_room_v2/fine_tuned/fine_tuned/scorer.pt`.
 
 ## Archive
 

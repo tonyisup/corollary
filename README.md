@@ -96,7 +96,7 @@ corollary/
     reasoning/           # Reasoning layer interface
   data/                  # Captures, trained models, benchmarks
   scripts/               # Evaluation harnesses, capture scripts, diagnostics
-  tests/unit/            # 454 tests, all passing
+  tests/unit/            # 455 tests, all passing
 ```
 
 ## Key Scripts

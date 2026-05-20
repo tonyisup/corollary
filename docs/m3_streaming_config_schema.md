@@ -39,7 +39,7 @@
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `m4_self_threshold` | `float` | `0.50` | Confidence threshold for M4 self-voice classification. Higher = more conservative. |
+| `m4_self_threshold` | `float` | `0.99` | Confidence threshold for M4 self-voice classification. Higher = more conservative. |
 | `m4_min_buffer_ms` | `float` | `60.0` | Minimum audio buffer (ms) before M4 can trigger. M4 needs >=700ms stimulus duration and a buffer <=300ms for reliable triggering. |
 
 ### Room filter
@@ -92,7 +92,7 @@ These values were calibrated on the Mac mini + fifine Microphone path and valida
 | `both_external_min_frames` | 7 | ~210ms at 30ms/frame; prevents transient spikes |
 | `both_external_energy_ratio` | 2.0 | Observed/expected RMS ratio; 2.0 = 6dB above expected self |
 | `m4_min_buffer_ms` | 60.0 | Smallest buffer with reliable M4 triggering on >=700ms stimuli |
-| `m4_self_threshold` | 0.50 | Conservative; real ECAPA-TDNN is tighter than mock |
+| `m4_self_threshold` | 0.99 | Hardened live baseline for current ECAPA scorer |
 | `room_local_threshold` | 0.04 | Companion to production filter; auto-cal gives ~0.052 |
 
 ---
