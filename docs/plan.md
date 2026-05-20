@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M7 complete; M4 live baseline hardened to 0.99 with current live-domain validation at 100% self-recall and 0% FP; M6 live smoke completed with 336 frames and M4 accepted 220/262; M7 interruption latency validated at 1423.9ms with two-speaker live test; 455 tests passing  
+> **Status:** M0-M7 complete; M4 live baseline hardened to 0.99 with current live-domain validation at 100% self-recall and 0% FP; prototype-bank verifier validated at 97.2% self-recall and 0% FP on live-domain and wired behind `StreamingConfig.m4_bank_path`; M6 live smoke completed with 268 frames and M4 accepted 195/206; M7 interruption latency validated at 1423.9ms with two-speaker live test; 458 tests passing  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 

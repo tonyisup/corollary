@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-20
 > **Branch:** main (synced with origin/main)
-> **Tests:** 455 passed, 1 skipped
+> **Tests:** 458 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -118,6 +118,21 @@ Live-domain validation on the older live-domain capture set (`/tmp/m4_diversity_
 - Precision: 1.0000
 - Conclusion: diversity helped, but the scorer still does not meet the promoted baseline's live-domain self confidence.
 
+### Prototype Bank Strategy (2026-05-20)
+
+Built a new multi-prototype verifier at `/Users/juicebox/Projects/corollary/data/m4_prototype_bank_round4_20260520/prototype_bank.npz` and wired runtime support via `StreamingConfig.m4_bank_path`.
+
+Prototype-bank validation at threshold -0.05:
+- Current-room v2: 100% self-recall, 1.0% FP
+- Live-domain: 97.2% self-recall, 0.0% FP
+- Conclusion: this modeling strategy closes the live-domain gap better than the fine-tuned scorer family and is the first candidate that holds both live-domain recall and low false-positive rate on the tested sets.
+
+End-to-end live M6 smoke with `StreamingRuntime` on `/Users/juicebox/Projects/corollary/data/m4_prototype_bank_round4_20260520/prototype_bank.npz`:
+- 268 frames processed in 8.33s
+- M4 accepted 195/206 frames (94.7%)
+- SelfModel self-concept populated normally
+- Conclusion: runtime wiring is working end-to-end with the prototype bank.
+
 ## Live Hardware Results (2026-05-17)
 
 ### M7 Live Drift Validation
@@ -215,6 +230,7 @@ Interpretation: M7 is now live-validated for clean audio, self-listening, truste
 6. **Interruption latency tuning** — Done (2026-05-18). Live two-speaker test with `callback_blocksize_ms=120` (1920 samples). Measured **1390ms interruption latency** (human starts at 2.0s, LISTEN at 3.39s). This is comparable to human conversational interruption latency (~1500ms). The dominant factor is energy buildup time for the human voice to become detectable at the mic, not the callback blocksize. Pipeline itself adds only ~330ms (2 callbacks + 3-frame classifier). Test script at `scripts/m7_live_interruption_latency.py`.
 7. **M6 self-model enrichment** — Done (2026-05-19). Ran `m6_live_introspective.py` with M4-enabled pipeline (fine-tuned scorer, 15s session). Results: 500 frames, M4 accepted 402/420 (95.7%), SAG self-concept populated with agent_voice (mean self-match=-0.001, M4 accept rate 95.7%) and speech_patterns (100% speaking, 4.8% self-attributed, mean energy -33.6dB). Known subjects empty (no WORLD speech during single-speaker run).
 8. **Broader negative training data** — Done (2026-05-19). Captured 8 negative voices + 4 self-variations in current room. Trained balanced scorer that informed the hardened live baseline; current live-domain validation is 100% self-recall and 0% FP. Scorer at `data/m4_balanced_current_room_v2/fine_tuned/fine_tuned/scorer.pt`.
+9. ~~**Prototype bank runtime smoke**~~ — Done (2026-05-20). End-to-end M6 smoke passed with `/Users/juicebox/Projects/corollary/data/m4_prototype_bank_round4_20260520/prototype_bank.npz` and `m4_bank_path`; 268 frames processed, M4 accepted 195/206 (94.7%).
 
 ## Archive
 

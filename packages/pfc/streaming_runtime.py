@@ -75,6 +75,7 @@ class StreamingConfig:
     m4_self_threshold: float = 0.99
     m4_min_buffer_ms: float = 60.0
     m4_scorer_path: Optional[str] = None  # Path to fine-tuned scorer.pt (feature-based)
+    m4_bank_path: Optional[str] = None  # Path to prototype-bank .npz (multi-prototype margin)
 
     # Room filter
     room_filter_path: Optional[str] = None
@@ -235,20 +236,31 @@ class StreamingRuntime:
         m4_identifier = None
         if config.m4_enable:
             try:
-                if config.m4_scorer_path is not None:
+                if config.m4_bank_path is not None:
+                    # Use a multi-prototype verifier with self/negative margins.
+                    from stg.speaker import SpeakerIdentifier, PrototypeBankSelfVoiceDetector
+                    m4_identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
+                    m4_detector = PrototypeBankSelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
+                    m4_detector.load_bank(config.m4_bank_path)
+                    if self._tts_pcm is not None:
+                        m4_detector.add_self_prototype(self._tts_pcm)
+                    print(f"  M4: loaded prototype bank from {config.m4_bank_path}")
+                elif config.m4_scorer_path is not None:
                     # Use fine-tuned scorer (real ECAPA + trained projection head)
                     from stg.speaker import SpeakerIdentifier, FineTunedSelfVoiceDetector
                     m4_identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
                     m4_detector = FineTunedSelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
                     m4_detector.load_scorer(config.m4_scorer_path)
+                    if self._tts_pcm is not None:
+                        m4_detector.register_self(self._tts_pcm)
                     print(f"  M4: loaded fine-tuned scorer from {config.m4_scorer_path}")
                 else:
                     # Fallback to mock detector (hash-based, no real ECAPA)
                     from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
                     m4_identifier = SpeakerIdentifier(use_real=False)
                     m4_detector = SelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
-                if self._tts_pcm is not None:
-                    m4_detector.register_self(self._tts_pcm)
+                    if self._tts_pcm is not None:
+                        m4_detector.register_self(self._tts_pcm)
             except Exception as e:
                 print(f"  WARNING: M4 detector failed to initialize: {e}")
                 m4_detector = None

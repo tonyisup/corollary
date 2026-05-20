@@ -34,7 +34,7 @@ pip install -r requirements.txt
 
 ## Project Status
 
-**Tests:** 455 passed, 1 skipped
+**Tests:** 458 passed, 1 skipped
 
 ### Milestone Summary
 
@@ -48,15 +48,16 @@ pip install -r requirements.txt
 | M3 | ✅ Live hardware validated | Streaming runtime, gated playback, collision repair, repair-audio queue |
 | M4 | ✅ Promoted | Hardened live baseline 0.99; 100% self-recall, 0% FP on current live-domain validation; wired into streaming runtime |
 | M5 | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
-| M6 | ✅ Live validated | SAG introspective queries functional; latest smoke: 336 frames, M4 accepted 220/262 |
+| M6 | ✅ Live validated | SAG introspective queries functional; latest smoke: 268 frames, M4 accepted 195/206 |
 | M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest smoke: 1423.9ms interruption latency, PASS |
 
 ### M4 Self-Voice Detector
 
-Fine-tuned ECAPA scorer trained on current-room captures and run with the hardened live baseline (0.99):
+The hardened live scorer remains the promoted baseline, and a new prototype-bank verifier is now validated as an alternative strategy:
 
-- **Self-recall: 100%** on held-out self-captures
-- **FP rate: 0%** on the current negative live-domain validation set
+- **Fine-tuned scorer self-recall:** 100% on held-out self-captures
+- **Fine-tuned scorer FP rate:** 0% on the current negative live-domain validation set
+- **Prototype bank:** `data/m4_prototype_bank_round4_20260520/prototype_bank.npz` (97.2% self-recall on live-domain, 0% FP; runtime via `m4_bank_path`)
 - **Scorer:** `data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt`
 
 ### M7 Interruption Latency
@@ -96,7 +97,7 @@ corollary/
     reasoning/           # Reasoning layer interface
   data/                  # Captures, trained models, benchmarks
   scripts/               # Evaluation harnesses, capture scripts, diagnostics
-  tests/unit/            # 455 tests, all passing
+  tests/unit/            # 458 tests, all passing
 ```
 
 ## Key Scripts
@@ -107,6 +108,8 @@ corollary/
 | `scripts/m4_capture_negatives_current_room.py` | Capture negative TTS voices for training |
 | `scripts/m4_train_balanced_scorer.py` | Train balanced M4 scorer from captures |
 | `scripts/m4_validate_live_scorer.py` | Validate scorer on held-out captures |
+| `scripts/m4_build_prototype_bank.py` | Build a multi-prototype M4 verifier bank |
+| `scripts/m4_validate_prototype_bank.py` | Validate prototype-bank self-voice detection |
 | `scripts/m6_live_introspective.py` | M6 self-model enrichment + SAG query |
 | `scripts/m3_live_e2e_harness.py` | M3 live E2E validation |
 

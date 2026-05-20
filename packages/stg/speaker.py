@@ -232,3 +232,109 @@ class FineTunedSelfVoiceDetector:
         """Check if the given audio is likely NOT Corollary's own voice."""
         is_self, conf = self.is_self(pcm)
         return (not is_self), (1.0 - conf)
+
+
+class PrototypeBankSelfVoiceDetector:
+    """Self-voice detector using a bank of self and hard-negative prototypes.
+
+    This strategy replaces the single-template + learned head setup with a
+    multi-prototype verifier. It scores a probe by the margin between its
+    strongest match to the self bank and its strongest match to the negative
+    bank. In practice, this makes the detector less brittle to session-to-session
+    self variation while still letting hard negatives pull the score down.
+    """
+
+    def __init__(self, identifier: SpeakerIdentifier, threshold: float = 0.0) -> None:
+        self.identifier = identifier
+        self.threshold = threshold
+        self.self_bank: list[np.ndarray] = []
+        self.neg_bank: list[np.ndarray] = []
+
+    @staticmethod
+    def _ensure_2d(arr: np.ndarray) -> np.ndarray:
+        arr = np.asarray(arr, dtype=np.float32)
+        if arr.ndim == 1:
+            return arr[None, :]
+        return arr.astype(np.float32)
+
+    def register_self_bank(self, embeddings: list[np.ndarray] | np.ndarray) -> None:
+        """Register one or more self prototypes.
+
+        The inputs may be raw PCM segments or pre-computed embeddings. If the
+        vectors look like embeddings (shape [..., 192]), they are stored directly;
+        otherwise they are embedded with the configured SpeakerIdentifier.
+        """
+        self.self_bank = self._prepare_bank(embeddings)
+
+    def register_negative_bank(self, embeddings: list[np.ndarray] | np.ndarray) -> None:
+        """Register one or more negative prototypes."""
+        self.neg_bank = self._prepare_bank(embeddings)
+
+    def add_self_prototype(self, prototype: np.ndarray) -> None:
+        """Append a single self prototype to the bank."""
+        self.self_bank.extend(self._prepare_bank(prototype))
+
+    def add_negative_prototype(self, prototype: np.ndarray) -> None:
+        """Append a single negative prototype to the bank."""
+        self.neg_bank.extend(self._prepare_bank(prototype))
+
+    def save_bank(self, bank_path: str) -> None:
+        """Persist the prototype bank to disk as an .npz file."""
+        self._save_bank(bank_path)
+
+    def load_bank(self, bank_path: str) -> None:
+        """Load a prototype bank from disk."""
+        bank = np.load(bank_path, allow_pickle=True)
+        self.self_bank = [row.astype(np.float32) for row in np.asarray(bank["self_embeddings"], dtype=np.float32)]
+        self.neg_bank = [row.astype(np.float32) for row in np.asarray(bank["neg_embeddings"], dtype=np.float32)]
+        if "threshold" in bank:
+            self.threshold = float(np.asarray(bank["threshold"]).reshape(-1)[0])
+
+    def _save_bank(self, bank_path: str) -> None:
+        np.savez(
+            bank_path,
+            self_embeddings=np.stack(self.self_bank) if self.self_bank else np.zeros((0, 192), dtype=np.float32),
+            neg_embeddings=np.stack(self.neg_bank) if self.neg_bank else np.zeros((0, 192), dtype=np.float32),
+            threshold=np.array([self.threshold], dtype=np.float32),
+        )
+
+    def _prepare_bank(self, items: list[np.ndarray] | np.ndarray) -> list[np.ndarray]:
+        if isinstance(items, np.ndarray):
+            items = [items]
+        bank: list[np.ndarray] = []
+        for item in items:
+            arr = np.asarray(item, dtype=np.float32)
+            if arr.ndim == 1 and arr.shape[0] == 192:
+                bank.append(arr.astype(np.float32))
+                continue
+            if arr.ndim == 2 and arr.shape[1] == 192:
+                bank.extend([row.astype(np.float32) for row in arr])
+                continue
+            emb = self.identifier.get_embedding(arr)
+            bank.append(emb.astype(np.float32))
+        return bank
+
+    @staticmethod
+    def _cosine(a: np.ndarray, b: np.ndarray) -> float:
+        dot = float(np.dot(a, b))
+        denom = float(np.linalg.norm(a) * np.linalg.norm(b))
+        if denom < 1e-9:
+            return 0.0
+        return dot / denom
+
+    def score(self, pcm: np.ndarray) -> float:
+        """Return the self-versus-negative margin score."""
+        emb = self.identifier.get_embedding(pcm)
+        self_score = max((self._cosine(emb, proto) for proto in self.self_bank), default=-1.0)
+        neg_score = max((self._cosine(emb, proto) for proto in self.neg_bank), default=-1.0)
+        return self_score - neg_score
+
+    def is_self(self, pcm: np.ndarray) -> tuple[bool, float]:
+        """Check if the given audio is likely Corollary's own voice."""
+        margin = self.score(pcm)
+        return (margin >= self.threshold), margin
+
+    def is_world(self, pcm: np.ndarray) -> tuple[bool, float]:
+        """Check if the given audio is likely NOT Corollary's own voice."""
+        is_self, margin = self.is_self(pcm)
+        return (not is_self), (-margin)

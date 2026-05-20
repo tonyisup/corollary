@@ -52,6 +52,9 @@ def main() -> None:
     parser.add_argument("--output-device", type=int, default=5)
     parser.add_argument("--duration", type=float, default=30.0)
     parser.add_argument("--output", type=str, default="/tmp/m6_live_introspective.json")
+    parser.add_argument("--m4-scorer", type=str, default="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt")
+    parser.add_argument("--m4-bank", type=str, default=None, help="Optional prototype-bank .npz to use instead of the fine-tuned scorer")
+    parser.add_argument("--m4-threshold", type=float, default=0.99)
     args = parser.parse_args()
 
     print("=" * 60)
@@ -88,8 +91,9 @@ def main() -> None:
         input_device=args.input_device,
         output_device=args.output_device,
         m4_enable=True,
-        m4_scorer_path="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
-        m4_self_threshold=0.99,
+        m4_scorer_path=None if args.m4_bank is not None else args.m4_scorer,
+        m4_bank_path=args.m4_bank,
+        m4_self_threshold=args.m4_threshold,
         gated_playback=False,
         enable_conversational_registration=True,
         save_path=Path(args.output).with_suffix(".jsonl"),
