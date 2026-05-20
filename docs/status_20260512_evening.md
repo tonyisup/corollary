@@ -87,20 +87,18 @@ Results at `/tmp/m4_broader_eval2/balanced_result.json`:
 
 ### Augmented Scorer Retrain (2026-05-20)
 
-Trained `data/m4_finetuned_ecapa_current_room_aug2_20260520/fine_tuned/fine_tuned/scorer.pt` on:
-- 7 current-room self captures + 1 fresh Aria capture
-- 7 current-room negatives + 1 fresh Guy, 1 fresh Christopher, 1 fresh Jenny capture
+Trained `data/m4_finetuned_ecapa_current_room_aug3_20260520/fine_tuned/fine_tuned/scorer.pt` on:
+- 8 current-room self captures, including one fresh Aria capture from a later session
+- 11 current-room negatives, including fresh Guy, Christopher, and two Jenny captures
 
 Held-out current-room validation (`/tmp/m4_aug_holdout`):
-- Threshold 0.99: self-recall 62.5%, FP rate 0.0%
-- Threshold 0.995: self-recall 62.5%, FP rate 0.0%
-- Threshold 0.99 on broader current-room v2: self-recall 84.8%, FP rate 4.4%
-- Threshold 0.995 on broader current-room v2: self-recall 78.8%, FP rate 2.1%
+- Threshold 0.99: self-recall 52.5%, FP rate 0.0%
+- Broader current-room v2 at threshold 0.995: self-recall 77.7%, FP rate 0.0%
 
-Live-domain validation on the older live-domain capture set (`/tmp/m4_aug2_live_domain.json`) at threshold 0.995:
-- Self-recall: 69.5%
+Live-domain validation on the older live-domain capture set (`/tmp/m4_aug3_live_domain_0995.json`) at threshold 0.995:
+- Self-recall: 34.7%
 - FP rate: 0.0%
-- Conclusion: the augmented scorer improves same-room robustness, but it regresses too far on the live-domain self-recall to replace the current promoted baseline yet.
+- Conclusion: the augmented scorer did not hold live-domain self confidence and is not a replacement for the current promoted baseline.
 
 ## Live Hardware Results (2026-05-17)
 
