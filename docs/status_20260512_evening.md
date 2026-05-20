@@ -100,6 +100,24 @@ Live-domain validation on the older live-domain capture set (`/tmp/m4_aug3_live_
 - FP rate: 0.0%
 - Conclusion: the augmented scorer did not hold live-domain self confidence and is not a replacement for the current promoted baseline.
 
+### Directed Diversity Retrain Round 4 (2026-05-20)
+
+Trained `/tmp/m4_diversity_round4_train/out/fine_tuned/fine_tuned/scorer.pt` on:
+- 10 self captures total (8 prior current-room captures + 2 new Aria variations)
+- 17 negative captures total (11 prior current-room negatives + 6 new Guy/Christopher/Jenny captures)
+
+Fresh current-room v2 validation (`/tmp/m4_diversity_round4_current_room_v2.json`) at threshold 0.99:
+- Self-recall: 82.2%
+- FP rate: 1.0%
+- Precision: 0.9875
+- Conclusion: better coverage than `aug3`, but still not promotion-grade on the broader same-room set.
+
+Live-domain validation on the older live-domain capture set (`/tmp/m4_diversity_round4_live_domain.json`) at threshold 0.99:
+- Self-recall: 58.3%
+- FP rate: 0.0%
+- Precision: 1.0000
+- Conclusion: diversity helped, but the scorer still does not meet the promoted baseline's live-domain self confidence.
+
 ## Live Hardware Results (2026-05-17)
 
 ### M7 Live Drift Validation
