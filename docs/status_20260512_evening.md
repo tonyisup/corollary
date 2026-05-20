@@ -58,6 +58,33 @@ Results at `/tmp/m4_validate_live_scorer_current_room_v2.json`:
 - Threshold: 0.99
 - Domain gap persists on this broader current-room capture set
 
+### Fresh Current-Room Capture Sweep
+
+Run: `scripts/m4_capture_negatives_current_room.py --input-device 1 --output-device 3 --output-dir /tmp/m4_negatives_current_room_broader --voices en-US-GuyNeural en-US-ChristopherNeural en-US-JennyNeural en-US-AriaNeural`
+
+Results at `/tmp/m4_negatives_current_room_broader/summary_20260520_151005.json`:
+- 4/4 captures successful
+- Voices: Guy, Christopher, Jenny, Aria (self)
+- Capture RMS stayed in the healthy -29 dB range
+
+### Scorer Comparison on Fresh Current-Room Capture
+
+Run: `scripts/m4_validate_live_scorer.py --scorer data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt --self-captures /tmp/m4_broader_eval2/self_captures --neg-captures /tmp/m4_broader_eval2/neg_captures`
+
+Results at `/tmp/m4_broader_eval2/result.json`:
+- Self-recall: 33.3%
+- FP rate: 0.0%
+- Threshold: 0.99
+- One self capture was not stable enough to promote the broader set to a closed-gap claim
+
+Run: `scripts/m4_validate_live_scorer.py --scorer data/m4_balanced_current_room_v2/fine_tuned/fine_tuned/scorer.pt --self-captures /tmp/m4_broader_eval2/self_captures --neg-captures /tmp/m4_broader_eval2/neg_captures`
+
+Results at `/tmp/m4_broader_eval2/balanced_result.json`:
+- Self-recall: 58.3%
+- FP rate: 2.8%
+- Threshold: 0.99
+- Better than the live-domain scorer on this fresh capture, but still not promotion-grade on the broader same-room set
+
 ## Live Hardware Results (2026-05-17)
 
 ### M7 Live Drift Validation

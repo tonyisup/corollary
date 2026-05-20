@@ -31,14 +31,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
 from broca.tts import synthesize
 
-# Default negative voices to capture (diverse speakers)
+# Default negative voices to capture (available edge-tts voices on this setup).
+# DavisNeural and TonyNeural are not consistently available through edge-tts,
+# so keep the default set to voices that are known to synthesize reliably here.
 DEFAULT_VOICES = [
     "en-US-GuyNeural",
     "en-US-ChristopherNeural",
     "en-US-JennyNeural",
     "en-US-AriaNeural",
-    "en-US-DavisNeural",
-    "en-US-TonyNeural",
 ]
 
 CAPTURE_TEXT = (
