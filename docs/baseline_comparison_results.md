@@ -17,18 +17,18 @@ This is an offline comparison on captured audio using simplified heuristics for 
 
 ## Key Findings
 
-### 1. Self-leak: VAD stacks win on this metric
+### 1. Self-leak: VAD stacks achieve lower residual self-voice
 
-VAD-only (B) and VAD+AEC (C) suppress self-voice to roughly -59 to -62 dB, compared to Corollary's -34 dB. That is the expected shape of this comparison: VAD aggressively mutes anything it detects as speech during agent playback, while Corollary's energy-ratio-based detector is intentionally more conservative.
+VAD-only (B) and VAD+AEC (C) suppress self-voice to roughly -59 to -62 dB, compared to Corollary's -34 dB. In this comparison, that result is expected: the VAD baselines mute speech energy aggressively during agent playback, while Corollary's energy-ratio-based detector is intentionally more conservative.
 
-### 2. "False mute" is a proxy, not a universal error rate
+### 2. "False mute" is a proxy metric, not a general failure rate
 
-Corollary shows a 48% false-mute rate vs VAD's 11%, but this metric is really measuring how often human speech is muted under the scorer's overlap definition. In Corollary's case, the higher number reflects a different policy: it detects external human speech via the `both_external` energy-ratio detector and enters LISTEN, which gates off TTS output.
+Corollary shows a 48% false-mute rate vs VAD's 11%, but this metric is measuring human speech muted under the scorer's overlap definition. In Corollary's case, the higher number reflects a different policy: it detects external human speech via the `both_external` energy-ratio detector and enters LISTEN, which gates off TTS output.
 
-That is the right behavior for a full-duplex turn-taking system, but the metric itself should not be read as a generic failure score.
+For a turn-taking system, that is the intended behavior. For a baseline comparison, it means this metric should be interpreted as a policy tradeoff rather than an absolute error rate.
 
-The VAD stacks do not model the same behavior. They either:
-- **Aggressive (B):** mute very broadly during agent playback, including some human speech
+The VAD stacks do not model the same control behavior. They either:
+- **Aggressive (B):** mute broadly during agent playback, including some human speech
 - **Conservative (D):** preserve more audio, but leave substantially more self-voice
 
 ### 3. Corollary handled the scenarios in this sample
@@ -63,6 +63,10 @@ Corollary's approach is different in kind: it uses speaker attribution to distin
 2. **Self-leak is a tradeoff, not a failure.** Corollary's -34 dB self-leak is worse than the VAD baselines here, but it comes with speaker attribution and explicit turn-taking behavior.
 
 3. **The main advantage is behavioral, not numerical.** Corollary detects that a human is speaking, stops its own output, and resumes after the human finishes. These VAD baselines only reason about audio energy, so they do not represent the same control problem.
+
+## Suggested Reviewer Summary
+
+In this offline comparison, VAD-based baselines achieved lower residual self-voice, while Corollary exhibited higher muted-human rates because it is solving a different problem: attribution-aware turn-taking. The key result is not that Corollary wins every scalar metric, but that it preserves the intended interaction behavior while making a different suppression tradeoff.
 
 ## Next Steps
 
