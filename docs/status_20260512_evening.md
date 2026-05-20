@@ -1,6 +1,6 @@
 # Corollary — Project Status
 
-> **Date:** 2026-05-19
+> **Date:** 2026-05-20
 > **Branch:** main (synced with origin/main)
 > **Tests:** 455 passed, 1 skipped
 
@@ -16,8 +16,8 @@
 | M3: Agentive listening and proto-turn-taking | ✅ Live hardware validated | Streaming runtime, gated playback, collision repair, repair-audio queue |
 | M4: Self-voice detector | ✅ Promoted | Hardened live baseline 0.99; 100% self-recall, 0% FP on current live-domain validation; wired into streaming runtime |
 | M5: Multi-speaker world model + memory | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
-| M6: Self-model and introspection | ✅ Wired + per-speaker IDs + introspective queries | SelfModel receives per-speaker IDs from frame logs, updates SAG known_subjects, introspective queries verified |
-| M7: Adaptive self-tracking | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; live room-change validated; interruption latency 1390ms (two-speaker test) |
+| M6: Self-model and introspection | ✅ Wired + per-speaker IDs + introspective queries | Latest smoke: 336 frames, M4 accepted 220/262; SAG introspective queries functional |
+| M7: Adaptive self-tracking | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest two-speaker smoke 1423.9ms, PASS |
 
 ## Test Coverage
 
@@ -27,6 +27,26 @@
 | Integration tests | ~80 | Cross-package pipelines |
 | E2E / acceptance | ~120 | Streaming, M4, M5, M7 replay |
 || **Total** | **454** | **All passing** |
+
+## Latest Live Smokes (2026-05-20)
+
+### M6 Introspective Smoke
+
+Run: `scripts/m6_live_introspective.py --input-device 1 --output-device 3 --duration 10`
+
+Results at `/tmp/m6_live_introspective_smoke.json`:
+- 336 frames processed
+- M4 accepted 220/262 frames
+- SAG self-concept subtree remained traversable
+
+### M7 Interruption Latency Smoke
+
+Run: `scripts/m7_live_interruption_latency.py --input-device 1 --self-output-device 3 --human-output-device 2 --duration-s 8`
+
+Results at `/tmp/m7_live_interruption_latency_smoke.json`:
+- 1423.9 ms interruption latency
+- PASS — latency within acceptable range
+- PASS — no analysis blocks dropped
 
 ## Live Hardware Results (2026-05-17)
 

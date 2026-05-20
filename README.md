@@ -48,8 +48,8 @@ pip install -r requirements.txt
 | M3 | ✅ Live hardware validated | Streaming runtime, gated playback, collision repair, repair-audio queue |
 | M4 | ✅ Promoted | Hardened live baseline 0.99; 100% self-recall, 0% FP on current live-domain validation; wired into streaming runtime |
 | M5 | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
-| M6 | ✅ Live validated | SAG introspective queries functional, M4 accept rate 95.7% |
-| M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; live room-change validated |
+| M6 | ✅ Live validated | SAG introspective queries functional; latest smoke: 336 frames, M4 accepted 220/262 |
+| M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest smoke: 1423.9ms interruption latency, PASS |
 
 ### M4 Self-Voice Detector
 
@@ -63,7 +63,7 @@ Fine-tuned ECAPA scorer trained on current-room captures and run with the harden
 
 Live two-speaker test with `callback_blocksize_ms=120`:
 
-- **1390ms interruption latency** (human onset to LISTEN transition)
+- **Interruption latency: 1423.9ms** (human onset to LISTEN transition)
 - Comparable to human conversational interruption (~1500ms)
 - Pipeline adds ~330ms (2 callbacks + 3-frame classifier); dominant factor is acoustic energy buildup time
 - Test script: `scripts/m7_live_interruption_latency.py`
@@ -73,7 +73,7 @@ Live two-speaker test with `callback_blocksize_ms=120`:
 SAG self-concept subtree populated from live M4-enabled pipeline:
 
 - 4 nodes, 3 edges: root → agent_voice → speech_patterns → known_subjects
-- M4 accept rate: 95.7% (402/420 frames)
+- M4 accept rate: 84.0% (220/262 frames)
 - Known subjects: empty in single-speaker runs (no WORLD speech to trigger conversational registration)
 
 ## Repository Layout

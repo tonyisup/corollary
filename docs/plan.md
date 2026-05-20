@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M7 complete; M4 live baseline hardened to 0.99 with current live-domain validation at 100% self-recall and 0% FP; M6 self-model enriched (M4 accept rate 95.7%); M7 interruption latency validated at 1390ms with two-speaker live test; 455 tests passing  
+> **Status:** M0-M7 complete; M4 live baseline hardened to 0.99 with current live-domain validation at 100% self-recall and 0% FP; M6 live smoke completed with 336 frames and M4 accepted 220/262; M7 interruption latency validated at 1423.9ms with two-speaker live test; 455 tests passing  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 
@@ -179,7 +179,7 @@ corollary/
 - Self-concept subtree in the SAG: `Corollary.agent_voice`, `Corollary.speech_patterns`, `Corollary.known_subjects`
 - Self-tape vs world-tape mismatch detection via SAG diffing
 - Agent can query its own knowledge state and report confidence
-- **Status:** ✅ Live hardware validated (2026-05-19). SAG introspective queries functional with M4-enabled pipeline. Self-concept subtree traversable (4 nodes, 3 edges). M4 accept rate 95.7% (402/420 frames). Known subjects empty in single-speaker runs (no WORLD speech to trigger conversational registration).
+- **Status:** ✅ Live hardware validated (2026-05-20). SAG introspective queries functional with M4-enabled pipeline. Latest smoke: 336 frames, M4 accepted 220/262 frames. Self-concept subtree traversable (4 nodes, 3 edges). Known subjects empty in single-speaker runs (no WORLD speech to trigger conversational registration).
 - **Acceptance:** ✅ Reduced mismatch over time; introspective subtree traversable
 
 ### M7: Adaptive Self-Tracking
@@ -187,7 +187,7 @@ corollary/
 - DriftAlarm modulates NLMS learning rate on sustained match degradation
 - Multi-hypothesis IR bank (3–5 models, switch on best match)
 - Device-profile layer for orientation-dependent transfer function changes
-- **Status:** ✅ Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal. Interruption latency validated at 1390ms with two-speaker live test (callback_blocksize_ms=120).
+- **Status:** ✅ Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal. Latest two-speaker interruption smoke (2026-05-20) measured 1423.9ms with `callback_blocksize_ms=120`.
 - **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Sample-clock timestamps and analysis queue/drop diagnostics are implemented; current follow-up work is lower-latency callback sizing for interruption response.
 
 ### M8+: Amygdala / Valence / Fast-Track Responses
