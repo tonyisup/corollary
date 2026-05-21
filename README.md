@@ -50,6 +50,7 @@ pip install -r requirements.txt
 | M5 | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6 | ✅ Live validated | SAG introspective queries functional; latest smoke: 268 frames, M4 accepted 195/206 |
 | M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest comparison favored the prototype bank on interruption latency |
+| M8+ | 🧭 Scoped | Amygdala/valence/fast-track responses: policy-first salience, urgency scoring, and explainable fast-track overrides |
 
 ### M4 Self-Voice Detector
 

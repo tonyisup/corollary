@@ -163,6 +163,22 @@ End-to-end live M6 smoke with `StreamingRuntime` on `/Users/juicebox/Projects/co
 
 ## Live Hardware Results (2026-05-17)
 
+### M8+ Scope (planned)
+
+M8 has been scoped as a small, policy-first fast-track layer rather than a broad emotion system.
+
+Planned v0 shape:
+- input: M4 attribution, interruption context, controller state, optional lexical triggers
+- policy: deterministic urgency/valence scoring
+- action: continue, defer, interrupt, warn, or escalate
+- logging: persist inputs, score, threshold, action, and reason for replay/debugging
+
+Acceptance focus:
+- high-salience WORLD input can fast-track a response
+- low-salience input does not cause unnecessary overrides
+- no runaway override loops
+- minimal added latency
+
 ### M7 Live Drift Validation
 
 Run: `scripts/m7_live_drift_validation.py` (room change protocol)

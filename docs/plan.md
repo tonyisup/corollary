@@ -187,15 +187,18 @@ corollary/
 - DriftAlarm modulates NLMS learning rate on sustained match degradation
 - Multi-hypothesis IR bank (3–5 models, switch on best match)
 - Device-profile layer for orientation-dependent transfer function changes
-|- **Status:** ✅ Complete. Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal. Latest two-speaker comparison batch (2026-05-21) showed the prototype bank ahead of the fine-tuned scorer on interruption latency stability, with both modes remaining M4-correct. Additionally, gated arbitration (bank + scorer) now provides human-like interruption latency (~944ms) while maintaining M4 correctness, making it a compelling high-performance option.
+- **Status:** ✅ Complete. Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal. Latest two-speaker comparison batch (2026-05-21) showed the prototype bank ahead of the fine-tuned scorer on interruption latency stability, with both modes remaining M4-correct. Additionally, gated arbitration (bank + scorer) now provides human-like interruption latency (~944ms) while maintaining M4 correctness, making it a compelling high-performance option.
 - **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Sample-clock timestamps and analysis queue/drop diagnostics are implemented; the open question is whether the bank should become the default live M4 mode or stay as an alternate.
 
 ### M8+: Amygdala / Valence / Fast-Track Responses
+- **Status:** 🧭 Scoped, not yet implemented
 - Amygdala = fast-gate *on* the salience network, not a standalone module
 - High-threat salience → overrides PFC, triggers fast responses (shut up, warn, defer)
 - Emotional valence, risk assessment, urgency signaling
-- Requires M4 memory to have accumulated concept history — you can't know what matters without a baseline
-- **Acceptance:** Valence scoring on incoming salience; fast-track to Broca for urgency signals; measurable override events
+- Use existing signals first: M4 attribution, interruption context, controller state, and optional lexical triggers
+- Start with a deterministic policy: urgency score → fast-track decision → action + reason
+- Persist every override decision for post hoc analysis and replay
+- **Acceptance:** Valence scoring on incoming salience; fast-track to Broca for urgency signals; measurable override events; no runaway override loops
 
 ## Evaluation Metrics
 
