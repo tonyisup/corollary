@@ -1225,6 +1225,7 @@ class StreamingRuntime:
                     self_match_score=self_match_score,
                     collision_repair_text=decision.collision_repair_text,
                     speaker_id=self._current_speaker_id,
+                    controller_decision=decision,
                 )
                 log.should_interrupt = decision.should_interrupt
                 log.can_speak = decision.can_speak

@@ -26,7 +26,7 @@
 | Unit tests | ~200 | All packages |
 | Integration tests | ~80 | Cross-package pipelines |
 | E2E / acceptance | ~120 | Streaming, M4, M5, M7 replay |
-| **Total** | **466** | **All passing** |
+| **Total** | **471** | **All passing** |
 
 ## Latest Live Smokes (2026-05-21)
 
@@ -173,6 +173,11 @@ Current v0 shape:
 - action: continue, defer, interrupt, warn, or escalate
 - logging: persist inputs, score, threshold, action, and reason for replay/debugging
 - status: opt-in only; default runtime behavior remains unchanged unless `m8_enable` is set
+
+Latest live smoke (2026-05-21):
+- live controller emitted INTERRUPT/WARN/ESCALATE/DEFER decisions under M8
+- `/tmp/m8_live_smoke_postfix.jsonl` persisted non-null `m8_action`, `m8_score`, `m8_urgency`, `m8_valence`, and `m8_reason`
+- persistence gap in the live analysis worker path is fixed and regression-tested
 
 Acceptance focus:
 - high-salience WORLD input can fast-track a response

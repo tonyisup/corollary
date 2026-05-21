@@ -9,7 +9,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from thalamus.attributor import SourceVerdict
+from thalamus.attributor import AttributionResult, SourceVerdict
+from pfc.agentive_controller import AgentState, ControllerDecision
+from pfc.m8_fast_track import M8FastTrackAction
 from pfc.streaming_runtime import StreamingRuntime, StreamingConfig, SyntheticAttributionFrame
 
 
@@ -602,6 +604,64 @@ def test_m8_fast_track_runtime_logs_warning():
 
     assert any(log.m8_action == "WARN" for log in logs)
     assert any(log.should_interrupt for log in logs)
+
+
+def test_m8_fast_track_live_analysis_logs_decision(monkeypatch):
+    """The live analysis worker path should persist controller M8 decisions too."""
+    runtime = StreamingRuntime(
+        StreamingConfig(
+            tts_pcm=np.zeros(16000 * 2, dtype=np.float32),
+            tts_text="m8 live path test",
+            gated_playback=True,
+            callback_blocksize_ms=120.0,
+            sr=16000,
+            m4_enable=False,
+            m8_enable=True,
+        )
+    )
+
+    decision = ControllerDecision(
+        state=AgentState.LISTEN,
+        can_speak=False,
+        should_interrupt=True,
+        m8_action=M8FastTrackAction.INTERRUPT,
+        m8_score=0.91,
+        m8_urgency="high",
+        m8_valence="negative",
+        m8_reason="test decision",
+        m8_threshold=0.8,
+    )
+    attr = AttributionResult(
+        verdict=SourceVerdict.WORLD,
+        confidence=0.8,
+        self_match_score=0.0,
+        is_in_motor_window=False,
+        causal_score=0.0,
+        energy_db=-30.0,
+        is_speech=True,
+        metadata={"transcript": "hello"},
+    )
+
+    monkeypatch.setattr(runtime._controller, "process_attribution", lambda *args, **kwargs: decision)
+    monkeypatch.setattr(runtime._attributor, "attribute", lambda *args, **kwargs: attr)
+    monkeypatch.setattr(runtime, "_update_speaker_id", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "_update_adapter_from_clean_world_evidence", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "_update_room_filter_adaptation", lambda *args, **kwargs: None)
+
+    runtime._analyze_mic_frame(
+        mic_frame=np.zeros(480, dtype=np.float32),
+        output_frame=np.zeros(480, dtype=np.float32),
+        timestamp_s=0.0,
+    )
+
+    assert runtime._logs
+    log = runtime._logs[-1]
+    assert log.m8_action == "INTERRUPT"
+    assert log.m8_score == pytest.approx(0.91)
+    assert log.m8_urgency == "high"
+    assert log.m8_valence == "negative"
+    assert log.m8_reason == "test decision"
+    assert log.should_interrupt is True
 
 def test_interruption_latency_synthetic():
     """Interruption should be detected within a small number of VAD frames.
