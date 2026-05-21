@@ -2,7 +2,7 @@
 
 > **Date:** 2026-05-21
 > **Branch:** main (synced with origin/main)
-> **Tests:** 466 passed, 1 skipped
+> **Tests:** 470 passed, 1 skipped
 
 ## Milestone Summary
 
@@ -163,15 +163,16 @@ End-to-end live M6 smoke with `StreamingRuntime` on `/Users/juicebox/Projects/co
 
 ## Live Hardware Results (2026-05-17)
 
-### M8+ Scope (planned)
+### M8+ Fast-Track Policy (opt-in)
 
-M8 has been scoped as a small, policy-first fast-track layer rather than a broad emotion system.
+M8 is now wired into the controller/runtime as a small, policy-first fast-track layer rather than a broad emotion system.
 
-Planned v0 shape:
+Current v0 shape:
 - input: M4 attribution, interruption context, controller state, optional lexical triggers
 - policy: deterministic urgency/valence scoring
 - action: continue, defer, interrupt, warn, or escalate
 - logging: persist inputs, score, threshold, action, and reason for replay/debugging
+- status: opt-in only; default runtime behavior remains unchanged unless `m8_enable` is set
 
 Acceptance focus:
 - high-salience WORLD input can fast-track a response

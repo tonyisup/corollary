@@ -40,6 +40,7 @@ from thalamus.attributor import AttributionResult, ThalamicAttributor, SourceVer
 from cochlea.vad import SmoothedVAD, VAD_FRAME_SAMPLES
 from stg.speaker import GatedM4Arbitrator
 from pfc.agentive_controller import AgentiveController, AgentState
+from pfc.m8_fast_track import M8FastTrackPolicy
 
 
 @dataclass
@@ -96,6 +97,9 @@ class StreamingConfig:
     both_external_min_frames: int = 7
     both_external_energy_ratio: float = 2.0
     collision_repair_text: Optional[str] = "Sorry, go ahead."
+
+    # M8 fast-track salience policy (opt-in)
+    m8_enable: bool = False
 
     # Attributor params
     energy_threshold_db: float = -55.0
@@ -165,6 +169,11 @@ class StreamingFrameLog:
     m4_degraded_mode: Optional[bool] = None
     m4_mode: Optional[str] = None
     m4_effective_mode: Optional[str] = None
+    m8_action: Optional[str] = None
+    m8_score: Optional[float] = None
+    m8_urgency: Optional[str] = None
+    m8_valence: Optional[str] = None
+    m8_reason: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -294,6 +303,7 @@ class StreamingRuntime:
             both_external_min_frames=config.both_external_min_frames,
             both_external_energy_ratio_threshold=config.both_external_energy_ratio,
             collision_repair_text=config.collision_repair_text,
+            m8_policy=(M8FastTrackPolicy() if config.m8_enable else None),
         )
 
         # Room filter
@@ -817,6 +827,7 @@ class StreamingRuntime:
         self_match_score: float,
         collision_repair_text: Optional[str] = None,
         speaker_id: Optional[str] = None,
+        controller_decision: Optional[Any] = None,
     ) -> StreamingFrameLog:
         m4_metadata = attr_result.metadata or {}
         room_adaptation = self._last_room_adaptation_result or {}
@@ -848,6 +859,11 @@ class StreamingRuntime:
             m4_scorer_confidence=m4_metadata.get("m4_scorer_confidence"),
             m4_disagreed=m4_metadata.get("m4_disagreed"),
             m4_degraded_mode=m4_metadata.get("m4_degraded_mode"),
+            m8_action=controller_decision.m8_action.name if controller_decision is not None and getattr(controller_decision, "m8_action", None) is not None else None,
+            m8_score=controller_decision.m8_score if controller_decision is not None else None,
+            m8_urgency=controller_decision.m8_urgency if controller_decision is not None else None,
+            m8_valence=controller_decision.m8_valence if controller_decision is not None else None,
+            m8_reason=controller_decision.m8_reason if controller_decision is not None else None,
             energy_db=round(attr_result.energy_db, 2),
             self_match_score=round(self_match_score, 4),
             self_match_score_per_frame=(
@@ -909,6 +925,7 @@ class StreamingRuntime:
             self_match_score=self_match_score,
             collision_repair_text=decision.collision_repair_text,
             speaker_id=self._current_speaker_id,
+            controller_decision=decision,
         )
         log.should_interrupt = decision.should_interrupt
         log.can_speak = decision.can_speak
@@ -1462,6 +1479,11 @@ class StreamingRuntime:
             "m4_scorer_confidence": log.m4_scorer_confidence,
             "m4_disagreed": log.m4_disagreed,
             "m4_degraded_mode": log.m4_degraded_mode,
+            "m8_action": log.m8_action,
+            "m8_score": log.m8_score,
+            "m8_urgency": log.m8_urgency,
+            "m8_valence": log.m8_valence,
+            "m8_reason": log.m8_reason,
             "energy_db": log.energy_db,
             "self_match_score": log.self_match_score,
             "self_match_score_per_frame": log.self_match_score_per_frame,

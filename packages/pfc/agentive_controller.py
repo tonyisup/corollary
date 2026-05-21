@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from thalamus.attributor import SourceVerdict, AttributionResult
+from pfc.m8_fast_track import M8FastTrackAction, M8FastTrackDecision, M8FastTrackPolicy
 
 class AgentState(Enum):
     IDLE = 0
@@ -25,6 +26,12 @@ class ControllerDecision:
     should_interrupt: bool
     deferred_text: Optional[str] = None
     collision_repair_text: Optional[str] = None
+    m8_action: Optional[M8FastTrackAction] = None
+    m8_score: Optional[float] = None
+    m8_urgency: Optional[str] = None
+    m8_valence: Optional[str] = None
+    m8_reason: Optional[str] = None
+    m8_threshold: Optional[float] = None
 
 class AgentiveController:
     """The PFC controller responsible for social Contingency.
@@ -44,6 +51,7 @@ class AgentiveController:
         both_external_min_frames: int = 7,
         both_external_listen_min_ms: float = 300.0,
         collision_repair_text: Optional[str] = "Sorry, go ahead.",
+        m8_policy: Optional[M8FastTrackPolicy] = None,
     ) -> None:
         self.state = AgentState.IDLE
         self.listen_threshold_ms = listen_threshold_ms
@@ -54,6 +62,7 @@ class AgentiveController:
         self.both_external_min_frames = both_external_min_frames
         self.both_external_listen_min_ms = both_external_listen_min_ms
         self.collision_repair_text = collision_repair_text
+        self.m8_policy = m8_policy
 
         self.last_speech_time: float = 0.0
         self.speech_start_time: float = 0.0
@@ -96,6 +105,8 @@ class AgentiveController:
         """
         if current_time is None:
             current_time = time.time()
+
+        pre_m8_state = self.state
 
         # 0. Pre-playback LISTEN recovery: if the controller entered LISTEN due
         # to ambient noise shortly before the agent started playing, and the
@@ -165,6 +176,7 @@ class AgentiveController:
         should_interrupt = False
         just_interrupted = False
         collision_repair_text: Optional[str] = None
+        m8_decision: Optional[M8FastTrackDecision] = None
 
         # 2. SPEAK is a real lifecycle: self frames sustain it; external speech
         # interrupts it immediately and queues the active utterance for later.
@@ -326,6 +338,24 @@ class AgentiveController:
                 self.state = AgentState.LISTEN
                 self.active_utterance = None
 
+        if self.m8_policy is not None:
+            m8_decision = self.m8_policy.evaluate(
+                res,
+                controller_state=pre_m8_state,
+                current_time=current_time,
+            )
+            if m8_decision.action == M8FastTrackAction.INTERRUPT and not should_interrupt:
+                should_interrupt = True
+                just_interrupted = True
+                collision_repair_text = collision_repair_text or self.collision_repair_text
+                if self.active_utterance is not None:
+                    self.deferred_utterance = self.active_utterance
+                self.active_utterance = None
+                self.state = AgentState.LISTEN
+                if self.speech_start_time == 0:
+                    self.speech_start_time = current_time
+                self.last_speech_time = current_time
+
         # 4. Decision Making
         can_speak = (self.state != AgentState.LISTEN)
         
@@ -335,6 +365,12 @@ class AgentiveController:
             should_interrupt=should_interrupt,
             deferred_text=self.deferred_utterance if not can_speak else None,
             collision_repair_text=collision_repair_text,
+            m8_action=m8_decision.action if m8_decision is not None else None,
+            m8_score=m8_decision.score if m8_decision is not None else None,
+            m8_urgency=m8_decision.urgency if m8_decision is not None else None,
+            m8_valence=m8_decision.valence if m8_decision is not None else None,
+            m8_reason=m8_decision.reason if m8_decision is not None else None,
+            m8_threshold=m8_decision.threshold if m8_decision is not None else None,
         )
 
     def request_output(self, text: str, current_time: float = None) -> bool:

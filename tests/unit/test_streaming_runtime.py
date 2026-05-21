@@ -142,6 +142,8 @@ class TestStreamingRuntimeOffline:
             assert "m4_outcome" in entry
             assert "m4_mode" in entry
             assert "m4_effective_mode" in entry
+            assert "m8_action" in entry
+            assert "m8_score" in entry
             assert "output_source" in entry
             assert "repair_position_s" in entry
             assert "repair_playing" in entry
@@ -560,6 +562,46 @@ def test_hardware_repair_acceptance_script():
     assert verdict["criteria"]["tts_completed"] is True
     assert verdict["criteria"]["final_idle"] is True
 
+
+def test_m8_fast_track_runtime_logs_warning():
+    """When M8 is enabled, the runtime should surface a logged fast-track decision."""
+    frames = []
+    for idx in range(5):
+        frames.append(SyntheticAttributionFrame(
+            time_s=idx * 0.03,
+            verdict=SourceVerdict.SELF,
+            is_speech=False,
+            is_in_motor_window=True,
+            self_match_score=0.9,
+            self_match_score_per_frame=1.0,
+            causal_score=1.0,
+        ))
+    frames.append(SyntheticAttributionFrame(
+        time_s=5 * 0.03,
+        verdict=SourceVerdict.WORLD,
+        is_speech=True,
+        is_in_motor_window=False,
+        self_match_score=0.0,
+        self_match_score_per_frame=0.0,
+        causal_score=0.0,
+    ))
+
+    runtime = StreamingRuntime(
+        StreamingConfig(
+            tts_pcm=np.zeros(16000 * 2, dtype=np.float32),
+            tts_text="m8 test",
+            gated_playback=True,
+            callback_blocksize_ms=120.0,
+            sr=16000,
+            m4_enable=False,
+            m8_enable=True,
+        )
+    )
+
+    logs = runtime.run_synthetic(frames)
+
+    assert any(log.m8_action == "WARN" for log in logs)
+    assert any(log.should_interrupt for log in logs)
 
 def test_interruption_latency_synthetic():
     """Interruption should be detected within a small number of VAD frames.

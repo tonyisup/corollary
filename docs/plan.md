@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M7 complete; M4 live baseline remains the promoted fine-tuned scorer, the prototype-bank verifier is a validated alternate mode behind `StreamingConfig.m4_bank_path`, and the latest 5-run live comparison showed both at 100% M4 self-recall but the bank with better M7 interruption latency stability; M6 live smoke completed with 268 frames and M4 accepted 195/206; 466 tests passing; live harnesses now expose `--m4-mode auto|bank|scorer|arbitration`, and persisted artifacts record both requested and effective M4 mode; the gated arbitration (bank + scorer) provides human-like interruption latency (~944ms) and is now available.  
+> **Status:** M0-M7 complete; M4 live baseline remains the promoted fine-tuned scorer, the prototype-bank verifier is a validated alternate mode behind `StreamingConfig.m4_bank_path`, and the latest 5-run live comparison showed both at 100% M4 self-recall but the bank with better M7 interruption latency stability; M6 live smoke completed with 268 frames and M4 accepted 195/206; 470 tests passing; live harnesses now expose `--m4-mode auto|bank|scorer|arbitration`, and persisted artifacts record both requested and effective M4 mode; the gated arbitration (bank + scorer) provides human-like interruption latency (~944ms) and is now available.  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 
@@ -191,7 +191,7 @@ corollary/
 - **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Sample-clock timestamps and analysis queue/drop diagnostics are implemented; the open question is whether the bank should become the default live M4 mode or stay as an alternate.
 
 ### M8+: Amygdala / Valence / Fast-Track Responses
-- **Status:** 🧭 Scoped, not yet implemented
+- **Status:** 🛠️ Started, opt-in only
 - Amygdala = fast-gate *on* the salience network, not a standalone module
 - High-threat salience → overrides PFC, triggers fast responses (shut up, warn, defer)
 - Emotional valence, risk assessment, urgency signaling
