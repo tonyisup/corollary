@@ -38,6 +38,7 @@ import numpy as np
 
 from thalamus.attributor import AttributionResult, ThalamicAttributor, SourceVerdict
 from cochlea.vad import SmoothedVAD, VAD_FRAME_SAMPLES
+from stg.speaker import GatedM4Arbitrator
 from pfc.agentive_controller import AgentiveController, AgentState
 
 

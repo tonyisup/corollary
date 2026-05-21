@@ -144,7 +144,7 @@ def main() -> None:
     parser.add_argument("--m4-scorer", type=str,
                         default="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
                         help="Path to fine-tuned M4 scorer")
-    parser.add_argument("--m4-bank", type=str, default=None,
+    parser.add_argument("--m4-bank", type=str, default="tmp/m4_prototype_bank_round4_20260520.npz",
                         help="Optional prototype-bank .npz to use instead of the fine-tuned scorer")
     parser.add_argument(
         "--m4-mode",
