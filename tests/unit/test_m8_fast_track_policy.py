@@ -65,6 +65,36 @@ def test_m8_fast_track_policy_keeps_self_low_urgency_when_speaking():
     assert decision.m8_valence in {"neutral", "positive"}
 
 
+def test_m8_fast_track_policy_never_interrupts_non_speech_even_under_low_thresholds():
+    policy = M8FastTrackPolicy(warn_threshold=0.05, interrupt_threshold=0.10, escalate_threshold=0.15)
+    decision = policy.evaluate(
+        AttributionResult(
+            verdict=SourceVerdict.WORLD,
+            confidence=0.9,
+            self_match_score=0.0,
+            is_in_motor_window=False,
+            causal_score=0.0,
+            energy_db=-35.0,
+            is_speech=False,
+            metadata={
+                "m4_disagreed": True,
+                "m4_degraded_mode": True,
+                "m4_final_is_self": False,
+                "m4_bank_is_self": True,
+                "m4_scorer_is_self": False,
+            },
+        ),
+        controller_state=AgentState.SPEAK,
+        current_time=1.0,
+    )
+
+    assert decision.action == M8FastTrackAction.CONTINUE
+    assert decision.score <= 0.10
+    assert decision.urgency == "low"
+    assert "interrupt" not in decision.reason.lower()
+    assert "escalation" not in decision.reason.lower()
+
+
 def test_m8_fast_track_policy_warns_on_high_salience_world_when_not_speaking():
     policy = M8FastTrackPolicy()
     decision = policy.evaluate(
@@ -77,3 +107,4 @@ def test_m8_fast_track_policy_warns_on_high_salience_world_when_not_speaking():
     assert decision.score >= policy.warn_threshold
     assert decision.urgency == "medium"
     assert "WORLD" in decision.reason
+

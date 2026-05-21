@@ -125,7 +125,17 @@ class M8FastTrackPolicy:
 
         score = max(0.0, min(1.0, score))
 
-        if score >= self.escalate_threshold:
+        if not attr_result.is_speech:
+            # Non-speech frames can still be useful for diagnostics, but they must
+            # never trigger a fast-track interrupt/escalation. Silence/noise should
+            # stay conservative even if upstream metadata is noisy.
+            score = min(score, 0.10)
+            urgency = "low"
+            if state == "LISTEN" and score >= self.warn_threshold:
+                action = M8FastTrackAction.DEFER
+            else:
+                action = M8FastTrackAction.CONTINUE
+        elif score >= self.escalate_threshold:
             urgency = "high"
             action = M8FastTrackAction.ESCALATE if state != "SPEAK" else M8FastTrackAction.INTERRUPT
         elif score >= self.interrupt_threshold and state == "SPEAK":

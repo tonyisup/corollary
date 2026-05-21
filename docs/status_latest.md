@@ -26,7 +26,7 @@
 | Unit tests | ~200 | All packages |
 | Integration tests | ~80 | Cross-package pipelines |
 | E2E / acceptance | ~120 | Streaming, M4, M5, M7 replay |
-| **Total** | **471** | **All passing** |
+| **Total** | **472** | **All passing** |
 
 ## Latest Live Smokes (2026-05-21)
 
@@ -177,6 +177,7 @@ Current v0 shape:
 Latest live smoke (2026-05-21):
 - live controller emitted INTERRUPT/WARN/ESCALATE/DEFER decisions under M8
 - `/tmp/m8_live_smoke_postfix.jsonl` persisted non-null `m8_action`, `m8_score`, `m8_urgency`, `m8_valence`, and `m8_reason`
+- non-speech frames are now explicitly guarded from fast-track interrupts
 - persistence gap in the live analysis worker path is fixed and regression-tested
 
 Acceptance focus:
