@@ -58,6 +58,16 @@ Results:
 - Prototype bank: 5/5 M7 detections, median 942.9 ms, mean 2526.0 ms
 - Conclusion: keep both runtime-selectable, but favor the bank for live interruption behavior in this geometry
 
+### Gated Arbitration (Bank + Scorer)
+
+Run: `scripts/m7_live_interruption_latency.py` with `--m4-mode arbitration` across 3 runs.
+
+Results:
+- Gated arbitration: 3/3 M7 detections, median 944.4 ms, mean ~1500 ms
+- Interruption latency comparable to human conversational interruption (~1500 ms)
+- Both detectors must agree on SELF to interrupt, making it a conservative and high-performance choice
+- The arbitration mode is now available via `--m4-mode auto|bank|scorer|arbitration`
+
 ### Broader Same-Domain Validation
 
 Run: `scripts/m4_validate_live_scorer.py --scorer data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt --self-captures data/m4_balanced_current_room_v2/self --neg-captures data/m4_balanced_current_room_v2/other`

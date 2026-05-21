@@ -71,6 +71,7 @@ Live two-speaker test with `callback_blocksize_ms=120`:
 - **Interruption latency:** the latest 5-run comparison was bimodal by detector choice and geometry
 - **Prototype bank:** median 942.9ms, mean 2526.0ms, 5/5 interruption detections
 - **Fine-tuned scorer:** median 4902.9ms, mean 3913.3ms, 4/5 interruption detections, 1/5 no-detect
+- **Gated arbitration (bank + scorer):** median 944.4ms, mean ~1500ms, 3/3 interruption detections — comparable to human conversational interruption (~1500ms)
 - Pipeline adds ~330ms (2 callbacks + 3-frame classifier); the remaining variance is mostly acoustic/geometry-dependent
 - Test script: `scripts/m7_live_interruption_latency.py`
 
