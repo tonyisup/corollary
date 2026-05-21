@@ -89,9 +89,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.m4_scorer and args.m4_bank:
-        raise SystemExit("Use only one of --m4-scorer or --m4-bank")
-
     n_phases = max(2, args.phases)
     phase_duration = args.duration
     transition_s = args.transition_s

@@ -53,9 +53,6 @@ def main() -> None:
     parser.add_argument("--output", type=str, default="/tmp/m4_mixed_live_embeddings.json")
     args = parser.parse_args()
 
-    if args.m4_scorer and args.m4_bank:
-        raise SystemExit("Use only one of --m4-scorer or --m4-bank")
-
     print("=" * 60)
     print("Mixed Split-Output — Live-Path Embeddings")
     print("=" * 60)

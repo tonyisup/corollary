@@ -153,9 +153,6 @@ def main() -> None:
                         help="Output JSON path")
     args = parser.parse_args()
 
-    if args.m4_scorer and args.m4_bank:
-        raise SystemExit("Use only one of --m4-scorer or --m4-bank")
-
     if args.list_devices:
         list_devices()
         sys.exit(0)
@@ -186,16 +183,24 @@ def main() -> None:
     print(f"  Human delay:          {args.human_delay_s} s")
     print(f"  Human duration:       {args.human_duration_s} s")
     print(f"  Total duration:       {args.duration_s} s")
-    print(f"  M4 scorer:            {args.m4_scorer}")
+    detector_source = args.m4_bank if args.m4_bank is not None else args.m4_scorer
+    detector_label = "prototype bank" if args.m4_bank is not None else "fine-tuned scorer"
+    print(f"  M4 detector:          {detector_label}")
+    print(f"  M4 path:              {detector_source}")
     print(f"  Room filter:          {args.room_filter}")
     print()
 
     # Check files exist
-    if not Path(args.m4_scorer).exists():
+    if args.m4_bank is None and not Path(args.m4_scorer).exists():
         print(f"WARNING: M4 scorer not found at {args.m4_scorer}")
         print("  M4 will not be enabled. The test will still run but attribution")
         print("  may be less accurate without the fine-tuned scorer.")
         args.m4_scorer = None
+    if args.m4_bank is not None and not Path(args.m4_bank).exists():
+        print(f"WARNING: M4 prototype bank not found at {args.m4_bank}")
+        print("  M4 will not be enabled. The test will still run but attribution")
+        print("  may be less accurate without the prototype bank.")
+        args.m4_bank = None
     if not Path(args.room_filter).exists():
         print(f"WARNING: Room filter not found at {args.room_filter}")
         print("  Room filter will not be applied.")
@@ -380,7 +385,7 @@ def main() -> None:
             "human_delay_s": args.human_delay_s,
             "human_duration_s": args.human_duration_s,
             "duration_s": args.duration_s,
-            "m4_enabled": args.m4_scorer is not None,
+            "m4_enabled": (args.m4_scorer is not None or args.m4_bank is not None),
         },
         "summary": {
             "total_frames": len(logs),

@@ -93,9 +93,7 @@ def main():
     args = parser.parse_args()
     if args.world_output_device is None:
         args.world_output_device = args.output_device
-    if args.m4_scorer and args.m4_bank:
-        raise SystemExit("Use only one of --m4-scorer or --m4-bank")
-
+    
     print("=" * 60)
     print("M4 Live Adaptive Threshold Validation")
     print("=" * 60)

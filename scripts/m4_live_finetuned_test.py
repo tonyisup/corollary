@@ -123,10 +123,10 @@ def main() -> None:
         seg_rms = 20 * np.log10(np.sqrt(np.mean(seg**2)) + 1e-10)
         is_self, conf = detector.is_self(seg)
         results.append({
-            "start_s": round(start / sr, 1),
-            "rms_db": round(seg_rms, 1),
-            "is_self": is_self,
-            "confidence": round(conf, 4),
+            "start_s": float(round(start / sr, 1)),
+            "rms_db": float(round(seg_rms, 1)),
+            "is_self": bool(is_self),
+            "confidence": float(round(conf, 4)),
         })
 
     # Print results
