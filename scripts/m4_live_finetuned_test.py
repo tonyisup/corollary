@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""M4 Live Test with Fine-Tuned Scorer.
+"""M4 Live Test with fine-tuned scorer or prototype bank.
 
-Plays TTS through the speaker, captures on the mic, and runs the fine-tuned
-scorer to check if the domain gap is closed on fresh live audio.
+Plays TTS through the speaker, captures on the mic, and checks fresh live audio
+against either the promoted fine-tuned scorer or the prototype-bank verifier.
 
 Usage:
     .venv/bin/python scripts/m4_live_finetuned_test.py \
         --input-device 1 \
         --output-device 2 \
         --scorer data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt \
+        --duration 10.0 \
+        --output /tmp/m4_live_finetuned_test.json
+
+    .venv/bin/python scripts/m4_live_finetuned_test.py \
+        --input-device 1 \
+        --output-device 2 \
+        --bank data/m4_prototype_bank_round4_20260520/prototype_bank.npz \
         --duration 10.0 \
         --output /tmp/m4_live_finetuned_test.json
 """
@@ -27,31 +34,42 @@ import sounddevice as sd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
-from stg.speaker import SpeakerIdentifier, FineTunedSelfVoiceDetector
+from stg.speaker import SpeakerIdentifier, FineTunedSelfVoiceDetector, PrototypeBankSelfVoiceDetector
 from broca.tts import synthesize
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="M4 Live Test with Fine-Tuned Scorer")
+    parser = argparse.ArgumentParser(description="M4 Live Test with fine-tuned scorer or prototype bank")
     parser.add_argument("--input-device", type=int, default=1)
     parser.add_argument("--output-device", type=int, default=2)
-    parser.add_argument("--scorer", required=True, help="Path to fine-tuned scorer.pt")
+    parser.add_argument("--scorer", default=None, help="Path to fine-tuned scorer.pt")
+    parser.add_argument("--bank", default=None, help="Path to prototype-bank .npz")
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--duration", type=float, default=10.0)
     parser.add_argument("--text", default="Hello, I am Corollary. This is a fresh live test with the fine-tuned scorer.")
     parser.add_argument("--output", default="/tmp/m4_live_finetuned_test.json")
     args = parser.parse_args()
 
+    if not args.scorer and not args.bank:
+        raise SystemExit("Provide either --scorer or --bank")
+    if args.scorer and args.bank:
+        raise SystemExit("Use only one of --scorer or --bank")
+
+    detector_kind = "prototype bank" if args.bank else "fine-tuned scorer"
     print("=" * 60)
-    print("M4 Live Test — Fine-Tuned Scorer")
+    print(f"M4 Live Test — {detector_kind.title()}")
     print("=" * 60)
 
     # Load model
-    print("\nLoading ECAPA model + fine-tuned scorer...")
+    print(f"\nLoading ECAPA model + {detector_kind}...")
     t0 = time.time()
     identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
-    detector = FineTunedSelfVoiceDetector(identifier, threshold=args.threshold)
-    detector.load_scorer(args.scorer)
+    if args.bank:
+        detector = PrototypeBankSelfVoiceDetector(identifier, threshold=args.threshold)
+        detector.load_bank(args.bank)
+    else:
+        detector = FineTunedSelfVoiceDetector(identifier, threshold=args.threshold)
+        detector.load_scorer(args.scorer)
     print(f"  Loaded in {time.time() - t0:.1f}s")
 
     # Synthesize TTS
@@ -65,7 +83,10 @@ def main() -> None:
     # For live test, we register from the TTS itself since we don't have a clean capture
     mid = len(tts_pcm) // 2
     self_window = tts_pcm[mid:mid + 2 * 16000]
-    detector.register_self(self_window)
+    if args.bank:
+        detector.add_self_prototype(self_window)
+    else:
+        detector.register_self(self_window)
     print(f"  Registered self from TTS (2s window)")
 
     # Play and capture

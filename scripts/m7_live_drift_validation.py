@@ -75,7 +75,22 @@ def main() -> None:
     parser.add_argument("--transition-s", type=float, default=10.0,
                         help="Seconds between phases for room change (default: 10)")
     parser.add_argument("--output", type=str, default="/tmp/m7_live_drift.json")
+    parser.add_argument(
+        "--m4-scorer",
+        type=str,
+        default="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
+        help="Path to fine-tuned M4 scorer",
+    )
+    parser.add_argument(
+        "--m4-bank",
+        type=str,
+        default=None,
+        help="Optional prototype-bank .npz to use instead of the fine-tuned scorer",
+    )
     args = parser.parse_args()
+
+    if args.m4_scorer and args.m4_bank:
+        raise SystemExit("Use only one of --m4-scorer or --m4-bank")
 
     n_phases = max(2, args.phases)
     phase_duration = args.duration
@@ -89,7 +104,7 @@ def main() -> None:
     print(f"  Phases:          {n_phases}")
     print(f"  Phase duration:  {phase_duration}s each")
     print(f"  Transition:      {transition_s}s between phases")
-    print(f"  M4 scorer:       fine-tuned (live domain)")
+    print(f"  M4 scorer:       {'prototype bank' if args.m4_bank else 'fine-tuned (live domain)'}")
     print(f"  Room filter:     production (white noise calibrated)")
     print()
 
@@ -122,7 +137,8 @@ def main() -> None:
         input_device=args.input_device,
         output_device=args.output_device,
         m4_enable=True,
-        m4_scorer_path="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
+        m4_scorer_path=None if args.m4_bank is not None else args.m4_scorer,
+        m4_bank_path=args.m4_bank,
         # Hardened live-domain threshold for the current scorer.
         m4_self_threshold=0.99,
         gated_playback=False,

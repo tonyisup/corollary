@@ -48,8 +48,13 @@ def main() -> None:
     parser.add_argument("--world-delay-s", type=float, default=1.5)
     parser.add_argument("--world-gain", type=float, default=0.8)
     parser.add_argument("--speaker-registry-threshold", type=float, default=0.1)
+    parser.add_argument("--m4-scorer", type=str, default="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt")
+    parser.add_argument("--m4-bank", type=str, default=None, help="Optional prototype-bank .npz to use instead of the fine-tuned scorer")
     parser.add_argument("--output", type=str, default="/tmp/m4_mixed_live_embeddings.json")
     args = parser.parse_args()
+
+    if args.m4_scorer and args.m4_bank:
+        raise SystemExit("Use only one of --m4-scorer or --m4-bank")
 
     print("=" * 60)
     print("Mixed Split-Output — Live-Path Embeddings")
@@ -94,6 +99,8 @@ def main() -> None:
         output_device=args.output_device,
         m4_enable=True,
         gated_playback=False,
+        m4_scorer_path=None if args.m4_bank is not None else args.m4_scorer,
+        m4_bank_path=args.m4_bank,
         m4_self_threshold=args.m4_threshold,
         m4_min_buffer_ms=args.m4_buffer_ms,
         speaker_threshold_adapter=adapter,

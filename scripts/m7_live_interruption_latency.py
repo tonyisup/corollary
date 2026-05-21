@@ -144,12 +144,17 @@ def main() -> None:
     parser.add_argument("--m4-scorer", type=str,
                         default="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt",
                         help="Path to fine-tuned M4 scorer")
+    parser.add_argument("--m4-bank", type=str, default=None,
+                        help="Optional prototype-bank .npz to use instead of the fine-tuned scorer")
     parser.add_argument("--room-filter", type=str,
                         default="data/m3_broca_room_filter_production.npy",
                         help="Path to room filter .npy")
     parser.add_argument("--output", type=str, default="/tmp/m7_interruption_latency_live.json",
                         help="Output JSON path")
     args = parser.parse_args()
+
+    if args.m4_scorer and args.m4_bank:
+        raise SystemExit("Use only one of --m4-scorer or --m4-bank")
 
     if args.list_devices:
         list_devices()
@@ -233,8 +238,9 @@ def main() -> None:
         sr=sr,
         callback_blocksize_ms=args.callback_blocksize_ms,
         gated_playback=True,
-        m4_enable=args.m4_scorer is not None,
-        m4_scorer_path=args.m4_scorer,
+        m4_enable=(args.m4_scorer is not None or args.m4_bank is not None),
+        m4_scorer_path=None if args.m4_bank is not None else args.m4_scorer,
+        m4_bank_path=args.m4_bank,
         # Hardened live-domain threshold for the current scorer.
         m4_self_threshold=0.99,
         room_filter_path=args.room_filter,
@@ -464,7 +470,7 @@ def main() -> None:
     if interrupt_latency_ms is None:
         print("  FAIL — No interruption detected after human speech started")
         print("  Possible causes:")
-        print("  - M4 scorer not loaded (check --m4-scorer path)")
+        print("  - M4 detector not loaded (check --m4-scorer or --m4-bank path)")
         print("  - Room filter not loaded (check --room-filter path)")
         print("  - Human audio too quiet or too far from mic")
         print("  - Mic not picking up human speaker output")

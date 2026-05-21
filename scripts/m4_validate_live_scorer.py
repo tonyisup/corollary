@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Quick validation: test fine-tuned scorer against live-domain captures.
+"""Quick validation: test fine-tuned scorer or prototype bank against live-domain captures.
 
-Loads the fine-tuned scorer and runs it against the live self + negative captures
-to measure whether the domain gap has closed.
+Loads either the fine-tuned scorer or the prototype bank and runs it against the
+live self + negative captures to measure whether the domain gap has closed.
 
 Usage:
     .venv/bin/python scripts/m4_validate_live_scorer.py \
         --scorer data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt \
+        --self-captures data/m4_live_domain_finetune_20260517/self_captures \
+        --neg-captures data/m4_live_domain_finetune_20260517/neg_captures \
+        --output /tmp/m4_validate_live_scorer.json
+
+    .venv/bin/python scripts/m4_validate_live_scorer.py \
+        --bank data/m4_prototype_bank_round4_20260520/prototype_bank.npz \
         --self-captures data/m4_live_domain_finetune_20260517/self_captures \
         --neg-captures data/m4_live_domain_finetune_20260517/neg_captures \
         --output /tmp/m4_validate_live_scorer.json
@@ -25,7 +31,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
-from stg.speaker import SpeakerIdentifier, FineTunedSelfVoiceDetector
+from stg.speaker import SpeakerIdentifier, FineTunedSelfVoiceDetector, PrototypeBankSelfVoiceDetector
 
 
 def extract_segments(pcm: np.ndarray, sr: int = 16000, seg_dur: float = 2.0, hop: float = 1.0):
@@ -40,7 +46,8 @@ def extract_segments(pcm: np.ndarray, sr: int = 16000, seg_dur: float = 2.0, hop
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate fine-tuned scorer on live captures")
-    parser.add_argument("--scorer", required=True, help="Path to fine-tuned scorer.pt")
+    parser.add_argument("--scorer", default=None, help="Path to fine-tuned scorer.pt")
+    parser.add_argument("--bank", default=None, help="Path to prototype-bank .npz")
     parser.add_argument("--self-captures", required=True, help="Dir with self .npy captures")
     parser.add_argument("--neg-captures", required=True, help="Dir with negative .npy captures (or subdirs)")
     # Hardened live-domain threshold: self stays green, while same-family
@@ -49,16 +56,26 @@ def main() -> None:
     parser.add_argument("--output", default="/tmp/m4_validate_live_scorer.json")
     args = parser.parse_args()
 
+    if not args.scorer and not args.bank:
+        raise SystemExit("Provide either --scorer or --bank")
+    if args.scorer and args.bank:
+        raise SystemExit("Use only one of --scorer or --bank")
+
+    detector_kind = "prototype bank" if args.bank else "fine-tuned scorer"
     print("=" * 60)
     print("M4 Live-Domain Scorer Validation")
     print("=" * 60)
 
     # Load model
-    print("\nLoading ECAPA model...")
+    print(f"\nLoading ECAPA model + {detector_kind}...")
     t0 = time.time()
     identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
-    detector = FineTunedSelfVoiceDetector(identifier, threshold=args.threshold)
-    detector.load_scorer(args.scorer)
+    if args.bank:
+        detector = PrototypeBankSelfVoiceDetector(identifier, threshold=args.threshold)
+        detector.load_bank(args.bank)
+    else:
+        detector = FineTunedSelfVoiceDetector(identifier, threshold=args.threshold)
+        detector.load_scorer(args.scorer)
     print(f"  Model loaded in {time.time() - t0:.1f}s")
 
     # Load self captures
@@ -87,7 +104,10 @@ def main() -> None:
     sr = 16000
     mid = len(first_self) // 2
     self_window = first_self[mid:mid + 2 * sr]
-    detector.register_self(self_window)
+    if args.bank:
+        detector.add_self_prototype(self_window)
+    else:
+        detector.register_self(self_window)
     print(f"\nRegistered self from {self_files[0].name} (2s window from middle)")
 
     # Test against all self captures

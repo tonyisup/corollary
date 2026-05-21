@@ -51,6 +51,8 @@ def main():
     parser.add_argument("--text", type=str, default="Hello, I am Corollary. This is a live self-voice detection test.")
     parser.add_argument("--m4-threshold", type=float, default=0.99, help="Base M4 self-voice threshold")
     parser.add_argument("--m4-buffer-ms", type=float, default=300.0, help="M4 min buffer ms")
+    parser.add_argument("--m4-scorer", type=str, default="data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt", help="Path to fine-tuned M4 scorer")
+    parser.add_argument("--m4-bank", type=str, default=None, help="Optional prototype-bank .npz to use instead of the fine-tuned scorer")
     parser.add_argument("--output", type=str, default="/tmp/m4_live_adaptive.json", help="Output JSON path")
     parser.add_argument(
         "--register-speaker",
@@ -91,6 +93,8 @@ def main():
     args = parser.parse_args()
     if args.world_output_device is None:
         args.world_output_device = args.output_device
+    if args.m4_scorer and args.m4_bank:
+        raise SystemExit("Use only one of --m4-scorer or --m4-bank")
 
     print("=" * 60)
     print("M4 Live Adaptive Threshold Validation")
@@ -101,6 +105,7 @@ def main():
     print(f"  Duration:       {args.duration}s")
     print(f"  M4 threshold:  {args.m4_threshold}")
     print(f"  M4 buffer:     {args.m4_buffer_ms}ms")
+    print(f"  M4 detector:   {'prototype bank' if args.m4_bank else 'fine-tuned scorer'}")
 
     # Synthesize TTS
     print("\nSynthesizing TTS...")
@@ -127,6 +132,8 @@ def main():
         gated_playback=False,  # Always play TTS so we can hear it
         m4_self_threshold=args.m4_threshold,
         m4_min_buffer_ms=args.m4_buffer_ms,
+        m4_scorer_path=None if args.m4_bank is not None else args.m4_scorer,
+        m4_bank_path=args.m4_bank,
         speaker_threshold_adapter=adapter,
         save_path=Path(args.output).with_suffix(".jsonl"),
     )
