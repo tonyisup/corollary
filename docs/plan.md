@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M7 complete; M4 live baseline hardened to 0.99 with current live-domain validation at 100% self-recall and 0% FP; prototype-bank verifier validated at 97.2% self-recall and 0% FP on live-domain and wired behind `StreamingConfig.m4_bank_path`; M6 live smoke completed with 268 frames and M4 accepted 195/206; M7 interruption latency validated at 1423.9ms with two-speaker live test; 458 tests passing  
+> **Status:** M0-M7 complete; M4 live baseline remains the promoted fine-tuned scorer, the prototype-bank verifier is a validated alternate mode behind `StreamingConfig.m4_bank_path`, and the latest 5-run live comparison showed both at 100% M4 self-recall but the bank with better M7 interruption latency stability; M6 live smoke completed with 268 frames and M4 accepted 195/206; 466 tests passing; live harnesses now expose `--m4-mode auto|bank|scorer|arbitration`, and persisted artifacts record both requested and effective M4 mode  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 
@@ -163,8 +163,8 @@ corollary/
 - ECAPA/x-vector embeddings + mel similarity classifier
 - Integrate learned attribution priors from M1 and listening priors from M2/M3 into a more explicit self-voice detector
 - Support frame-level self/world/agentive-other attribution for richer interaction contexts
-- **Current evidence:** self-voice detection is wired into the live harness and streaming runtime with frame-level metadata persisted (`m4_outcome`, `m4_confidence`). Real ECAPA-TDNN is validated in the M4 path, streaming demos can enable M4 with `--m4-enable`, and the original 5-case 2026-05-09 `scripts/m4_f1_benchmark.py --real-ecapa` audit run passed the synthetic frame-level gate with aggregate F1=0.971. The expanded 8-case benchmark now adds room/device positive perturbations plus a same-domain playback-window negative; template-match-gated M4 overrides reduced playback-window false SELF positives to 0. Eligible-frame F1 at 500ms is 1.0, proving classifier quality after warmup; the default benchmark buffer is now 300ms, where expanded aggregate F1=0.9512, eligible-frame F1=1.0, and same-domain playback-window false positives remain 0.
-- **Promotion gap:** do not claim a production-grade self-voice classifier until the expanded 300ms-buffer gate is validated on real cross-room/device captures.
+- **Current evidence:** self-voice detection is wired into the live harness and streaming runtime with frame-level metadata persisted (`m4_outcome`, `m4_confidence`). Real ECAPA-TDNN is validated in the M4 path, streaming demos can enable M4 with `--m4-enable`, and the original 5-case 2026-05-09 `scripts/m4_f1_benchmark.py --real-ecapa` audit run passed the synthetic frame-level gate with aggregate F1=0.971. The expanded 8-case benchmark now adds room/device positive perturbations plus a same-domain playback-window negative; template-match-gated M4 overrides reduced playback-window false SELF positives to 0. Eligible-frame F1 at 500ms is 1.0, proving classifier quality after warmup; the default benchmark buffer is now 300ms, where expanded aggregate F1=0.9512, eligible-frame F1=1.0, and same-domain playback-window false positives remain 0. The live prototype-bank alternative is also wired through `m4_bank_path`, and in the latest 5-run live comparison the bank matched the scorer on M4 while outperforming it on M7 interruption latency.
+- **Promotion gap:** do not claim a production-grade self-voice classifier until the expanded 300ms-buffer gate is validated on real cross-room/device captures; the current live choice is scorer-as-baseline, bank-as-strong alternate mode.
 - **Acceptance:** Frame-level F1 ≥ 0.95 across rooms/devices
 
 ### M5: Multi-Speaker World Model + Episodic Memory + SAG-Grounded Learning
@@ -187,8 +187,8 @@ corollary/
 - DriftAlarm modulates NLMS learning rate on sustained match degradation
 - Multi-hypothesis IR bank (3–5 models, switch on best match)
 - Device-profile layer for orientation-dependent transfer function changes
-- **Status:** ✅ Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal. Latest two-speaker interruption smoke (2026-05-20) measured 1423.9ms with `callback_blocksize_ms=120`.
-- **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Sample-clock timestamps and analysis queue/drop diagnostics are implemented; current follow-up work is lower-latency callback sizing for interruption response.
+- **Status:** ✅ Complete. Phases 1-4 replay-validated and live room-change validated. Fine-tuned M4 + render-only CoreAudio callback + async mic analysis keep audio clean while preserving self-listening; latest 15s baseline + 15s room-change run (2026-05-18): 636 SELF, 260 BOTH, 257 adapted frames, drift alarm baseline -25.02 dB, status nominal. Latest two-speaker comparison batch (2026-05-21) showed the prototype bank ahead of the fine-tuned scorer on interruption latency stability, with both modes remaining M4-correct.
+- **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Sample-clock timestamps and analysis queue/drop diagnostics are implemented; the open question is whether the bank should become the default live M4 mode or stay as an alternate.
 
 ### M8+: Amygdala / Valence / Fast-Track Responses
 - Amygdala = fast-gate *on* the salience network, not a standalone module

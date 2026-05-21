@@ -1,6 +1,6 @@
 # Corollary — Project Status
 
-> **Date:** 2026-05-20
+> **Date:** 2026-05-21
 > **Branch:** main (synced with origin/main)
 > **Tests:** 458 passed, 1 skipped
 
@@ -14,10 +14,10 @@
 | M1c: Mixed-source attribution | ✅ Done | Dual-input fusion, SELF/WORLD/BOTH hardware validation |
 | M2: Speech-aware self/world separation | ✅ Operational | Calibrated harness, M4 metadata, room-local scoring |
 | M3: Agentive listening and proto-turn-taking | ✅ Live hardware validated | Streaming runtime, gated playback, collision repair, repair-audio queue |
-| M4: Self-voice detector | ✅ Promoted | Hardened live baseline 0.99; 100% self-recall, 0% FP on current live-domain validation; wired into streaming runtime |
+| M4: Self-voice detector | ✅ Promoted | Fine-tuned scorer remains baseline; prototype bank is a validated alternate live mode and won the latest 5-run interruption comparison; artifacts record requested + effective mode |
 | M5: Multi-speaker world model + memory | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6: Self-model and introspection | ✅ Wired + per-speaker IDs + introspective queries | Latest smoke: 336 frames, M4 accepted 220/262; SAG introspective queries functional |
-| M7: Adaptive self-tracking | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest two-speaker smoke 1423.9ms, PASS |
+| M7: Adaptive self-tracking | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest comparison favored the prototype bank on interruption latency |
 
 ## Test Coverage
 
@@ -26,9 +26,9 @@
 | Unit tests | ~200 | All packages |
 | Integration tests | ~80 | Cross-package pipelines |
 | E2E / acceptance | ~120 | Streaming, M4, M5, M7 replay |
-|| **Total** | **454** | **All passing** |
+| **Total** | **466** | **All passing** |
 
-## Latest Live Smokes (2026-05-20)
+## Latest Live Smokes (2026-05-21)
 
 ### M6 Introspective Smoke
 
@@ -47,6 +47,16 @@ Results at `/tmp/m7_live_interruption_latency_smoke.json`:
 - 1423.9 ms interruption latency
 - PASS — latency within acceptable range
 - PASS — no analysis blocks dropped
+
+### Latest Scorer/Bank Comparison
+
+Run: repeated `scripts/m4_live_finetuned_test.py` and `scripts/m7_live_interruption_latency.py` batches against the fine-tuned scorer and the prototype bank on the same geometry.
+
+Results:
+- Both modes held 100% M4 self-recall across the 5-run batch
+- Fine-tuned scorer: 4/5 M7 detections, median 4902.9 ms, mean 3913.3 ms, 1 no-detect
+- Prototype bank: 5/5 M7 detections, median 942.9 ms, mean 2526.0 ms
+- Conclusion: keep both runtime-selectable, but favor the bank for live interruption behavior in this geometry
 
 ### Broader Same-Domain Validation
 
@@ -132,6 +142,14 @@ End-to-end live M6 smoke with `StreamingRuntime` on `/Users/juicebox/Projects/co
 - M4 accepted 195/206 frames (94.7%)
 - SelfModel self-concept populated normally
 - Conclusion: runtime wiring is working end-to-end with the prototype bank.
+
+### Scorer vs Bank Live Comparison (2026-05-21)
+
+5-run same-geometry live batch results:
+- M4 self-recall: 5/5 for both modes
+- Fine-tuned scorer M7: 4/5 detections, median 4902.9 ms, mean 3913.3 ms, 1 no-detect
+- Prototype bank M7: 5/5 detections, median 942.9 ms, mean 2526.0 ms
+- Conclusion: both are usable, but the bank is the stronger live interruption candidate in this geometry
 
 ## Live Hardware Results (2026-05-17)
 
@@ -227,7 +245,7 @@ Interpretation: M7 is now live-validated for clean audio, self-listening, truste
 3. ~~**M7 room change protocol**~~ — Done (2026-05-18). Latest room-change run was nominal: no drift spike, stable M4, active adaptation before/after move.
 4. ~~**Live log timestamp hardening**~~ — Done (2026-05-18). Runtime uses a monotonic sample-clock timeline for live callback frame logs.
 5. ~~**Analysis queue diagnostics**~~ — Done (2026-05-18). Live summaries include callback count, analysis blocks enqueued/dropped, max queue depth, and worker errors.
-6. **Interruption latency tuning** — Done (2026-05-18). Live two-speaker test with `callback_blocksize_ms=120` (1920 samples). Measured **1390ms interruption latency** (human starts at 2.0s, LISTEN at 3.39s). This is comparable to human conversational interruption latency (~1500ms). The dominant factor is energy buildup time for the human voice to become detectable at the mic, not the callback blocksize. Pipeline itself adds only ~330ms (2 callbacks + 3-frame classifier). Test script at `scripts/m7_live_interruption_latency.py`.
+6. **Interruption latency tuning** — Done (2026-05-21). Latest 5-run comparison showed the bank outperforming the scorer on live interruption stability; scorer had 1 no-detect and 3 long outliers, while the bank detected every run and centered around ~943ms on the clean runs. The remaining question is whether to keep both modes or make the bank the default live verifier.
 7. **M6 self-model enrichment** — Done (2026-05-19). Ran `m6_live_introspective.py` with M4-enabled pipeline (fine-tuned scorer, 15s session). Results: 500 frames, M4 accepted 402/420 (95.7%), SAG self-concept populated with agent_voice (mean self-match=-0.001, M4 accept rate 95.7%) and speech_patterns (100% speaking, 4.8% self-attributed, mean energy -33.6dB). Known subjects empty (no WORLD speech during single-speaker run).
 8. **Broader negative training data** — Done (2026-05-19). Captured 8 negative voices + 4 self-variations in current room. Trained balanced scorer that informed the hardened live baseline; current live-domain validation is 100% self-recall and 0% FP. Scorer at `data/m4_balanced_current_room_v2/fine_tuned/fine_tuned/scorer.pt`.
 9. ~~**Prototype bank runtime smoke**~~ — Done (2026-05-20). End-to-end M6 smoke passed with `/Users/juicebox/Projects/corollary/data/m4_prototype_bank_round4_20260520/prototype_bank.npz` and `m4_bank_path`; 268 frames processed, M4 accepted 195/206 (94.7%).

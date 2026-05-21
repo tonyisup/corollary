@@ -34,7 +34,7 @@ pip install -r requirements.txt
 
 ## Project Status
 
-**Tests:** 458 passed, 1 skipped
+**Tests:** 466 passed, 1 skipped
 
 ### Milestone Summary
 
@@ -46,27 +46,32 @@ pip install -r requirements.txt
 | M1c | ✅ Done | Dual-input fusion, SELF/WORLD/BOTH hardware validation |
 | M2 | ✅ Operational | Calibrated harness, M4 metadata, room-local scoring |
 | M3 | ✅ Live hardware validated | Streaming runtime, gated playback, collision repair, repair-audio queue |
-| M4 | ✅ Promoted | Hardened live baseline 0.99; 100% self-recall, 0% FP on current live-domain validation; wired into streaming runtime |
+| M4 | ✅ Promoted | Fine-tuned scorer baseline; prototype bank is a validated alternate live mode and both hit 100% M4 self-recall in the latest live comparison |
 | M5 | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6 | ✅ Live validated | SAG introspective queries functional; latest smoke: 268 frames, M4 accepted 195/206 |
-| M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest smoke: 1423.9ms interruption latency, PASS |
+| M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest comparison favored the prototype bank on interruption latency |
 
 ### M4 Self-Voice Detector
 
-The hardened live scorer remains the promoted baseline, and a new prototype-bank verifier is now validated as an alternative strategy:
+The fine-tuned scorer remains the promoted baseline, and the prototype bank is a validated alternate live strategy:
 
-- **Fine-tuned scorer self-recall:** 100% on held-out self-captures
-- **Fine-tuned scorer FP rate:** 0% on the current negative live-domain validation set
-- **Prototype bank:** `data/m4_prototype_bank_round4_20260520/prototype_bank.npz` (97.2% self-recall on live-domain, 0% FP; runtime via `m4_bank_path`)
-- **Scorer:** `data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt`
+- The live harnesses now accept `--m4-mode auto|bank|scorer|arbitration` to force one path or the gated dual-path arbiter
+- Persisted artifacts now record both the requested M4 mode and the effective mode that actually ran
+
+- **Fine-tuned scorer self-recall:** 100% on live self-capture smokes, with confidence ~0.9990–0.9998
+- **Prototype bank self-recall:** 100% on live self-capture smokes, with confidence ~0.1636–0.1790
+- **Prototype bank artifact:** `data/m4_prototype_bank_round4_20260520/prototype_bank.npz` (runtime via `m4_bank_path`)
+- **Scorer artifact:** `data/m4_finetuned_ecapa_live_domain_20260517/fine_tuned/scorer.pt`
+- **Latest live comparison:** both strategies were M4-correct in 5/5 runs; the bank was stronger on the live M7 interruption path
 
 ### M7 Interruption Latency
 
 Live two-speaker test with `callback_blocksize_ms=120`:
 
-- **Interruption latency: 1423.9ms** (human onset to LISTEN transition)
-- Comparable to human conversational interruption (~1500ms)
-- Pipeline adds ~330ms (2 callbacks + 3-frame classifier); dominant factor is acoustic energy buildup time
+- **Interruption latency:** the latest 5-run comparison was bimodal by detector choice and geometry
+- **Prototype bank:** median 942.9ms, mean 2526.0ms, 5/5 interruption detections
+- **Fine-tuned scorer:** median 4902.9ms, mean 3913.3ms, 4/5 interruption detections, 1/5 no-detect
+- Pipeline adds ~330ms (2 callbacks + 3-frame classifier); the remaining variance is mostly acoustic/geometry-dependent
 - Test script: `scripts/m7_live_interruption_latency.py`
 
 ### M6 Self-Model

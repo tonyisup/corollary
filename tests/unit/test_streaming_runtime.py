@@ -36,6 +36,7 @@ class TestStreamingConfig:
         assert config.tts_chunk_ms == 200.0
         assert config.gated_playback is True
         assert config.m4_enable is False
+        assert config.m4_mode == "auto"
 
     def test_custom(self):
         config = StreamingConfig(sr=48000, tts_chunk_ms=100.0, m4_enable=True)
@@ -139,6 +140,8 @@ class TestStreamingRuntimeOffline:
             assert "tts_playing" in entry
             assert "tts_position_s" in entry
             assert "m4_outcome" in entry
+            assert "m4_mode" in entry
+            assert "m4_effective_mode" in entry
             assert "output_source" in entry
             assert "repair_position_s" in entry
             assert "repair_playing" in entry

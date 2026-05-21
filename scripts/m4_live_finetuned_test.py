@@ -34,7 +34,12 @@ import sounddevice as sd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
-from stg.speaker import SpeakerIdentifier, FineTunedSelfVoiceDetector, PrototypeBankSelfVoiceDetector
+from stg.speaker import (
+    SpeakerIdentifier,
+    FineTunedSelfVoiceDetector,
+    GatedM4Arbitrator,
+    PrototypeBankSelfVoiceDetector,
+)
 from broca.tts import synthesize
 
 
@@ -44,6 +49,12 @@ def main() -> None:
     parser.add_argument("--output-device", type=int, default=2)
     parser.add_argument("--scorer", default=None, help="Path to fine-tuned scorer.pt")
     parser.add_argument("--bank", default=None, help="Path to prototype-bank .npz")
+    parser.add_argument(
+        "--m4-mode",
+        choices=["auto", "bank", "scorer", "arbitration"],
+        default="auto",
+        help="Force M4 mode: auto, bank-only, scorer-only, or bank+scorer arbitration",
+    )
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--duration", type=float, default=10.0)
     parser.add_argument("--text", default="Hello, I am Corollary. This is a fresh live test with the fine-tuned scorer.")
@@ -52,24 +63,46 @@ def main() -> None:
 
     if not args.scorer and not args.bank:
         raise SystemExit("Provide either --scorer or --bank")
-    if args.scorer and args.bank:
-        raise SystemExit("Use only one of --scorer or --bank")
+    if args.m4_mode == "bank" and not args.bank:
+        raise SystemExit("--m4-mode bank requires --bank")
+    if args.m4_mode == "scorer" and not args.scorer:
+        raise SystemExit("--m4-mode scorer requires --scorer")
+    if args.m4_mode == "arbitration" and (not args.bank or not args.scorer):
+        raise SystemExit("--m4-mode arbitration requires both --bank and --scorer")
 
-    detector_kind = "prototype bank" if args.bank else "fine-tuned scorer"
+    detector_kind = {
+        "auto": "bank + scorer arbitration" if args.scorer and args.bank else "prototype bank" if args.bank else "fine-tuned scorer",
+        "bank": "prototype bank",
+        "scorer": "fine-tuned scorer",
+        "arbitration": "bank + scorer arbitration",
+    }[args.m4_mode]
     print("=" * 60)
     print(f"M4 Live Test — {detector_kind.title()}")
     print("=" * 60)
+    effective_mode = {
+        "auto": "arbitration" if args.bank and args.scorer else "bank" if args.bank else "scorer",
+        "bank": "bank",
+        "scorer": "scorer",
+        "arbitration": "arbitration",
+    }[args.m4_mode]
+    print(f"  Effective M4 mode:   {effective_mode}")
 
     # Load model
     print(f"\nLoading ECAPA model + {detector_kind}...")
     t0 = time.time()
     identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
-    if args.bank:
-        detector = PrototypeBankSelfVoiceDetector(identifier, threshold=args.threshold)
-        detector.load_bank(args.bank)
+    bank_detector = None
+    scorer_detector = None
+    if args.bank and args.m4_mode in {"auto", "bank", "arbitration"}:
+        bank_detector = PrototypeBankSelfVoiceDetector(identifier, threshold=args.threshold)
+        bank_detector.load_bank(args.bank)
+    if args.scorer and args.m4_mode in {"auto", "scorer", "arbitration"}:
+        scorer_detector = FineTunedSelfVoiceDetector(identifier, threshold=args.threshold)
+        scorer_detector.load_scorer(args.scorer)
+    if args.m4_mode == "arbitration" or (args.m4_mode == "auto" and bank_detector is not None and scorer_detector is not None):
+        detector = GatedM4Arbitrator(bank_detector=bank_detector, scorer_detector=scorer_detector, threshold=args.threshold)
     else:
-        detector = FineTunedSelfVoiceDetector(identifier, threshold=args.threshold)
-        detector.load_scorer(args.scorer)
+        detector = bank_detector if bank_detector is not None else scorer_detector
     print(f"  Loaded in {time.time() - t0:.1f}s")
 
     # Synthesize TTS
@@ -83,10 +116,10 @@ def main() -> None:
     # For live test, we register from the TTS itself since we don't have a clean capture
     mid = len(tts_pcm) // 2
     self_window = tts_pcm[mid:mid + 2 * 16000]
-    if args.bank:
-        detector.add_self_prototype(self_window)
-    else:
+    if hasattr(detector, "register_self"):
         detector.register_self(self_window)
+    else:
+        detector.add_self_prototype(self_window)
     print(f"  Registered self from TTS (2s window)")
 
     # Play and capture
@@ -171,6 +204,7 @@ def main() -> None:
         "scorer": args.scorer,
         "threshold": args.threshold,
         "text": args.text,
+        "effective_m4_mode": effective_mode,
         "capture_samples": len(captured),
         "capture_rms_db": round(float(20 * np.log10(np.sqrt(np.mean(captured**2)) + 1e-10)), 1),
         "results": results,

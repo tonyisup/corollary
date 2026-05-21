@@ -258,6 +258,15 @@ class ThalamicAttributor:
             'm4_confidence': None,
             'm4_buffer_length': 0,
             'm4_template_match_passed': False,
+            'm4_primary_source': None,
+            'm4_bank_is_self': None,
+            'm4_bank_confidence': None,
+            'm4_scorer_is_self': None,
+            'm4_scorer_confidence': None,
+            'm4_disagreed': False,
+            'm4_degraded_mode': False,
+            'm4_final_is_self': None,
+            'm4_final_confidence': None,
         }
         
         # Compute per-frame self-match score when self_pcm is available.
@@ -337,6 +346,9 @@ class ThalamicAttributor:
                     try:
                         is_self_voice, m4_confidence = self.m4_detector.is_self(self._m4_buffer)
                         m4_metadata['m4_confidence'] = m4_confidence
+                        arbiter_result = getattr(self.m4_detector, "last_result", None)
+                        if arbiter_result is not None and hasattr(arbiter_result, "to_metadata_dict"):
+                            m4_metadata.update(arbiter_result.to_metadata_dict())
                         # Apply per-speaker adaptive threshold only for real
                         # identified speakers. Non-self profile learning happens
                         # in the runtime from cleaner WORLD-only evidence after

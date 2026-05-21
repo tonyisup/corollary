@@ -74,6 +74,7 @@ class StreamingConfig:
     # M4 params
     m4_self_threshold: float = 0.99
     m4_min_buffer_ms: float = 60.0
+    m4_mode: str = "auto"  # auto, bank, scorer, or arbitration
     m4_scorer_path: Optional[str] = None  # Path to fine-tuned scorer.pt (feature-based)
     m4_bank_path: Optional[str] = None  # Path to prototype-bank .npz (multi-prototype margin)
 
@@ -154,6 +155,15 @@ class StreamingFrameLog:
     room_adaptation_reason: Optional[str] = None
     room_adaptation_error: Optional[float] = None
     room_adaptation_updates: Optional[int] = None
+    m4_primary_source: Optional[str] = None
+    m4_bank_is_self: Optional[bool] = None
+    m4_bank_confidence: Optional[float] = None
+    m4_scorer_is_self: Optional[bool] = None
+    m4_scorer_confidence: Optional[float] = None
+    m4_disagreed: Optional[bool] = None
+    m4_degraded_mode: Optional[bool] = None
+    m4_mode: Optional[str] = None
+    m4_effective_mode: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -177,7 +187,67 @@ class SyntheticAttributionFrame:
     confidence: float = 0.9
     m4_outcome: str = "not_attempted"
     m4_confidence: Optional[float] = None
+    m4_mode: Optional[str] = None
     speaker_id: Optional[str] = None  # Per-speaker adaptive threshold ID
+
+
+def _normalize_m4_mode(mode: Optional[str]) -> str:
+    normalized = (mode or "auto").strip().lower()
+    valid_modes = {"auto", "bank", "scorer", "arbitration"}
+    if normalized not in valid_modes:
+        raise ValueError(
+            f"Invalid M4 mode '{mode}'. Expected one of: {', '.join(sorted(valid_modes))}"
+        )
+    return normalized
+
+
+def _select_m4_detector(
+    *,
+    mode: str,
+    bank_detector: Optional[object],
+    scorer_detector: Optional[object],
+    threshold: float,
+) -> tuple[Optional[object], str]:
+    from stg.speaker import GatedM4Arbitrator
+
+    mode = _normalize_m4_mode(mode)
+
+    if mode == "bank":
+        if bank_detector is None:
+            raise ValueError("M4 mode 'bank' requires --m4-bank")
+        return bank_detector, "prototype bank"
+
+    if mode == "scorer":
+        if scorer_detector is None:
+            raise ValueError("M4 mode 'scorer' requires --m4-scorer")
+        return scorer_detector, "fine-tuned scorer"
+
+    if mode == "arbitration":
+        if bank_detector is None or scorer_detector is None:
+            raise ValueError("M4 mode 'arbitration' requires both --m4-bank and --m4-scorer")
+        return (
+            GatedM4Arbitrator(
+                bank_detector=bank_detector,
+                scorer_detector=scorer_detector,
+                threshold=threshold,
+            ),
+            "bank + scorer arbitration",
+        )
+
+    if bank_detector is not None and scorer_detector is not None:
+        return (
+            GatedM4Arbitrator(
+                bank_detector=bank_detector,
+                scorer_detector=scorer_detector,
+                threshold=threshold,
+            ),
+            "bank + scorer arbitration",
+        )
+    if bank_detector is not None:
+        return bank_detector, "prototype bank"
+    if scorer_detector is not None:
+        return scorer_detector, "fine-tuned scorer"
+    return None, "mock detector"
 
 
 class StreamingRuntime:
@@ -195,6 +265,8 @@ class StreamingRuntime:
     def __init__(self, config: StreamingConfig) -> None:
         self.config = config
         self.sr = config.sr
+        self._m4_mode = _normalize_m4_mode(config.m4_mode)
+        self._m4_effective_mode: Optional[str] = None
 
         # TTS state
         self._tts_pcm = config.tts_pcm.astype(np.float32) if config.tts_pcm is not None else None
@@ -231,40 +303,84 @@ class StreamingRuntime:
             if room_local_threshold is None:
                 room_local_threshold = 0.04
 
-        # M4 detector
+        # M4 detector(s)
         m4_detector = None
         m4_identifier = None
         if config.m4_enable:
+            m4_bank_detector = None
+            m4_scorer_detector = None
             try:
-                if config.m4_bank_path is not None:
-                    # Use a multi-prototype verifier with self/negative margins.
+                if self._m4_mode in {"auto", "bank", "arbitration"} and config.m4_bank_path is not None:
                     from stg.speaker import SpeakerIdentifier, PrototypeBankSelfVoiceDetector
+
                     m4_identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
-                    m4_detector = PrototypeBankSelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
-                    m4_detector.load_bank(config.m4_bank_path)
+                    m4_bank_detector = PrototypeBankSelfVoiceDetector(
+                        m4_identifier,
+                        threshold=config.m4_self_threshold,
+                    )
+                    m4_bank_detector.load_bank(config.m4_bank_path)
                     if self._tts_pcm is not None:
-                        m4_detector.add_self_prototype(self._tts_pcm)
+                        m4_bank_detector.add_self_prototype(self._tts_pcm)
                     print(f"  M4: loaded prototype bank from {config.m4_bank_path}")
-                elif config.m4_scorer_path is not None:
-                    # Use fine-tuned scorer (real ECAPA + trained projection head)
+            except Exception as e:
+                print(f"  WARNING: prototype bank failed to initialize: {e}")
+                m4_bank_detector = None
+
+            try:
+                if self._m4_mode in {"auto", "scorer", "arbitration"} and config.m4_scorer_path is not None:
                     from stg.speaker import SpeakerIdentifier, FineTunedSelfVoiceDetector
-                    m4_identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
-                    m4_detector = FineTunedSelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
-                    m4_detector.load_scorer(config.m4_scorer_path)
+
+                    if m4_identifier is None:
+                        m4_identifier = SpeakerIdentifier(use_real=True, backend="ecapa")
+                    m4_scorer_detector = FineTunedSelfVoiceDetector(
+                        m4_identifier,
+                        threshold=config.m4_self_threshold,
+                    )
+                    m4_scorer_detector.load_scorer(config.m4_scorer_path)
                     if self._tts_pcm is not None:
-                        m4_detector.register_self(self._tts_pcm)
+                        m4_scorer_detector.register_self(self._tts_pcm)
                     print(f"  M4: loaded fine-tuned scorer from {config.m4_scorer_path}")
-                else:
+            except Exception as e:
+                print(f"  WARNING: fine-tuned scorer failed to initialize: {e}")
+                m4_scorer_detector = None
+
+            try:
+                from stg.speaker import SelfVoiceDetector
+
+                m4_detector, m4_label = _select_m4_detector(
+                    mode=self._m4_mode,
+                    bank_detector=m4_bank_detector,
+                    scorer_detector=m4_scorer_detector,
+                    threshold=config.m4_self_threshold,
+                )
+                if m4_detector is None:
                     # Fallback to mock detector (hash-based, no real ECAPA)
-                    from stg.speaker import SpeakerIdentifier, SelfVoiceDetector
+                    from stg.speaker import SpeakerIdentifier
+
                     m4_identifier = SpeakerIdentifier(use_real=False)
                     m4_detector = SelfVoiceDetector(m4_identifier, threshold=config.m4_self_threshold)
                     if self._tts_pcm is not None:
                         m4_detector.register_self(self._tts_pcm)
+                    m4_label = "mock detector"
+                else:
+                    if self._tts_pcm is not None and hasattr(m4_detector, "register_self"):
+                        m4_detector.register_self(self._tts_pcm)
+                    print(f"  M4: using {m4_label}")
             except Exception as e:
                 print(f"  WARNING: M4 detector failed to initialize: {e}")
                 m4_detector = None
                 m4_identifier = None
+
+            if m4_detector is None:
+                self._m4_effective_mode = "mock"
+            elif isinstance(m4_detector, GatedM4Arbitrator):
+                self._m4_effective_mode = "arbitration"
+            elif m4_detector is m4_bank_detector:
+                self._m4_effective_mode = "bank"
+            elif m4_detector is m4_scorer_detector:
+                self._m4_effective_mode = "scorer"
+            else:
+                self._m4_effective_mode = "mock"
 
         # Speaker identification for per-speaker adaptive threshold
         speaker_identifier = None
@@ -722,6 +838,15 @@ class StreamingRuntime:
             repair_completed=repair_completed,
             m4_outcome=m4_metadata.get("m4_outcome", "not_attempted"),
             m4_confidence=m4_metadata.get("m4_confidence"),
+            m4_mode=self._m4_mode,
+            m4_effective_mode=self._m4_effective_mode,
+            m4_primary_source=m4_metadata.get("m4_primary_source"),
+            m4_bank_is_self=m4_metadata.get("m4_bank_is_self"),
+            m4_bank_confidence=m4_metadata.get("m4_bank_confidence"),
+            m4_scorer_is_self=m4_metadata.get("m4_scorer_is_self"),
+            m4_scorer_confidence=m4_metadata.get("m4_scorer_confidence"),
+            m4_disagreed=m4_metadata.get("m4_disagreed"),
+            m4_degraded_mode=m4_metadata.get("m4_degraded_mode"),
             energy_db=round(attr_result.energy_db, 2),
             self_match_score=round(self_match_score, 4),
             self_match_score_per_frame=(
@@ -1327,6 +1452,15 @@ class StreamingRuntime:
             "repair_completed": log.repair_completed,
             "m4_outcome": log.m4_outcome,
             "m4_confidence": log.m4_confidence,
+            "m4_mode": log.m4_mode,
+            "m4_effective_mode": log.m4_effective_mode,
+            "m4_primary_source": log.m4_primary_source,
+            "m4_bank_is_self": log.m4_bank_is_self,
+            "m4_bank_confidence": log.m4_bank_confidence,
+            "m4_scorer_is_self": log.m4_scorer_is_self,
+            "m4_scorer_confidence": log.m4_scorer_confidence,
+            "m4_disagreed": log.m4_disagreed,
+            "m4_degraded_mode": log.m4_degraded_mode,
             "energy_db": log.energy_db,
             "self_match_score": log.self_match_score,
             "self_match_score_per_frame": log.self_match_score_per_frame,

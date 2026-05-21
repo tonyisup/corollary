@@ -146,6 +146,12 @@ def main() -> None:
                         help="Path to fine-tuned M4 scorer")
     parser.add_argument("--m4-bank", type=str, default=None,
                         help="Optional prototype-bank .npz to use instead of the fine-tuned scorer")
+    parser.add_argument(
+        "--m4-mode",
+        choices=["auto", "bank", "scorer", "arbitration"],
+        default="auto",
+        help="Force M4 mode: auto, bank-only, scorer-only, or bank+scorer arbitration",
+    )
     parser.add_argument("--room-filter", type=str,
                         default="data/m3_broca_room_filter_production.npy",
                         help="Path to room filter .npy")
@@ -167,6 +173,15 @@ def main() -> None:
     if args.human_output_device is None and not args.manual_human:
         print("ERROR: Either --human-output-device or --manual-human is required")
         sys.exit(1)
+    if args.m4_mode == "bank" and not args.m4_bank:
+        print("ERROR: --m4-mode bank requires --m4-bank")
+        sys.exit(1)
+    if args.m4_mode == "scorer" and not args.m4_scorer:
+        print("ERROR: --m4-mode scorer requires --m4-scorer")
+        sys.exit(1)
+    if args.m4_mode == "arbitration" and (not args.m4_bank or not args.m4_scorer):
+        print("ERROR: --m4-mode arbitration requires both --m4-bank and --m4-scorer")
+        sys.exit(1)
 
     sr = 16000
 
@@ -183,8 +198,17 @@ def main() -> None:
     print(f"  Human delay:          {args.human_delay_s} s")
     print(f"  Human duration:       {args.human_duration_s} s")
     print(f"  Total duration:       {args.duration_s} s")
-    detector_source = args.m4_bank if args.m4_bank is not None else args.m4_scorer
-    detector_label = "prototype bank" if args.m4_bank is not None else "fine-tuned scorer"
+    detector_source = (
+        f"bank={args.m4_bank}, scorer={args.m4_scorer}"
+        if args.m4_bank is not None and args.m4_scorer is not None
+        else args.m4_bank if args.m4_bank is not None else args.m4_scorer
+    )
+    detector_label = {
+        "auto": "bank + scorer arbitration" if args.m4_bank is not None and args.m4_scorer is not None else "prototype bank" if args.m4_bank is not None else "fine-tuned scorer",
+        "bank": "prototype bank",
+        "scorer": "fine-tuned scorer",
+        "arbitration": "bank + scorer arbitration",
+    }[args.m4_mode]
     print(f"  M4 detector:          {detector_label}")
     print(f"  M4 path:              {detector_source}")
     print(f"  Room filter:          {args.room_filter}")
@@ -206,6 +230,14 @@ def main() -> None:
         print("  Room filter will not be applied.")
         args.room_filter = None
     print()
+
+    effective_mode = {
+        "auto": "arbitration" if args.m4_bank is not None and args.m4_scorer is not None else "bank" if args.m4_bank is not None else "scorer",
+        "bank": "bank",
+        "scorer": "scorer",
+        "arbitration": "arbitration",
+    }[args.m4_mode]
+    print(f"  Effective M4 mode:    {effective_mode}")
 
     # Generate TTS
     print("Generating TTS audio...")
@@ -244,7 +276,8 @@ def main() -> None:
         callback_blocksize_ms=args.callback_blocksize_ms,
         gated_playback=True,
         m4_enable=(args.m4_scorer is not None or args.m4_bank is not None),
-        m4_scorer_path=None if args.m4_bank is not None else args.m4_scorer,
+        m4_mode=args.m4_mode,
+        m4_scorer_path=args.m4_scorer,
         m4_bank_path=args.m4_bank,
         # Hardened live-domain threshold for the current scorer.
         m4_self_threshold=0.99,
@@ -386,6 +419,7 @@ def main() -> None:
             "human_duration_s": args.human_duration_s,
             "duration_s": args.duration_s,
             "m4_enabled": (args.m4_scorer is not None or args.m4_bank is not None),
+            "effective_m4_mode": effective_mode,
         },
         "summary": {
             "total_frames": len(logs),
