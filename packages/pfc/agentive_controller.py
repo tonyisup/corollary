@@ -90,9 +90,10 @@ class AgentiveController:
         return text
 
     def process_attribution(
-        self, 
-        res: AttributionResult, 
-        current_time: float = None
+        self,
+        res: AttributionResult,
+        current_time: float = None,
+        lexical_triggers: Optional[list] = None,
     ) -> ControllerDecision:
         """Update internal state based on latest attribution result.
         
@@ -343,6 +344,7 @@ class AgentiveController:
                 res,
                 controller_state=pre_m8_state,
                 current_time=current_time,
+                lexical_triggers=lexical_triggers,
             )
             if m8_decision.action == M8FastTrackAction.INTERRUPT and not should_interrupt:
                 should_interrupt = True

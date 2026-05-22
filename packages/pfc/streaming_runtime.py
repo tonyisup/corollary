@@ -100,6 +100,7 @@ class StreamingConfig:
 
     # M8 fast-track salience policy (opt-in)
     m8_enable: bool = False
+    m8_lexical_triggers: Optional[list] = None  # e.g. ["stop", "wait", "hey", "excuse me"]
 
     # Attributor params
     energy_threshold_db: float = -55.0
@@ -904,7 +905,10 @@ class StreamingRuntime:
         self_match_score: float = 0.0,
     ) -> tuple[np.ndarray, StreamingFrameLog]:
         request_deferred, request_resumed = self._maybe_request_or_resume_output(timestamp_s)
-        decision = self._controller.process_attribution(attr_result, current_time=timestamp_s)
+        decision = self._controller.process_attribution(
+            attr_result, current_time=timestamp_s,
+            lexical_triggers=self.config.m8_lexical_triggers,
+        )
         if decision.collision_repair_text and self._repair_pcm is not None:
             self._repair_pending = True
             self._repair_started = False
@@ -1205,7 +1209,10 @@ class StreamingRuntime:
             )
 
             with self._state_lock:
-                decision = self._controller.process_attribution(attr_result, current_time=sub_timestamp)
+                decision = self._controller.process_attribution(
+                    attr_result, current_time=sub_timestamp,
+                    lexical_triggers=self.config.m8_lexical_triggers,
+                )
                 if decision.collision_repair_text and self._repair_pcm is not None:
                     self._repair_pending = True
                     self._repair_started = False

@@ -248,3 +248,36 @@ def test_m8_cooldown_does_not_affect_different_actions():
     # BOTH+SPEAK with disagreement → score 0.70+0.12+0.08+0.10 = 1.0 → INTERRUPT
     assert d2.action == M8FastTrackAction.INTERRUPT
 
+
+def test_m8_lexical_trigger_boosts_score():
+    """Lexical triggers in transcript metadata should boost salience score."""
+    policy = M8FastTrackPolicy()
+    result = _world_result(metadata={"transcript": "hey corollary stop talking"})
+    state = AgentState.IDLE
+
+    # Without triggers: score should be base WORLD level (~0.66)
+    d1 = policy.evaluate(result, controller_state=state, current_time=1.0)
+    base_score = d1.score
+
+    # With matching triggers: score should be higher
+    d2 = policy.evaluate(
+        result, controller_state=state, current_time=1.0,
+        lexical_triggers=["stop", "wait", "hey"],
+    )
+    assert d2.score > base_score
+    assert "lexical trigger" in d2.reason.lower()
+
+
+def test_m8_lexical_trigger_no_match():
+    """Non-matching lexical triggers should not boost score."""
+    policy = M8FastTrackPolicy()
+    result = _world_result(metadata={"transcript": "hello how are you"})
+    state = AgentState.IDLE
+
+    d1 = policy.evaluate(result, controller_state=state, current_time=1.0)
+    d2 = policy.evaluate(
+        result, controller_state=state, current_time=1.0,
+        lexical_triggers=["stop", "wait"],
+    )
+    assert d1.score == d2.score
+    assert "lexical trigger" not in d2.reason.lower()
