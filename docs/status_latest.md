@@ -26,7 +26,7 @@
 | Unit tests | ~200 | All packages |
 | Integration tests | ~80 | Cross-package pipelines |
 | E2E / acceptance | ~120 | Streaming, M4, M5, M7 replay |
-| **Total** | **476** | **All passing** |
+| **Total** | **478** | **All passing** |
 
 ## Latest Live Smokes (2026-05-21)
 

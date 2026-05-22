@@ -34,7 +34,7 @@ pip install -r requirements.txt
 
 ## Project Status
 
-**Tests:** 476 passed, 1 skipped
+**Tests:** 478 passed, 1 skipped
 
 ### Milestone Summary
 
@@ -50,7 +50,7 @@ pip install -r requirements.txt
 | M5 | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6 | ✅ Live validated | SAG introspective queries functional; latest smoke: 268 frames, M4 accepted 195/206 |
 | M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest comparison favored the prototype bank on interruption latency |
-| M8+ | 🛠️ Started | Policy-first fast-track salience layer wired in controller/runtime (opt-in); live-smoke verified persisted override logs; hardened against false fast-tracks on silence and SELF-only frames |
+| M8+ | 🛠️ Started | Policy-first fast-track salience layer wired in controller/runtime (opt-in); live acceptance sweep passes all 3 scenarios (SELF_ONLY, HIGH_SALIENCE, SILENCE) with zero false fast-tracks; cooldown hysteresis and bank-trusts-SELF hardening |
 
 ### M4 Self-Voice Detector
 
