@@ -2,7 +2,7 @@
 
 > **Project Codename:** Corollary  
 > **Author:** Tony  
-> **Status:** M0-M7 complete; M4 live baseline remains the promoted fine-tuned scorer, the prototype-bank verifier is a validated alternate mode behind `StreamingConfig.m4_bank_path`, and the latest 5-run live comparison showed both at 100% M4 self-recall but the bank with better M7 interruption latency stability; M6 live smoke completed with 268 frames and M4 accepted 195/206; 472 tests passing; live harnesses now expose `--m4-mode auto|bank|scorer|arbitration`, and persisted artifacts record both requested and effective M4 mode; the gated arbitration (bank + scorer) provides human-like interruption latency (~944ms) and is now available; M8 live smoke now verifies persisted override logs with live INTERRUPT/WARN/ESCALATE/DEFER decisions, and non-speech frames are guarded from fast-track interrupts.  
+> **Status:** M0-M7 complete; M4 live baseline remains the promoted fine-tuned scorer, the prototype-bank verifier is a validated alternate mode behind `StreamingConfig.m4_bank_path`, and the latest 5-run live comparison showed both at 100% M4 self-recall but the bank with better M7 interruption latency stability; M6 live smoke completed with 268 frames and M4 accepted 195/206; 476 tests passing; live harnesses now expose `--m4-mode auto|bank|scorer|arbitration`, and persisted artifacts record both requested and effective M4 mode; the gated arbitration (bank + scorer) provides human-like interruption latency (~944ms) and is now available; M8 live acceptance sweep passes all 3 scenarios (SELF_ONLY, HIGH_SALIENCE, SILENCE) with zero false fast-tracks.  
 > **Created:** 2026-04-03  
 > **Source:** Extracted from longterm workspace conversation + plan.md
 

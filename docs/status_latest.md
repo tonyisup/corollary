@@ -26,7 +26,7 @@
 | Unit tests | ~200 | All packages |
 | Integration tests | ~80 | Cross-package pipelines |
 | E2E / acceptance | ~120 | Streaming, M4, M5, M7 replay |
-| **Total** | **472** | **All passing** |
+| **Total** | **476** | **All passing** |
 
 ## Latest Live Smokes (2026-05-21)
 
@@ -179,6 +179,7 @@ Latest live smoke (2026-05-21):
 - `/tmp/m8_live_smoke_postfix.jsonl` persisted non-null `m8_action`, `m8_score`, `m8_urgency`, `m8_valence`, and `m8_reason`
 - non-speech frames are now explicitly guarded from fast-track interrupts
 - persistence gap in the live analysis worker path is fixed and regression-tested
+- M8 acceptance sweep passes all 3 scenarios (SELF_ONLY, HIGH_SALIENCE, SILENCE) with zero false fast-tracks
 
 Acceptance focus:
 - high-salience WORLD input can fast-track a response
