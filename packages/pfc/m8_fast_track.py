@@ -49,7 +49,7 @@ class M8FastTrackPolicy:
         warn_threshold: float = 0.65,
         interrupt_threshold: float = 0.80,
         escalate_threshold: float = 0.95,
-        cooldown_s: float = 0.5,
+        cooldown_s: float = 0.3,
     ) -> None:
         self.warn_threshold = warn_threshold
         self.interrupt_threshold = interrupt_threshold
@@ -127,17 +127,13 @@ class M8FastTrackPolicy:
             reasons.append("no speech → low salience")
 
         if metadata.get("m4_disagreed"):
-            # Disagreement between bank and scorer is only meaningful when
-            # there is actual speech evidence. On silence/noise frames, M4
-            # disagreement is a detector artifact, not a salience signal.
-            # Additionally, when the bank says SELF and the agent is speaking,
-            # the bank's SELF verdict should be trusted — disagreement in this
-            # case is a scorer false positive, not a real salience event.
+            # When the bank says SELF, trust it over scorer disagreement
+            # regardless of controller state. The bank is the stronger
+            # live candidate.
             bank_says_self = metadata.get("m4_bank_is_self") is True
-            agent_speaking = state == "SPEAK"
             if attr_result.is_speech and attr_result.confidence >= 0.3:
-                if bank_says_self and agent_speaking:
-                    reasons.append("M4 disagreement ignored: bank trusts SELF during SPEAK")
+                if bank_says_self:
+                    reasons.append("M4 disagreement ignored: bank trusts SELF")
                 else:
                     score += 0.12
                     reasons.append("M4 disagreement raises salience")
@@ -145,27 +141,25 @@ class M8FastTrackPolicy:
                 reasons.append("M4 disagreement ignored: low confidence / non-speech")
         if metadata.get("m4_degraded_mode"):
             if attr_result.is_speech and attr_result.confidence >= 0.3:
-                if metadata.get("m4_bank_is_self") is True and state == "SPEAK":
-                    reasons.append("M4 degraded mode ignored: bank trusts SELF during SPEAK")
+                if metadata.get("m4_bank_is_self") is True:
+                    reasons.append("M4 degraded mode ignored: bank trusts SELF")
                 else:
                     score += 0.08
                     reasons.append("M4 degraded mode raises salience")
             else:
                 reasons.append("M4 degraded mode ignored: low confidence / non-speech")
         if metadata.get("m4_final_is_self") is False:
-            # Only boost if M4 actually had enough signal to make a decision,
-            # and the bank didn't already confirm SELF during SPEAK.
             if attr_result.confidence >= 0.3:
-                if metadata.get("m4_bank_is_self") is True and state == "SPEAK":
-                    reasons.append("M4 final-is-self ignored: bank trusts SELF during SPEAK")
+                if metadata.get("m4_bank_is_self") is True:
+                    reasons.append("M4 final-is-self ignored: bank trusts SELF")
                 else:
                     score += 0.10
                     reasons.append("M4 final verdict rejected SELF")
         if metadata.get("m4_bank_is_self") is not None and metadata.get("m4_scorer_is_self") is not None:
             if metadata.get("m4_bank_is_self") != metadata.get("m4_scorer_is_self"):
                 if attr_result.is_speech and attr_result.confidence >= 0.3:
-                    if metadata.get("m4_bank_is_self") is True and state == "SPEAK":
-                        reasons.append("bank/scorer disagreement ignored: bank trusts SELF during SPEAK")
+                    if metadata.get("m4_bank_is_self") is True:
+                        reasons.append("bank/scorer disagreement ignored: bank trusts SELF")
                     else:
                         score += 0.10
                         reasons.append("bank/scorer disagreement raises salience")

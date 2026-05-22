@@ -137,7 +137,7 @@ def test_m8_disagreement_ignored_when_bank_trusts_self_during_speak():
     )
     # Bank trusts SELF + agent speaking → disagreement ignored, score stays at base
     assert decision.score < policy.interrupt_threshold
-    assert "bank trusts SELF during SPEAK" in decision.reason
+    assert "bank trusts SELF" in decision.reason
     assert decision.action != M8FastTrackAction.INTERRUPT
     assert decision.action != M8FastTrackAction.ESCALATE
 
