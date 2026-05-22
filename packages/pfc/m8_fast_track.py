@@ -79,15 +79,39 @@ class M8FastTrackPolicy:
             valence = "positive"
             reasons.append("SELF evidence is low urgency")
         elif verdict == SourceVerdict.WORLD and attr_result.is_speech:
-            score = 0.72 if state == "SPEAK" else 0.66
-            urgency = "medium"
-            valence = "negative"
-            reasons.append("WORLD speech is socially salient")
+            # Low-energy WORLD frames near the noise floor are likely VAD
+            # false positives, not real human speech. Don't fast-track on them.
+            if attr_result.energy_db < -45.0:
+                score = 0.20
+                urgency = "low"
+                valence = "neutral"
+                reasons.append("WORLD near noise floor → low confidence")
+            elif state == "SPEAK":
+                score = 0.72
+                urgency = "medium"
+                valence = "negative"
+                reasons.append("WORLD speech is socially salient")
+            else:
+                score = 0.66
+                urgency = "medium"
+                valence = "negative"
+                reasons.append("WORLD speech is socially salient")
         elif verdict == SourceVerdict.BOTH and attr_result.is_speech:
-            score = 0.58 if state != "SPEAK" else 0.70
-            urgency = "medium"
-            valence = "negative"
-            reasons.append("BOTH speech implies overlap / mixed salience")
+            if attr_result.energy_db < -45.0:
+                score = 0.20
+                urgency = "low"
+                valence = "neutral"
+                reasons.append("BOTH near noise floor → low confidence")
+            elif state == "SPEAK":
+                score = 0.70
+                urgency = "medium"
+                valence = "negative"
+                reasons.append("BOTH speech implies overlap / mixed salience")
+            else:
+                score = 0.58
+                urgency = "medium"
+                valence = "negative"
+                reasons.append("BOTH speech implies overlap / mixed salience")
         elif attr_result.is_speech:
             score = 0.45
             urgency = "medium"
@@ -99,18 +123,50 @@ class M8FastTrackPolicy:
             reasons.append("no speech → low salience")
 
         if metadata.get("m4_disagreed"):
-            score += 0.12
-            reasons.append("M4 disagreement raises salience")
+            # Disagreement between bank and scorer is only meaningful when
+            # there is actual speech evidence. On silence/noise frames, M4
+            # disagreement is a detector artifact, not a salience signal.
+            # Additionally, when the bank says SELF and the agent is speaking,
+            # the bank's SELF verdict should be trusted — disagreement in this
+            # case is a scorer false positive, not a real salience event.
+            bank_says_self = metadata.get("m4_bank_is_self") is True
+            agent_speaking = state == "SPEAK"
+            if attr_result.is_speech and attr_result.confidence >= 0.3:
+                if bank_says_self and agent_speaking:
+                    reasons.append("M4 disagreement ignored: bank trusts SELF during SPEAK")
+                else:
+                    score += 0.12
+                    reasons.append("M4 disagreement raises salience")
+            else:
+                reasons.append("M4 disagreement ignored: low confidence / non-speech")
         if metadata.get("m4_degraded_mode"):
-            score += 0.08
-            reasons.append("M4 degraded mode raises salience")
+            if attr_result.is_speech and attr_result.confidence >= 0.3:
+                if metadata.get("m4_bank_is_self") is True and state == "SPEAK":
+                    reasons.append("M4 degraded mode ignored: bank trusts SELF during SPEAK")
+                else:
+                    score += 0.08
+                    reasons.append("M4 degraded mode raises salience")
+            else:
+                reasons.append("M4 degraded mode ignored: low confidence / non-speech")
         if metadata.get("m4_final_is_self") is False:
-            score += 0.10
-            reasons.append("M4 final verdict rejected SELF")
+            # Only boost if M4 actually had enough signal to make a decision,
+            # and the bank didn't already confirm SELF during SPEAK.
+            if attr_result.confidence >= 0.3:
+                if metadata.get("m4_bank_is_self") is True and state == "SPEAK":
+                    reasons.append("M4 final-is-self ignored: bank trusts SELF during SPEAK")
+                else:
+                    score += 0.10
+                    reasons.append("M4 final verdict rejected SELF")
         if metadata.get("m4_bank_is_self") is not None and metadata.get("m4_scorer_is_self") is not None:
             if metadata.get("m4_bank_is_self") != metadata.get("m4_scorer_is_self"):
-                score += 0.10
-                reasons.append("bank/scorer disagreement raises salience")
+                if attr_result.is_speech and attr_result.confidence >= 0.3:
+                    if metadata.get("m4_bank_is_self") is True and state == "SPEAK":
+                        reasons.append("bank/scorer disagreement ignored: bank trusts SELF during SPEAK")
+                    else:
+                        score += 0.10
+                        reasons.append("bank/scorer disagreement raises salience")
+                else:
+                    reasons.append("bank/scorer disagreement ignored: low confidence / non-speech")
 
         if lexical_triggers:
             transcript = " ".join(

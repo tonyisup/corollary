@@ -95,6 +95,99 @@ def test_m8_fast_track_policy_never_interrupts_non_speech_even_under_low_thresho
     assert "escalation" not in decision.reason.lower()
 
 
+def test_m8_disagreement_boost_ignored_on_low_confidence():
+    """M4 disagreement should not push score up when confidence is low."""
+    policy = M8FastTrackPolicy()
+    decision = policy.evaluate(
+        _world_result(
+            metadata={
+                "m4_disagreed": True,
+                "m4_degraded_mode": True,
+                "m4_final_is_self": False,
+                "m4_bank_is_self": True,
+                "m4_scorer_is_self": False,
+            },
+            verdict=SourceVerdict.BOTH,
+            is_speech=False,
+        ),
+        controller_state=AgentState.IDLE,
+        current_time=1.0,
+    )
+    # Non-speech + disagreement → all boosts ignored
+    assert decision.score <= 0.10
+    assert "ignored" in decision.reason.lower()
+
+
+def test_m8_disagreement_ignored_when_bank_trusts_self_during_speak():
+    """When bank says SELF and agent is speaking, disagreement should not fast-track."""
+    policy = M8FastTrackPolicy()
+    decision = policy.evaluate(
+        _world_result(
+            metadata={
+                "m4_disagreed": True,
+                "m4_degraded_mode": True,
+                "m4_final_is_self": False,
+                "m4_bank_is_self": True,
+                "m4_scorer_is_self": False,
+            },
+            verdict=SourceVerdict.BOTH,
+        ),
+        controller_state=AgentState.SPEAK,
+        current_time=1.0,
+    )
+    # Bank trusts SELF + agent speaking → disagreement ignored, score stays at base
+    assert decision.score < policy.interrupt_threshold
+    assert "bank trusts SELF during SPEAK" in decision.reason
+    assert decision.action != M8FastTrackAction.INTERRUPT
+    assert decision.action != M8FastTrackAction.ESCALATE
+
+
+def test_m8_disagreement_boost_applies_on_high_confidence_world_speech():
+    """M4 disagreement should boost score for real WORLD speech during SPEAK."""
+    policy = M8FastTrackPolicy()
+    decision = policy.evaluate(
+        _world_result(
+            metadata={
+                "m4_disagreed": True,
+                "m4_degraded_mode": True,
+                "m4_final_is_self": False,
+                "m4_bank_is_self": False,
+                "m4_scorer_is_self": False,
+            },
+            verdict=SourceVerdict.WORLD,
+        ),
+        controller_state=AgentState.SPEAK,
+        current_time=1.0,
+    )
+    # WORLD speech + high confidence + disagreement → score should be elevated
+    assert policy.warn_threshold <= decision.score <= 1.0
+    assert "M4 disagreement raises salience" in decision.reason
+
+
+def test_m8_bank_scorer_disagreement_ignored_on_low_confidence():
+    """Bank/scorer disagreement on low-confidence frames should not boost salience."""
+    policy = M8FastTrackPolicy()
+    low_conf_result = AttributionResult(
+        verdict=SourceVerdict.WORLD,
+        confidence=0.1,
+        self_match_score=0.0,
+        is_in_motor_window=False,
+        causal_score=0.0,
+        energy_db=-50.0,
+        is_speech=True,
+        metadata={
+            "m4_bank_is_self": True,
+            "m4_scorer_is_self": False,
+        },
+    )
+    decision = policy.evaluate(
+        low_conf_result,
+        controller_state=AgentState.IDLE,
+        current_time=1.0,
+    )
+    assert "ignored" in decision.reason.lower()
+    assert decision.score < policy.interrupt_threshold
+
 def test_m8_fast_track_policy_warns_on_high_salience_world_when_not_speaking():
     policy = M8FastTrackPolicy()
     decision = policy.evaluate(
