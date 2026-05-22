@@ -152,6 +152,10 @@ def main() -> None:
         default="auto",
         help="Force M4 mode: auto, bank-only, scorer-only, or bank+scorer arbitration",
     )
+    parser.add_argument("--m8-enable", action="store_true",
+                        help="Enable M8 fast-track salience policy")
+    parser.add_argument("--m8-cooldown-s", type=float, default=0.3,
+                        help="M8 cooldown in seconds (default: 0.3)")
     parser.add_argument("--room-filter", type=str,
                         default="data/m3_broca_room_filter_production.npy",
                         help="Path to room filter .npy")
@@ -289,10 +293,12 @@ def main() -> None:
         both_external_min_frames=3,
         both_external_energy_ratio=1.5,
         cooldown_ms=200.0,
+        m8_enable=args.m8_enable,
         save_path=Path(args.output).with_suffix(".jsonl"),
     )
-
     runtime = StreamingRuntime(config)
+    if args.m8_enable:
+        runtime._controller.m8_policy.cooldown_s = args.m8_cooldown_s
 
     # Start human audio thread (if using second device)
     human_thread = None
