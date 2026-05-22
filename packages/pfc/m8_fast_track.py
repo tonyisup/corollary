@@ -49,10 +49,14 @@ class M8FastTrackPolicy:
         warn_threshold: float = 0.65,
         interrupt_threshold: float = 0.80,
         escalate_threshold: float = 0.95,
+        cooldown_s: float = 0.5,
     ) -> None:
         self.warn_threshold = warn_threshold
         self.interrupt_threshold = interrupt_threshold
         self.escalate_threshold = escalate_threshold
+        self.cooldown_s = cooldown_s
+        self._last_action: Optional[M8FastTrackAction] = None
+        self._last_action_time: float = 0.0
 
     def evaluate(
         self,
@@ -62,7 +66,7 @@ class M8FastTrackPolicy:
         current_time: Optional[float] = None,
         lexical_triggers: Optional[Iterable[str]] = None,
     ) -> M8FastTrackDecision:
-        del current_time  # reserved for future hysteresis / temporal smoothing
+        now = current_time if current_time is not None else 0.0
 
         state_value = getattr(controller_state, "name", controller_state)
         state = str(state_value or "IDLE").strip().upper() or "IDLE"
@@ -206,6 +210,22 @@ class M8FastTrackPolicy:
         else:
             urgency = "low"
             action = M8FastTrackAction.CONTINUE
+
+        # ── Hysteresis / cooldown ──────────────────────────────────────────────
+        # If the same fast-track action fired recently, downgrade to CONTINUE
+        # to avoid repeated triggers on sustained overlap frames.
+        if action in (M8FastTrackAction.INTERRUPT, M8FastTrackAction.ESCALATE, M8FastTrackAction.WARN):
+            if (self._last_action is not None
+                    and action == self._last_action
+                    and (now - self._last_action_time) < self.cooldown_s):
+                action = M8FastTrackAction.CONTINUE
+                urgency = "low"
+                reasons.append("cooldown: repeated action suppressed")
+
+        if action in (M8FastTrackAction.INTERRUPT, M8FastTrackAction.ESCALATE,
+                       M8FastTrackAction.WARN, M8FastTrackAction.DEFER):
+            self._last_action = action
+            self._last_action_time = now
 
         if action == M8FastTrackAction.INTERRUPT:
             reasons.append("fast-track interrupt selected")

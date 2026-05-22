@@ -201,3 +201,50 @@ def test_m8_fast_track_policy_warns_on_high_salience_world_when_not_speaking():
     assert decision.urgency == "medium"
     assert "WORLD" in decision.reason
 
+
+def test_m8_cooldown_suppresses_repeated_action():
+    """Same fast-track action within cooldown window should be suppressed."""
+    policy = M8FastTrackPolicy(cooldown_s=0.5)
+    result = _world_result()
+    state = AgentState.IDLE
+
+    # First call: should WARN
+    d1 = policy.evaluate(result, controller_state=state, current_time=1.0)
+    assert d1.action == M8FastTrackAction.WARN
+
+    # Second call within cooldown: should be suppressed to CONTINUE
+    d2 = policy.evaluate(result, controller_state=state, current_time=1.1)
+    assert d2.action == M8FastTrackAction.CONTINUE
+    assert "cooldown" in d2.reason.lower()
+
+    # Third call after cooldown: should WARN again
+    d3 = policy.evaluate(result, controller_state=state, current_time=2.0)
+    assert d3.action == M8FastTrackAction.WARN
+
+
+def test_m8_cooldown_does_not_affect_different_actions():
+    """Different fast-track actions should not trigger cooldown."""
+    policy = M8FastTrackPolicy(cooldown_s=0.5)
+
+    # First: WARN on WORLD (score 0.66, below warn_threshold 0.65 → actually CONTINUE)
+    # Use a higher-salience input to get a clear WARN
+    high_salience = _world_result(
+        metadata={"m4_disagreed": True, "m4_degraded_mode": True}
+    )
+    d1 = policy.evaluate(high_salience, controller_state=AgentState.IDLE, current_time=1.0)
+    assert d1.action == M8FastTrackAction.WARN
+
+    # Second: INTERRUPT on BOTH during SPEAK with high disagreement
+    # This should be a different action (INTERRUPT vs WARN), so no cooldown
+    d2 = policy.evaluate(
+        _world_result(
+            verdict=SourceVerdict.BOTH,
+            metadata={"m4_disagreed": True, "m4_degraded_mode": True, "m4_final_is_self": False,
+                      "m4_bank_is_self": False, "m4_scorer_is_self": False},
+        ),
+        controller_state=AgentState.SPEAK,
+        current_time=1.1,
+    )
+    # BOTH+SPEAK with disagreement → score 0.70+0.12+0.08+0.10 = 1.0 → INTERRUPT
+    assert d2.action == M8FastTrackAction.INTERRUPT
+
