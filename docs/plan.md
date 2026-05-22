@@ -191,7 +191,7 @@ corollary/
 - **Acceptance:** ✅ Replay gates pass; live room-change protocol produces trusted SELF adaptation and establishes a drift baseline. Sample-clock timestamps and analysis queue/drop diagnostics are implemented; the open question is whether the bank should become the default live M4 mode or stay as an alternate.
 
 ### M8+: Amygdala / Valence / Fast-Track Responses
-- **Status:** 🛠️ Started, opt-in only
+- **Status:** 🛠️ Default Enabled
 - Amygdala = fast-gate *on* the salience network, not a standalone module
 - High-threat salience → overrides PFC, triggers fast responses (shut up, warn, defer)
 - Emotional valence, risk assessment, urgency signaling

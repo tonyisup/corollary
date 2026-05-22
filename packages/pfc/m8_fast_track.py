@@ -42,6 +42,9 @@ class M8FastTrackPolicy:
     - medium salience → warn
     - high salience during SPEAK → interrupt
     - high salience outside SPEAK → escalate/warn
+
+    Default thresholds: warn=0.65, interrupt=0.80, escalate=0.95
+    Cooldown: 0.3s between repeated fast-track actions.
     """
 
     def __init__(

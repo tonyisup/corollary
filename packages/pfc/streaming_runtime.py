@@ -98,8 +98,8 @@ class StreamingConfig:
     both_external_energy_ratio: float = 2.0
     collision_repair_text: Optional[str] = "Sorry, go ahead."
 
-    # M8 fast-track salience policy (opt-in)
-    m8_enable: bool = False
+    # M8 fast-track salience policy (default enabled)
+    m8_enable: bool = True
     m8_lexical_triggers: Optional[list] = None  # e.g. ["stop", "wait", "hey", "excuse me"]
 
     # Attributor params

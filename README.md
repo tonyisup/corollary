@@ -50,7 +50,7 @@ pip install -r requirements.txt
 | M5 | ✅ Acceptance passed | Hippocampus + consolidation + multi-speaker world model |
 | M6 | ✅ Live validated | SAG introspective queries functional; latest smoke: 268 frames, M4 accepted 195/206 |
 | M7 | ✅ Complete | Trust-gated NLMS + DriftAlarm + IR bank + device profile; latest comparison favored the prototype bank on interruption latency |
-| M8+ | 🛠️ Started | Policy-first fast-track salience layer wired in controller/runtime (opt-in); multi-turn conversation test passes (3 turns, 1600 frames, 81.8% CONTINUE, 16.2% DEFER, 1.4% WARN, 0.6% fast-track); zero false fast-tracks on SELF_ONLY and SILENCE; M8 improves M7 interruption latency by 47% (855ms vs 1606ms) |
+| M8+ | 🛠️ Default Enabled | Policy-first fast-track salience layer wired in controller/runtime; multi-turn conversation test passes (3 turns, 1600 frames); zero false fast-tracks across 3 scenarios × 2 geometries; M8 improves M7 interruption latency by 47% (855ms vs 1606ms); cooldown hysteresis, bank-trusts-SELF hardening, and lexical trigger integration |
 
 ### M4 Self-Voice Detector
 

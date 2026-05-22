@@ -172,7 +172,7 @@ Current v0 shape:
 - policy: deterministic urgency/valence scoring
 - action: continue, defer, interrupt, warn, or escalate
 - logging: persist inputs, score, threshold, action, and reason for replay/debugging
-- status: opt-in only; default runtime behavior remains unchanged unless `m8_enable` is set
+- status: default enabled; m8_enable=True in StreamingConfig
 
 Latest live smoke (2026-05-21):
 - live controller emitted INTERRUPT/WARN/ESCALATE/DEFER decisions under M8
